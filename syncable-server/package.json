@@ -1,0 +1,26 @@
+{
+  "name": "syncable-server",
+  "version": "0.1.0",
+  "description": "Syncable server.",
+  "main": "bld/index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makeflow/syncable.git"
+  },
+  "keywords": [
+    "syncable"
+  ],
+  "author": "Makeflow Inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/makeflow/syncable/issues"
+  },
+  "homepage": "https://github.com/makeflow/syncable#readme",
+  "peerDependencies": {
+    "syncable": "*"
+  },
+  "devDependencies": {
+    "@types/socket.io": "^1.4.29"
+  }
+}

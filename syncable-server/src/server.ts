@@ -1,0 +1,196 @@
+import {EventEmitter} from 'events';
+
+import {
+  BroadcastChange,
+  Change,
+  GeneralSubscription,
+  IncrementalSubscription,
+  SnapshotsData,
+  Subscription,
+  Syncable,
+} from 'syncable';
+
+import {Definition} from './definition';
+
+export interface ResourceLock {
+  unlock(): Promise<void>;
+}
+
+export interface SubscriptionInfo {
+  subscription: Subscription;
+  postponeChanges: boolean;
+  changes: BroadcastChange[];
+}
+
+export interface IncrementalSubscriptionInfo extends SubscriptionInfo {
+  subscription: IncrementalSubscription;
+}
+
+export type GeneralSubscriptionInfo = SubscriptionInfo | IncrementalSubscriptionInfo;
+
+export interface Socket extends SocketIO.Socket {
+  subjectToSubscriptionInfoMap: Map<string, SubscriptionInfo>;
+
+  on(event: 'change', listener: (change: Change) => void): this;
+  on(event: 'subscribe', listener: (subscription: GeneralSubscription) => void): this;
+
+  emit(event: 'change', change: BroadcastChange): boolean;
+  emit(event: 'snapshots', data: SnapshotsData): boolean;
+}
+
+export interface SocketServer extends SocketIO.Server {
+  on(event: 'connection' | 'connect', listener: (socket: Socket) => void): SocketIO.Namespace;
+}
+
+export abstract class Server extends EventEmitter {
+  private errorEmitter: (error: any) => void = this.emit.bind(this, 'error');
+
+  private subjectToDefinitionMap = new Map<string, Definition<Subscription, Syncable>>();
+  private subjectToSocketSetMap = new Map<string, Set<Socket>>();
+
+  constructor(
+    private socketServer: SocketServer,
+  ) {
+    super();
+
+    this.initChangeQueueListener();
+    this.initSocketServer();
+  }
+
+  abstract async lock(resource: string, ttl: number): Promise<ResourceLock>;
+  abstract async generateTimestamp(): Promise<number>;
+  abstract async queueChange(change: BroadcastChange): Promise<void>;
+  abstract async loadChanges(subscription: IncrementalSubscription): Promise<BroadcastChange[]>;
+
+  register(subject: string, definition: Definition<Subscription, Syncable>): void {
+    this.subjectToDefinitionMap.set(subject, definition);
+  }
+
+  private initChangeQueueListener(): void {
+    this.on('change', change => {
+      this.handleChangeFromQueue(change).catch(this.errorEmitter);
+    });
+  }
+
+  private initSocketServer(): void {
+    this.socketServer.on('connect', socket => {
+      socket.on('subscribe', subscription => {
+        let {subjectToSubscriptionInfoMap} = socket;
+        let {subject} = subscription;
+
+        let info: GeneralSubscriptionInfo = {
+          subscription,
+          postponeChanges: false,
+          changes: [],
+        };
+
+        subjectToSubscriptionInfoMap.set(subject, info);
+
+        if ('timestamp' in subscription) {
+          this.loadAndEmitChanges(socket, info as IncrementalSubscriptionInfo).catch(this.errorEmitter);
+        }
+        this.loadAndEmitSnapshots(socket, info).catch(this.errorEmitter);
+      });
+
+      socket.on('change', change => {
+        this.handleChangeFromClient(change).catch(this.errorEmitter);
+      });
+    });
+  }
+
+  private async loadAndEmitSnapshots(socket: Socket, info: SubscriptionInfo): Promise<void> {
+    info.postponeChanges = true;
+
+    let {subscription} = info;
+
+    let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
+
+    let snapshots = await definition.loadSnapshots(subscription);
+
+    let data: SnapshotsData = Object.assign({snapshots}, subscription);
+
+    socket.emit('snapshots', data);
+
+    let resourceToTimestampMap = new Map<string, number>();
+
+    for (let {uid, timestamp} of snapshots) {
+      resourceToTimestampMap.set(uid, timestamp);
+    }
+
+    for (let change of info.changes) {
+      let timestamp = resourceToTimestampMap.get(change.resource);
+
+      if (!timestamp || timestamp < change.timestamp) {
+        socket.emit('change', change);
+      }
+    }
+
+    info.changes = [];
+    info.postponeChanges = false;
+  }
+
+  private async loadAndEmitChanges(socket: Socket, info: IncrementalSubscriptionInfo): Promise<void> {
+    info.postponeChanges = true;
+
+    let {subscription} = info;
+
+    let changes = await this.loadChanges(subscription);
+
+    for (let change of changes) {
+      socket.emit('change', change);
+    }
+
+    let timestamp = changes.length ? changes[changes.length - 1].timestamp : 0;
+
+    let {changes: postponedChanges} = info;
+
+    for (let change of postponedChanges) {
+      if (change.timestamp > timestamp) {
+        socket.emit('change', change);
+      }
+    }
+
+    info.postponeChanges = false;
+  }
+
+  private async handleChangeFromClient(change: Change): Promise<void> {
+    let definition = this.subjectToDefinitionMap.get(change.subject)!;
+
+    let lock = await this.lock(`resource-${change.resource}`, 1000);
+
+    try {
+      let timestamp = await this.generateTimestamp();
+      let broadcastChange: BroadcastChange = Object.assign({timestamp}, change);
+
+      await definition.mergeChange(broadcastChange);
+      await this.queueChange(broadcastChange);
+    } finally {
+      await lock.unlock();
+    }
+  }
+
+  private async handleChangeFromQueue(change: BroadcastChange): Promise<void> {
+    let {subject} = change;
+    let socketSet = this.subjectToSocketSetMap.get(subject);
+
+    if (!socketSet) {
+      return;
+    }
+
+    for (let socket of socketSet) {
+      let {subjectToSubscriptionInfoMap} = socket;
+      let {changes, postponeChanges} = subjectToSubscriptionInfoMap.get(subject)!;
+
+      if (postponeChanges) {
+        changes.push(change);
+        continue;
+      }
+
+      socket.emit('change', change);
+    }
+  }
+}
+
+export interface Server {
+  on(event: 'change', listener: (change: BroadcastChange) => void): this;
+}

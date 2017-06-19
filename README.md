@@ -1,0 +1,6 @@
+# Syncable
+
+## Roadmap
+
+- [ ] Visibility checking.
+
