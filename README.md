@@ -2,5 +2,7 @@
 
 ## Roadmap
 
-- [ ] Visibility checking.
+- [ ] Removal support.
+- [ ] Offline support.
+- [ ] Visibility support.
 

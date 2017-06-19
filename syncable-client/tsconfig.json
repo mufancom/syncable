@@ -2,6 +2,10 @@
   "compilerOptions": {
     "target": "es5",
     "module": "commonjs",
+    "lib": [
+      "es2015",
+      "dom"
+    ],
     "declaration": true,
     "sourceMap": true,
     "outDir": "bld",

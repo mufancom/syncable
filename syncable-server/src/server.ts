@@ -20,6 +20,7 @@ export interface SubscriptionInfo {
   subscription: Subscription;
   postponeChanges: boolean;
   changes: BroadcastChange[];
+  valid: boolean;
 }
 
 export interface IncrementalSubscriptionInfo extends SubscriptionInfo {
@@ -34,6 +35,7 @@ export interface Socket extends SocketIO.Socket {
   on(event: 'change', listener: (change: Change) => void): this;
   on(event: 'subscribe', listener: (subscription: GeneralSubscription) => void): this;
 
+  emit(event: 'subscribed', data: Subscription): boolean;
   emit(event: 'change', change: BroadcastChange): boolean;
   emit(event: 'snapshots', data: SnapshotsData): boolean;
 }
@@ -45,7 +47,7 @@ export interface SocketServer extends SocketIO.Server {
 export abstract class Server extends EventEmitter {
   private errorEmitter: (error: any) => void = this.emit.bind(this, 'error');
 
-  private subjectToDefinitionMap = new Map<string, Definition<Subscription, Syncable>>();
+  private subjectToDefinitionMap = new Map<string, Definition<Syncable, Subscription>>();
   private subjectToSocketSetMap = new Map<string, Set<Socket>>();
 
   constructor(
@@ -62,7 +64,7 @@ export abstract class Server extends EventEmitter {
   abstract async queueChange(change: BroadcastChange): Promise<void>;
   abstract async loadChanges(subscription: IncrementalSubscription): Promise<BroadcastChange[]>;
 
-  register(subject: string, definition: Definition<Subscription, Syncable>): void {
+  register(subject: string, definition: Definition<Syncable, Subscription>): void {
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
@@ -78,18 +80,28 @@ export abstract class Server extends EventEmitter {
         let {subjectToSubscriptionInfoMap} = socket;
         let {subject} = subscription;
 
+        let existingInfo = subjectToSubscriptionInfoMap.get(subject);
+
+        if (existingInfo) {
+          existingInfo.valid = false;
+        }
+
         let info: GeneralSubscriptionInfo = {
           subscription,
           postponeChanges: false,
           changes: [],
+          valid: true,
         };
 
         subjectToSubscriptionInfoMap.set(subject, info);
 
+        socket.emit('subscribed', subscription);
+
         if ('timestamp' in subscription) {
           this.loadAndEmitChanges(socket, info as IncrementalSubscriptionInfo).catch(this.errorEmitter);
+        } else {
+          this.loadAndEmitSnapshots(socket, info).catch(this.errorEmitter);
         }
-        this.loadAndEmitSnapshots(socket, info).catch(this.errorEmitter);
       });
 
       socket.on('change', change => {
@@ -106,6 +118,10 @@ export abstract class Server extends EventEmitter {
     let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
 
     let snapshots = await definition.loadSnapshots(subscription);
+
+    if (!info.valid) {
+      return;
+    }
 
     let data: SnapshotsData = Object.assign({snapshots}, subscription);
 
@@ -136,16 +152,20 @@ export abstract class Server extends EventEmitter {
 
     let changes = await this.loadChanges(subscription);
 
+    if (!info.valid) {
+      return;
+    }
+
     for (let change of changes) {
       socket.emit('change', change);
     }
 
-    let timestamp = changes.length ? changes[changes.length - 1].timestamp : 0;
+    let latestTimestamp = changes.length ? changes[changes.length - 1].timestamp : 0;
 
     let {changes: postponedChanges} = info;
 
     for (let change of postponedChanges) {
-      if (change.timestamp > timestamp) {
+      if (change.timestamp > latestTimestamp) {
         socket.emit('change', change);
       }
     }
@@ -162,8 +182,9 @@ export abstract class Server extends EventEmitter {
       let timestamp = await this.generateTimestamp();
       let broadcastChange: BroadcastChange = Object.assign({timestamp}, change);
 
-      await definition.mergeChange(broadcastChange);
-      await this.queueChange(broadcastChange);
+      let snapshot = await definition.mergeChange(broadcastChange);
+
+      await this.queueChange({snapshot, ...broadcastChange});
     } finally {
       await lock.unlock();
     }
