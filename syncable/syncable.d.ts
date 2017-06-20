@@ -1,3 +1,5 @@
+// tslint:disable:no-empty-interface
+
 export interface Syncable {
   /** Unique identifier of this resource. */
   uid: string;
@@ -14,12 +16,18 @@ export interface RawChange {
   resource: string;
 }
 
+export interface RawCreation {
+  subject: string;
+}
+
 export interface Change extends RawChange {
   /** Unique identifier of this change. */
   uid: string;
 }
 
-export interface Creation extends Change {
+export interface Creation extends RawCreation {
+  uid: string;
+  resource: string;
   type: 'create';
 }
 

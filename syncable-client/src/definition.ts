@@ -1,6 +1,7 @@
 import {
   Change,
   Creation,
+  RawChange,
   RawSubscription,
   Syncable,
 } from 'syncable';
@@ -15,9 +16,13 @@ export interface ResourceStoreItem<T extends Syncable> {
 export abstract class Definition<T extends Syncable> {
   // TODO:
   // abstract getChangesStore(): Store<Change>;
-  // abstract getSnapshotsStore(): Store<TSyncable>;
+  // abstract getSnapshotsStore(): Store<T>;
 
   abstract generateSubscription(): RawSubscription;
+  abstract preprocessChange(change: RawChange): void;
+
+  abstract init?(object: T): void;
+
   abstract create(change: Creation): T;
-  abstract update(object: T, change: Change): T;
+  abstract update(object: T, change: Change): void;
 }
