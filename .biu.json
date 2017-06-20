@@ -1,0 +1,93 @@
+{
+  "problemMatchers": {
+    "typescript-tsc": {
+      "owner": "typescript",
+      "pattern": {
+        "regexp": "^([^\\s].*)\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\):\\s+(error|warning|info)\\s+(TS\\d+)\\s*:\\s*(.*)$",
+        "file": 1,
+        "location": 2,
+        "severity": 3,
+        "code": 4,
+        "message": 5
+      },
+      "watching": {
+        "activeOnStart": true,
+        "beginsPattern": "^\\s*(?:message TS6032:|\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)? -) File change detected\\. Starting incremental compilation\\.\\.\\.",
+        "endsPattern": "^\\s*(?:message TS6042:|\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)? -) Compilation complete\\. Watching for file changes\\."
+      }
+    },
+    "tslint": {
+      "owner": "typescript",
+      "pattern": {
+        "regexp": "^(ERROR|WARNING): (\\([^)]+\\)) (.+\\.ts)\\[(\\d+|\\d+, \\d+)\\]: (.+)$",
+        "severity": 1,
+        "file": 3,
+        "location": 4,
+        "message": "$5 $2"
+      }
+    }
+  },
+  "tasks": {
+    "build-syncable": {
+      "executable": "tsc",
+      "args": [
+        "-p", "syncable",
+        "-w"
+      ],
+      "problemMatcher": "typescript-tsc"
+    },
+    "build-syncable-client": {
+      "executable": "tsc",
+      "args": [
+        "-p", "syncable-client",
+        "-w"
+      ],
+      "problemMatcher": "typescript-tsc"
+    },
+    "build-syncable-server": {
+      "executable": "tsc",
+      "args": [
+        "-p", "syncable-server",
+        "-w"
+      ],
+      "problemMatcher": "typescript-tsc"
+    },
+    "lint-syncable": {
+      "executable": "tslint",
+      "args": [
+        "-c", "syncable/tslint.json",
+        "-p", "syncable/tsconfig.json",
+        "-t", "verbose",
+        "--type-check"
+      ],
+      "problemMatcher": "tslint",
+      "autoClose": true
+    },
+    "lint-syncable-client": {
+      "executable": "tslint",
+      "args": [
+        "-c", "syncable-client/tslint.json",
+        "-p", "syncable-client/tsconfig.json",
+        "-t", "verbose",
+        "--type-check"
+      ],
+      "problemMatcher": "tslint",
+      "autoClose": true
+    },
+    "lint-syncable-server": {
+      "executable": "tslint",
+      "args": [
+        "-c", "syncable-server/tslint.json",
+        "-p", "syncable-server/tsconfig.json",
+        "-t", "verbose",
+        "--type-check"
+      ],
+      "problemMatcher": "tslint",
+      "autoClose": true
+    }
+  },
+  "groups": {
+    "build": ["build-syncable", "build-syncable-client", "build-syncable-server"],
+    "lint": ["client-syncable", "client-syncable-client", "client-syncable-server"]
+  }
+}

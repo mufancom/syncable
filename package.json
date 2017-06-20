@@ -1,7 +1,11 @@
 {
   "name": "syncable-package",
   "version": "0.1.0",
+  "scripts": {
+    "biu": "biu"
+  },
   "devDependencies": {
+    "biu": "^0.2.11",
     "tslint": "^5.4.3",
     "tslint-language-service": "^0.9.6",
     "typescript": "^2.3.4",

@@ -3,8 +3,6 @@ import {EventEmitter} from 'events';
 import {
   BroadcastChange,
   Change,
-  GeneralSubscription,
-  IncrementalSubscription,
   SnapshotsData,
   Subscription,
   Syncable,
@@ -13,7 +11,7 @@ import {
 import {Definition} from './definition';
 
 export interface ResourceLock {
-  unlock(): Promise<void>;
+  unlock(): PromiseLike<void>;
 }
 
 export interface SubscriptionInfo {
@@ -23,17 +21,11 @@ export interface SubscriptionInfo {
   valid: boolean;
 }
 
-export interface IncrementalSubscriptionInfo extends SubscriptionInfo {
-  subscription: IncrementalSubscription;
-}
-
-export type GeneralSubscriptionInfo = SubscriptionInfo | IncrementalSubscriptionInfo;
-
 export interface Socket extends SocketIO.Socket {
   subjectToSubscriptionInfoMap: Map<string, SubscriptionInfo>;
 
   on(event: 'change', listener: (change: Change) => void): this;
-  on(event: 'subscribe', listener: (subscription: GeneralSubscription) => void): this;
+  on(event: 'subscribe', listener: (subscription: Subscription) => void): this;
 
   emit(event: 'subscribed', data: Subscription): boolean;
   emit(event: 'change', change: BroadcastChange): boolean;
@@ -62,7 +54,6 @@ export abstract class Server extends EventEmitter {
   abstract async lock(resource: string, ttl: number): Promise<ResourceLock>;
   abstract async generateTimestamp(): Promise<number>;
   abstract async queueChange(change: BroadcastChange): Promise<void>;
-  abstract async loadChanges(subscription: IncrementalSubscription): Promise<BroadcastChange[]>;
 
   register(subject: string, definition: Definition<Syncable, Subscription>): void {
     this.subjectToDefinitionMap.set(subject, definition);
@@ -86,7 +77,7 @@ export abstract class Server extends EventEmitter {
           existingInfo.valid = false;
         }
 
-        let info: GeneralSubscriptionInfo = {
+        let info: SubscriptionInfo = {
           subscription,
           postponeChanges: false,
           changes: [],
@@ -97,8 +88,8 @@ export abstract class Server extends EventEmitter {
 
         socket.emit('subscribed', subscription);
 
-        if ('timestamp' in subscription) {
-          this.loadAndEmitChanges(socket, info as IncrementalSubscriptionInfo).catch(this.errorEmitter);
+        if (subscription.timestamp) {
+          this.loadAndEmitChanges(socket, info).catch(this.errorEmitter);
         } else {
           this.loadAndEmitSnapshots(socket, info).catch(this.errorEmitter);
         }
@@ -145,12 +136,14 @@ export abstract class Server extends EventEmitter {
     info.postponeChanges = false;
   }
 
-  private async loadAndEmitChanges(socket: Socket, info: IncrementalSubscriptionInfo): Promise<void> {
+  private async loadAndEmitChanges(socket: Socket, info: SubscriptionInfo): Promise<void> {
     info.postponeChanges = true;
 
     let {subscription} = info;
 
-    let changes = await this.loadChanges(subscription);
+    let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
+
+    let changes = await definition.loadChanges(subscription);
 
     if (!info.valid) {
       return;
@@ -198,9 +191,15 @@ export abstract class Server extends EventEmitter {
       return;
     }
 
+    let definition = this.subjectToDefinitionMap.get(subject)!;
+
     for (let socket of socketSet) {
       let {subjectToSubscriptionInfoMap} = socket;
-      let {changes, postponeChanges} = subjectToSubscriptionInfoMap.get(subject)!;
+      let {subscription, changes, postponeChanges} = subjectToSubscriptionInfoMap.get(subject)!;
+
+      if (!definition.hasSubscribedChange(change, subscription)) {
+        continue;
+      }
 
       if (postponeChanges) {
         changes.push(change);
@@ -214,4 +213,8 @@ export abstract class Server extends EventEmitter {
 
 export interface Server {
   on(event: 'change', listener: (change: BroadcastChange) => void): this;
+  on(event: 'error', listener: (error: any) => void): this;
+
+  emit(event: 'change', change: BroadcastChange): boolean;
+  emit(event: 'error', error: any): boolean;
 }

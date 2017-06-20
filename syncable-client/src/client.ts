@@ -5,7 +5,6 @@ import {
   BroadcastCreation,
   Change,
   Creation,
-  GeneralSubscription,
   RawChange,
   SnapshotsData,
   Subscription,
@@ -15,6 +14,7 @@ import {
 import {Definition} from './definition';
 
 export interface Socket extends SocketIOClient.Socket {
+  on(event: 'reconnect', listener: (attempt: number) => void): this;
   on(event: 'subscribed', listener: (subscription: Subscription) => void): this;
   on(event: 'change', listener: (change: BroadcastChange) => void): this;
   on(event: 'snapshots', listener: (data: SnapshotsData) => void): this;
@@ -48,12 +48,69 @@ export class Client {
 
   constructor(
     private socket: Socket,
-  ) {
-    this.init();
-  }
+  ) { }
 
   register(subject: string, definition: Definition<Syncable>): void {
     this.subjectToDefinitionMap.set(subject, definition);
+  }
+
+  init(): void {
+    this.socket.on('reconnect', () => {
+      this.subscribe();
+    });
+
+    this.socket.on('subscribed', ({uid, subject}) => {
+      let subjectData = this.subjectDataMap.get(subject)!;
+
+      let {subscription} = subjectData;
+
+      if (subscription.uid === uid) {
+        subjectData.subscribed = true;
+      }
+    });
+
+    this.socket.on('change', change => {
+      let {subject} = change;
+
+      let subjectData = this.subjectDataMap.get(subject)!;
+
+      if (!subjectData.subscribed) {
+        return;
+      }
+
+      switch (change.type) {
+        case 'create':
+          this.createByBroadcast(change as BroadcastCreation);
+          break;
+        default:
+          this.updateByBroadcast(change);
+          break;
+      }
+    });
+
+    this.socket.on('snapshots', ({subject, snapshots}) => {
+      let subjectData = this.subjectDataMap.get(subject)!;
+      let {subscribed, resourceDataMap} = subjectData;
+
+      if (!subscribed) {
+        return;
+      }
+
+      // Only one snapshots event hit for a specified subject is expected.
+
+      for (let snapshot of snapshots) {
+        let resourceData: ResourceData<Syncable> = {
+          object: Object.assign({}, snapshot),
+          snapshot: Object.assign({}, snapshot),
+          changes: [],
+        };
+
+        resourceDataMap.set(snapshot.uid, resourceData);
+        subjectData.timestamp = Math.max(subjectData.timestamp, snapshot.timestamp);
+      }
+    });
+
+    this.subscribe();
   }
 
   subscribe(): void {
@@ -62,7 +119,7 @@ export class Client {
 
       let timestamp = subjectData && subjectData.timestamp;
 
-      let subscription: GeneralSubscription = Object.assign(
+      let subscription: Subscription = Object.assign(
         {uid: uuid(), subject, timestamp},
         definition.generateSubscription(),
       );
@@ -182,59 +239,6 @@ export class Client {
     }
 
     subjectData.timestamp = timestamp;
-  }
-
-  private init(): void {
-    this.socket.on('subscribed', ({uid, subject}) => {
-      let subjectData = this.subjectDataMap.get(subject)!;
-
-      let {subscription} = subjectData;
-
-      if (subscription.uid === uid) {
-        subjectData.subscribed = true;
-      }
-    });
-
-    this.socket.on('change', change => {
-      let {subject} = change;
-
-      let subjectData = this.subjectDataMap.get(subject)!;
-
-      if (!subjectData.subscribed) {
-        return;
-      }
-
-      switch (change.type) {
-        case 'create':
-          this.createByBroadcast(change as BroadcastCreation);
-          break;
-        default:
-          this.updateByBroadcast(change);
-          break;
-      }
-    });
-
-    this.socket.on('snapshots', ({subject, snapshots}) => {
-      let subjectData = this.subjectDataMap.get(subject)!;
-      let {subscribed, resourceDataMap} = subjectData;
-
-      if (!subscribed) {
-        return;
-      }
-
-      // Only one snapshots event hit for a specified subject is expected.
-
-      for (let snapshot of snapshots) {
-        let resourceData: ResourceData<Syncable> = {
-          object: Object.assign({}, snapshot),
-          snapshot: Object.assign({}, snapshot),
-          changes: [],
-        };
-
-        resourceDataMap.set(snapshot.uid, resourceData);
-        subjectData.timestamp = Math.max(subjectData.timestamp, snapshot.timestamp);
-      }
-    });
   }
 
   private syncChange(change: Change): void {

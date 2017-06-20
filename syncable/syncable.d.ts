@@ -48,14 +48,9 @@ export interface Subscription extends RawSubscription {
   subject: string;
   /** Unique identifier of this subscription. */
   uid: string;
-}
-
-export interface IncrementalSubscription extends Subscription {
   /** Specify timestamp to skip snapshots. */
-  timestamp: number;
+  timestamp?: number;
 }
-
-export type GeneralSubscription = Subscription | IncrementalSubscription;
 
 export interface SnapshotsData extends Subscription {
   snapshots: Syncable[];

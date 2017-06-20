@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Syncable server.",
   "main": "bld/index.js",
+  "types": "bld/index.d.ts",
   "scripts": {},
   "repository": {
     "type": "git",

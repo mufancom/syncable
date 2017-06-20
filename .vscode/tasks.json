@@ -1,0 +1,32 @@
+{
+  "version": "0.1.0",
+  "tasks": [
+    {
+      "taskName": "biu",
+      "command": "npm",
+      "isShellCommand": true,
+      "isBackground": true,
+      "isBuildCommand": true,
+      "args": ["run", "biu", "--", "-p", "8089"],
+      "showOutput": "silent",
+      "problemMatcher": {
+        "owner": "typescript",
+        "applyTo": "closedDocuments",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^\\[biu-problem:typescript:([^;]*);([^;]*);([^;]*);([^;]*);(.*)\\]$",
+          "severity": 1,
+          "file": 2,
+          "location": 3,
+          "code": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": false,
+          "beginsPattern": "^\\[biu-problems:typescript:begin\\]$",
+          "endsPattern": "^\\[biu-problems:typescript:end\\]$"
+        }
+      }
+    }
+  ]
+}
