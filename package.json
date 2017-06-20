@@ -6,6 +6,7 @@
   },
   "devDependencies": {
     "biu": "^0.2.11",
+    "rxjs": "^5.4.1",
     "tslint": "^5.4.3",
     "tslint-language-service": "^0.9.6",
     "typescript": "^2.3.4",

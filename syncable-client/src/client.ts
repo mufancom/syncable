@@ -26,7 +26,6 @@ export interface Socket extends SocketIOClient.Socket {
 }
 
 export interface ResourceData<T extends Syncable> {
-  object: T;
   snapshot: T;
   changes: Change[];
 }
@@ -36,10 +35,24 @@ export interface SubjectData<T extends Syncable> {
   subscription: Subscription;
   subscribed: boolean;
   resourceDataMap: Map<string, ResourceData<T>>;
+  resourceMap: Map<string, T>;
+}
+
+export interface ChangeNotification<T extends Syncable> {
+  subject: string;
+  resource: string;
+  object: T;
+  snapshot: T | undefined;
+}
+
+export interface SnapshotsNotification<T extends Syncable> {
+  subject: string;
+  resourceMap: Map<string, T>;
 }
 
 export class Client {
-  readonly changes = new Subject<Change>();
+  readonly change = new Subject<ChangeNotification<Syncable>>();
+  readonly snapshots = new Subject<SnapshotsNotification<Syncable>>();
 
   private socket: Socket;
   private subjectToDefinitionMap = new Map<string, Definition<Syncable>>();
@@ -89,24 +102,37 @@ export class Client {
 
     this.socket.on('snapshots', ({subject, snapshots}) => {
       let subjectData = this.subjectDataMap.get(subject)!;
-      let {subscribed, resourceDataMap} = subjectData;
+      let {subscribed, resourceDataMap, resourceMap} = subjectData;
 
       if (!subscribed) {
         return;
       }
 
+      let definition = this.subjectToDefinitionMap.get(subject)!;
+
       // Only one snapshots event hit for a specified subject is expected.
 
       for (let snapshot of snapshots) {
+        let object = Object.assign({}, snapshot);
+
+        if (definition.init) {
+          definition.init(object);
+        }
+
         let resourceData: ResourceData<Syncable> = {
-          object: Object.assign({}, snapshot),
           snapshot: Object.assign({}, snapshot),
           changes: [],
         };
 
-        resourceDataMap.set(snapshot.uid, resourceData);
-        subjectData.timestamp = Math.max(subjectData.timestamp, snapshot.timestamp);
+        let {uid, timestamp} = snapshot;
+
+        resourceDataMap.set(uid, resourceData);
+        resourceMap.set(uid, object);
+
+        subjectData.timestamp = Math.max(subjectData.timestamp, timestamp);
       }
+
+      this.snapshots.next({subject, resourceMap});
     });
 
     this.subscribe();
@@ -116,7 +142,18 @@ export class Client {
     for (let [subject, definition] of this.subjectToDefinitionMap) {
       let subjectData = this.subjectDataMap.get(subject);
 
-      let timestamp = subjectData && subjectData.timestamp;
+      let timestamp: number | undefined;
+      let resourceMap: Map<string, Syncable>;
+      let resourceDataMap: Map<string, ResourceData<Syncable>>;
+
+      if (subjectData) {
+        timestamp = subjectData.timestamp;
+        resourceMap = subjectData.resourceMap;
+        resourceDataMap = subjectData.resourceDataMap;
+      } else {
+        resourceMap = new Map<string, Syncable>();
+        resourceDataMap = new Map<string, ResourceData<Syncable>>();
+      }
 
       let subscription: Subscription = Object.assign(
         {uid: uuid(), subject, timestamp},
@@ -127,13 +164,19 @@ export class Client {
         timestamp: timestamp || 0,
         subscription,
         subscribed: false,
-        resourceDataMap: new Map<string, ResourceData<Syncable>>(),
+        resourceMap,
+        resourceDataMap,
       };
 
       this.subjectDataMap.set(subject, subjectData);
 
       this.socket.emit('subscribe', subscription);
     }
+  }
+
+  getResourceMap<T extends Syncable>(subject: string): Map<string, T> | undefined {
+    let subjectData = this.subjectDataMap.get(subject);
+    return subjectData && subjectData.resourceMap as Map<string, T>;
   }
 
   create(rawCreation: RawCreation): void {
@@ -153,17 +196,24 @@ export class Client {
 
     definition.preprocessChange(change);
 
-    let {resourceDataMap} = this.subjectDataMap.get(subject)!;
+    let {resourceDataMap, resourceMap} = this.subjectDataMap.get(subject)!;
 
     let object = definition.create(change);
 
     let resourceData: ResourceData<Syncable> = {
-      object,
       snapshot: Object.assign({}, object),
       changes: [change],
     };
 
     resourceDataMap.set(resource, resourceData);
+    resourceMap.set(resource, object);
+
+    this.change.next({
+      subject,
+      resource,
+      snapshot: undefined,
+      object,
+    });
 
     this.syncChange(change);
   }
@@ -177,12 +227,22 @@ export class Client {
 
     definition.preprocessChange(change);
 
-    let {resourceDataMap} = this.subjectDataMap.get(subject)!;
+    let {resourceDataMap, resourceMap} = this.subjectDataMap.get(subject)!;
 
-    let {object, changes} = resourceDataMap.get(resource)!;
+    let {changes} = resourceDataMap.get(resource)!;
+    let object = resourceMap.get(resource)!;
+
+    let snapshotBeforeChange = Object.assign({}, object);
 
     definition.update(object, change);
     changes.push(change);
+
+    this.change.next({
+      subject,
+      resource,
+      snapshot: snapshotBeforeChange,
+      object,
+    });
 
     this.syncChange(change);
   }
@@ -199,12 +259,17 @@ export class Client {
     let definition = this.subjectToDefinitionMap.get(subject)!;
     let subjectData = this.subjectDataMap.get(subject)!;
 
-    let {resourceDataMap} = subjectData;
+    let {resourceDataMap, resourceMap} = subjectData;
 
     let resourceData = resourceDataMap.get(resource);
+    let object = resourceMap.get(resource);
 
-    if (resourceData) {
-      let {object, snapshot, changes} = resourceData;
+    let snapshotBeforeChange: Syncable | undefined;
+
+    if (resourceData && object) {
+      snapshotBeforeChange = Object.assign({}, object);
+
+      let {snapshot, changes} = resourceData;
 
       shiftFirstChangeIfMatch(changes, uid);
 
@@ -220,24 +285,30 @@ export class Client {
       }
     } else {
       let snapshot = Object.assign({}, broadcastSnapshot!);
-      let object = Object.assign({}, snapshot);
+
+      object = Object.assign({}, snapshot);
 
       if (definition.init) {
         definition.init(object);
       }
 
       resourceData = {
-        object,
         snapshot,
         changes: [],
       };
 
       resourceDataMap.set(resource, resourceData);
+      resourceMap.set(resource, object);
     }
 
     subjectData.timestamp = timestamp;
 
-    this.changes.next(creation);
+    this.change.next({
+      subject,
+      resource,
+      snapshot: snapshotBeforeChange,
+      object,
+    });
   }
 
   private updateByBroadcast(change: BroadcastChange): void {
@@ -245,9 +316,11 @@ export class Client {
     let definition = this.subjectToDefinitionMap.get(subject)!;
     let subjectData = this.subjectDataMap.get(subject)!;
 
-    let {resourceDataMap} = subjectData;
+    let {resourceDataMap, resourceMap} = subjectData;
 
-    let {object, snapshot, changes} = resourceDataMap.get(resource)!;
+    let {snapshot, changes} = resourceDataMap.get(resource)!;
+    let object = resourceMap.get(resource)!;
+    let snapshotBeforeChange = Object.assign({}, object);
 
     shiftFirstChangeIfMatch(changes, uid);
 
@@ -265,11 +338,15 @@ export class Client {
 
     subjectData.timestamp = timestamp;
 
-    this.changes.next(change);
+    this.change.next({
+      subject,
+      resource,
+      snapshot: snapshotBeforeChange,
+      object,
+    });
   }
 
   private syncChange(change: Change): void {
-    this.changes.next(change);
     this.socket.emit('change', change);
   }
 }
