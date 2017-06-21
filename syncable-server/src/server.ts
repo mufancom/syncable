@@ -26,6 +26,7 @@ export interface Socket extends SocketIO.Socket {
 
   on(event: 'change', listener: (change: Change) => void): this;
   on(event: 'subscribe', listener: (subscription: Subscription) => void): this;
+  on(event: 'close', listener: () => void): this;
 
   emit(event: 'subscribed', data: Subscription): boolean;
   emit(event: 'change', change: BroadcastChange): boolean;
@@ -88,6 +89,14 @@ export abstract class Server extends EventEmitter {
 
         subjectToSubscriptionInfoMap.set(subject, info);
 
+        let {subjectToSocketSetMap} = this;
+
+        if (subjectToSocketSetMap.has(subject)) {
+          subjectToSocketSetMap.get(subject)!.add(socket);
+        } else {
+          subjectToSocketSetMap.set(subject, new Set([socket]));
+        }
+
         socket.emit('subscribed', subscription);
 
         if (subscription.timestamp) {
@@ -100,6 +109,12 @@ export abstract class Server extends EventEmitter {
       socket.on('change', change => {
         this.handleChangeFromClient(change).catch(this.errorEmitter);
       });
+
+      socket.on('close', () => {
+        for (let subject of socket.subjectToSubscriptionInfoMap.keys()) {
+          this.subjectToSocketSetMap.get(subject)!.delete(socket);
+        }
+      });
     });
   }
 
@@ -109,8 +124,6 @@ export abstract class Server extends EventEmitter {
     let {subscription} = info;
 
     let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
-
-    console.log(subscription.subject);
 
     let snapshots = await definition.loadSnapshots(subscription);
 
