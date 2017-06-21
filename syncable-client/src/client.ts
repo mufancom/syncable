@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import { Subject } from 'rxjs/Subject';
 import * as uuid from 'uuid';
 
@@ -113,14 +114,14 @@ export class Client {
       // Only one snapshots event hit for a specified subject is expected.
 
       for (let snapshot of snapshots) {
-        let object = Object.assign({}, snapshot);
+        let object = _.cloneDeep(snapshot);
 
         if (definition.init) {
           definition.init(object);
         }
 
         let resourceData: ResourceData<Syncable> = {
-          snapshot: Object.assign({}, snapshot),
+          snapshot: _.cloneDeep(snapshot),
           changes: [],
         };
 
@@ -201,7 +202,7 @@ export class Client {
     let object = definition.create(change);
 
     let resourceData: ResourceData<Syncable> = {
-      snapshot: Object.assign({}, object),
+      snapshot: _.cloneDeep(object),
       changes: [change],
     };
 
@@ -234,7 +235,7 @@ export class Client {
     let {changes} = resourceDataMap.get(resource)!;
     let object = resourceMap.get(resource)!;
 
-    let snapshotBeforeChange = Object.assign({}, object);
+    let snapshotBeforeChange = _.cloneDeep(object);
 
     definition.update(object, change);
     changes.push(change);
@@ -269,7 +270,7 @@ export class Client {
     let snapshotBeforeChange: Syncable | undefined;
 
     if (resourceData && object) {
-      snapshotBeforeChange = Object.assign({}, object);
+      snapshotBeforeChange = _.cloneDeep(object);
 
       let {snapshot, changes} = resourceData;
 
@@ -286,9 +287,9 @@ export class Client {
         definition.update(object, change);
       }
     } else {
-      let snapshot = Object.assign({}, broadcastSnapshot!);
+      let snapshot = _.cloneDeep(broadcastSnapshot!);
 
-      object = Object.assign({}, snapshot);
+      object = _.cloneDeep(snapshot);
 
       if (definition.init) {
         definition.init(object);
@@ -322,7 +323,7 @@ export class Client {
 
     let {snapshot, changes} = resourceDataMap.get(resource)!;
     let object = resourceMap.get(resource)!;
-    let snapshotBeforeChange = Object.assign({}, object);
+    let snapshotBeforeChange = _.cloneDeep(object);
 
     shiftFirstChangeIfMatch(changes, uid);
 
@@ -358,7 +359,7 @@ function resetObjectToSnapshot(object: object, snapshot: object): void {
     delete (object as any)[key];
   }
 
-  Object.assign(object, snapshot);
+  Object.assign(object, _.cloneDeep(snapshot));
 }
 
 function shiftFirstChangeIfMatch(changes: Change[], uid: string): void {
