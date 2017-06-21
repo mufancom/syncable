@@ -272,12 +272,11 @@ export class Client {
     if (resourceData && object) {
       snapshotBeforeChange = _.cloneDeep(object);
 
-      let {snapshot, changes} = resourceData;
+      let {changes} = resourceData;
 
       shiftFirstChangeIfMatch(changes, uid);
 
-      resetObjectToSnapshot(snapshot, broadcastSnapshot!);
-      resetObjectToSnapshot(object, snapshot);
+      resetObjectToSnapshot(object, broadcastSnapshot!);
 
       if (definition.init) {
         definition.init(object);
@@ -361,11 +360,44 @@ export class Client {
 }
 
 function resetObjectToSnapshot(object: object, snapshot: object): void {
-  for (let key of Object.keys(object)) {
-    delete (object as any)[key];
+  let objectKeys = Object.keys(object);
+  let snapshotKeys = Object.keys(snapshot);
+
+  for (let key of snapshotKeys) {
+    let objectValue = (object as any)[key];
+    let snapshotValue = (snapshot as any)[key];
+
+    if (_.isPlainObject(objectValue) && _.isPlainObject(snapshotValue)) {
+      resetObjectToSnapshot(objectValue, snapshotValue);
+    } else if (Array.isArray(objectValue) && Array.isArray(snapshotValue)) {
+      resetArrayToSnapshot(objectValue, snapshotValue);
+    } else {
+      (object as any)[key] = _.cloneDeep(snapshotValue);
+    }
   }
 
-  Object.assign(object, _.cloneDeep(snapshot));
+  let extraKeys = _.difference(objectKeys, snapshotKeys);
+
+  for (let key of extraKeys) {
+    delete (object as any)[key];
+  }
+}
+
+function resetArrayToSnapshot(array: any[], snapshot: any[]): void {
+  array.length = snapshot.length;
+
+  for (let i = 0; i < array.length; i++) {
+    let arrayValue = array[i];
+    let snapshotValue = snapshot[i];
+
+    if (_.isPlainObject(arrayValue) && _.isPlainObject(snapshotValue)) {
+      resetObjectToSnapshot(arrayValue, snapshotValue);
+    } else if (Array.isArray(arrayValue) && Array.isArray(snapshotValue)) {
+      resetArrayToSnapshot(arrayValue, snapshotValue);
+    } else {
+      array[i] = _.cloneDeep(snapshotValue);
+    }
+  }
 }
 
 function shiftFirstChangeIfMatch(changes: Change[], uid: string): void {
