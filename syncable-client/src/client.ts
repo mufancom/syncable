@@ -13,7 +13,7 @@ import {
   Syncable,
 } from 'syncable';
 
-import {Definition} from './definition';
+import {SyncableDefinition} from './definition';
 
 export interface Socket extends SocketIOClient.Socket {
   on(event: 'reconnect', listener: (attempt: number) => void): this;
@@ -55,14 +55,14 @@ export class Client {
   readonly snapshots = new Subject<SnapshotsNotification<Syncable>>();
 
   private socket: Socket;
-  private subjectToDefinitionMap = new Map<string, Definition<Syncable>>();
+  private subjectToDefinitionMap = new Map<string, SyncableDefinition<Syncable>>();
   private subjectDataMap = new Map<string, SubjectData<Syncable>>();
 
   constructor(socket: SocketIOClient.Socket) {
     this.socket = socket as Socket;
   }
 
-  register(subject: string, definition: Definition<Syncable>): void {
+  register(subject: string, definition: SyncableDefinition<Syncable>): void {
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
@@ -179,7 +179,7 @@ export class Client {
     return subjectData && subjectData.resourceMap as Map<string, T>;
   }
 
-  create(rawCreation: RawCreation): void {
+  create(rawCreation: RawCreation): Syncable {
     let change: Creation = Object.assign(
       {
         uid: uuid(),
@@ -216,6 +216,8 @@ export class Client {
     });
 
     this.syncChange(change);
+
+    return object;
   }
 
   update(rawChange: RawChange): void {

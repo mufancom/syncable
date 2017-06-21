@@ -13,7 +13,7 @@ export interface ResourceStoreItem<T extends Syncable> {
   object: T;
 }
 
-export abstract class Definition<T extends Syncable> {
+export abstract class SyncableDefinition<T extends Syncable> {
   // TODO:
   // abstract getChangesStore(): Store<Change>;
   // abstract getSnapshotsStore(): Store<T>;

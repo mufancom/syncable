@@ -6,7 +6,7 @@ import {
   Syncable,
 } from 'syncable';
 
-export abstract class Definition<TSyncable extends Syncable, TSubscription extends Subscription> {
+export abstract class SyncableDefinition<TSyncable extends Syncable, TSubscription extends Subscription> {
   abstract hasSubscribedChange(change: BroadcastChange, subscription: TSubscription): boolean;
 
   abstract async loadSnapshots(subscription: TSubscription): Promise<TSyncable[]>;

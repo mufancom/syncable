@@ -8,7 +8,7 @@ import {
   Syncable,
 } from 'syncable';
 
-import {Definition} from './definition';
+import {SyncableDefinition} from './definition';
 
 export interface ResourceLock {
   unlock(): PromiseLike<void>;
@@ -39,7 +39,7 @@ export interface SocketServer extends SocketIO.Server {
 export abstract class Server extends EventEmitter {
   private errorEmitter: (error: any) => void = this.emit.bind(this, 'error');
 
-  private subjectToDefinitionMap = new Map<string, Definition<Syncable, Subscription>>();
+  private subjectToDefinitionMap = new Map<string, SyncableDefinition<Syncable, Subscription>>();
   private subjectToSocketSetMap = new Map<string, Set<Socket>>();
 
   constructor(
@@ -55,7 +55,7 @@ export abstract class Server extends EventEmitter {
   abstract async generateTimestamp(): Promise<number>;
   abstract async queueChange(change: BroadcastChange): Promise<void>;
 
-  register(subject: string, definition: Definition<Syncable, Subscription>): void {
+  register(subject: string, definition: SyncableDefinition<Syncable, Subscription>): void {
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
@@ -67,6 +67,8 @@ export abstract class Server extends EventEmitter {
 
   private initSocketServer(): void {
     this.socketServer.on('connect', socket => {
+      socket.subjectToSubscriptionInfoMap = new Map<string, SubscriptionInfo>();
+
       socket.on('subscribe', subscription => {
         let {subjectToSubscriptionInfoMap} = socket;
         let {subject} = subscription;
@@ -107,6 +109,8 @@ export abstract class Server extends EventEmitter {
     let {subscription} = info;
 
     let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
+
+    console.log(subscription.subject);
 
     let snapshots = await definition.loadSnapshots(subscription);
 
