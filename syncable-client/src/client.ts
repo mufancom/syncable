@@ -286,6 +286,8 @@ export class Client {
       for (let change of changes) {
         definition.update(object, change);
       }
+
+      resourceData.snapshot = _.cloneDeep(object);
     } else {
       let snapshot = _.cloneDeep(broadcastSnapshot!);
 
@@ -321,9 +323,11 @@ export class Client {
 
     let {resourceDataMap, resourceMap} = subjectData;
 
-    let {snapshot, changes} = resourceDataMap.get(resource)!;
     let object = resourceMap.get(resource)!;
     let snapshotBeforeChange = _.cloneDeep(object);
+
+    let resourceData = resourceDataMap.get(resource)!;
+    let {snapshot, changes} = resourceData;
 
     shiftFirstChangeIfMatch(changes, uid);
 
@@ -338,6 +342,8 @@ export class Client {
     for (let change of changes) {
       definition.update(object, change);
     }
+
+    resourceData.snapshot = _.cloneDeep(object);
 
     subjectData.timestamp = timestamp;
 
