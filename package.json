@@ -4,7 +4,7 @@
   "scripts": {
     "biu": "biu",
     "build:client": "rimraf syncable-client/bld && tsc -p syncable-client",
-    "build:server": "rimraf syncable-client/bld && tsc -p syncable-server",
+    "build:server": "rimraf syncable-server/bld && tsc -p syncable-server",
     "build": "npm run build:client && npm run build:server",
     "patch:syncable": "cd syncable && npm --no-git-tag-version version patch",
     "patch:syncable-client": "cd syncable-client && npm --no-git-tag-version version patch",
