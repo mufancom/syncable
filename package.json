@@ -1,5 +1,5 @@
 {
-  "name": "syncable-package",
+  "name": "syncable-packages",
   "version": "0.1.0",
   "scripts": {
     "biu": "biu",
