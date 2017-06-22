@@ -1,8 +1,7 @@
 {
   "name": "syncable",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Syncable.",
-  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/makeflow/syncable.git"

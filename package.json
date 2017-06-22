@@ -2,10 +2,17 @@
   "name": "syncable-package",
   "version": "0.1.0",
   "scripts": {
-    "biu": "biu"
+    "biu": "biu",
+    "build:client": "rimraf syncable-client/bld && tsc -p syncable-client",
+    "build:server": "rimraf syncable-client/bld && tsc -p syncable-server",
+    "patch:syncable": "cd syncable && npm --no-git-tag-version version patch",
+    "patch:syncable-client": "cd syncable-client && npm --no-git-tag-version version patch",
+    "patch:syncable-server": "cd syncable-server && npm --no-git-tag-version version patch",
+    "patch": "npm run patch:syncable && npm run patch:syncable-client && npm run patch:syncable-server && npm version patch"
   },
   "devDependencies": {
     "biu": "^0.2.11",
+    "rimraf": "^2.6.1",
     "rxjs": "^5.4.1",
     "tslint": "^5.4.3",
     "tslint-language-service": "^0.9.6",

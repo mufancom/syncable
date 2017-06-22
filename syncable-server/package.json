@@ -4,7 +4,6 @@
   "description": "Syncable server.",
   "main": "bld/index.js",
   "types": "bld/index.d.ts",
-  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/makeflow/syncable.git"
@@ -19,7 +18,7 @@
   },
   "homepage": "https://github.com/makeflow/syncable#readme",
   "peerDependencies": {
-    "syncable": "*"
+    "syncable": "0.1.0"
   },
   "devDependencies": {
     "@types/socket.io": "^1.4.29"
