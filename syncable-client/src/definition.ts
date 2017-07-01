@@ -21,8 +21,6 @@ export abstract class SyncableDefinition<T extends Syncable> {
   abstract generateSubscription(): RawSubscription;
   abstract preprocessChange(change: RawChange): void;
 
-  abstract init?(object: T): void;
-
   abstract create(change: Creation): T;
-  abstract update(object: T, change: Change): void;
+  abstract update(object: T, change: Change): T;
 }

@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import { Subject } from 'rxjs/Subject';
 import * as uuid from 'uuid';
 
@@ -32,9 +31,9 @@ export interface ResourceData<T extends Syncable> {
 }
 
 export interface SubjectData<T extends Syncable> {
-  timestamp: number;
-  subscription: Subscription;
-  subscribed: boolean;
+  timestamp: number | undefined;
+  subscription: Subscription | undefined;
+  subscribed: boolean | undefined;
   resourceDataMap: Map<string, ResourceData<T>>;
   resourceMap: Map<string, T>;
 }
@@ -65,6 +64,19 @@ export class Client {
 
   register(subject: string, definition: SyncableDefinition<Syncable>): void {
     this.subjectToDefinitionMap.set(subject, definition);
+
+    let resourceMap = new Map<string, Syncable>();
+    let resourceDataMap = new Map<string, ResourceData<Syncable>>();
+
+    let subjectData: SubjectData<Syncable> = {
+      timestamp: undefined,
+      subscription: undefined,
+      subscribed: undefined,
+      resourceMap,
+      resourceDataMap,
+    };
+
+    this.subjectDataMap.set(subject, subjectData);
   }
 
   init(): void {
@@ -77,7 +89,7 @@ export class Client {
 
       let {subscription} = subjectData;
 
-      if (subscription.uid === uid) {
+      if (subscription!.uid === uid) {
         subjectData.subscribed = true;
       }
     });
@@ -109,28 +121,20 @@ export class Client {
         return;
       }
 
-      let definition = this.subjectToDefinitionMap.get(subject)!;
-
       // Only one snapshots event hit for a specified subject is expected.
 
       for (let snapshot of snapshots) {
-        let object = _.cloneDeep(snapshot);
-
-        if (definition.init) {
-          definition.init(object);
-        }
-
         let resourceData: ResourceData<Syncable> = {
-          snapshot: _.cloneDeep(snapshot),
+          snapshot,
           changes: [],
         };
 
         let {uid, timestamp} = snapshot;
 
         resourceDataMap.set(uid, resourceData);
-        resourceMap.set(uid, object);
+        resourceMap.set(uid, snapshot);
 
-        subjectData.timestamp = Math.max(subjectData.timestamp, timestamp);
+        subjectData.timestamp = Math.max(subjectData.timestamp || 0, timestamp);
       }
 
       this.snapshots.next({subject, resourceMap});
@@ -141,28 +145,19 @@ export class Client {
 
   subscribe(): void {
     for (let [subject, definition] of this.subjectToDefinitionMap) {
-      let subjectData = this.subjectDataMap.get(subject);
-
-      let timestamp: number | undefined;
-      let resourceMap: Map<string, Syncable>;
-      let resourceDataMap: Map<string, ResourceData<Syncable>>;
-
-      if (subjectData) {
-        timestamp = subjectData.timestamp;
-        resourceMap = subjectData.resourceMap;
-        resourceDataMap = subjectData.resourceDataMap;
-      } else {
-        resourceMap = new Map<string, Syncable>();
-        resourceDataMap = new Map<string, ResourceData<Syncable>>();
-      }
+      let {
+        timestamp,
+        resourceMap,
+        resourceDataMap,
+      } = this.subjectDataMap.get(subject)!;
 
       let subscription: Subscription = Object.assign(
         {uid: uuid(), subject, timestamp},
         definition.generateSubscription(),
       );
 
-      subjectData = {
-        timestamp: timestamp || 0,
+      let subjectData: SubjectData<Syncable> = {
+        timestamp,
         subscription,
         subscribed: false,
         resourceMap,
@@ -175,9 +170,8 @@ export class Client {
     }
   }
 
-  getResourceMap<T extends Syncable>(subject: string): Map<string, T> | undefined {
-    let subjectData = this.subjectDataMap.get(subject);
-    return subjectData && subjectData.resourceMap as Map<string, T>;
+  getResourceMap<T extends Syncable>(subject: string): Map<string, T> {
+    return this.subjectDataMap.get(subject)!.resourceMap as Map<string, T>;
   }
 
   create(rawCreation: RawCreation): Syncable {
@@ -202,7 +196,7 @@ export class Client {
     let object = definition.create(change);
 
     let resourceData: ResourceData<Syncable> = {
-      snapshot: _.cloneDeep(object),
+      snapshot: object,
       changes: [change],
     };
 
@@ -235,9 +229,12 @@ export class Client {
     let {changes} = resourceDataMap.get(resource)!;
     let object = resourceMap.get(resource)!;
 
-    let snapshotBeforeChange = _.cloneDeep(object);
+    let snapshotBeforeChange = object;
 
-    definition.update(object, change);
+    object = definition.update(object, change);
+
+    resourceMap.set(resource, object);
+
     changes.push(change);
 
     this.change.next({
@@ -270,31 +267,25 @@ export class Client {
     let snapshotBeforeChange: Syncable | undefined;
 
     if (resourceData && object) {
-      snapshotBeforeChange = _.cloneDeep(object);
+      snapshotBeforeChange = object;
 
       let {changes} = resourceData;
 
       shiftFirstChangeIfMatch(changes, uid);
 
-      resetObjectToSnapshot(object, broadcastSnapshot!);
+      object = broadcastSnapshot!;
 
-      if (definition.init) {
-        definition.init(object);
-      }
+      resourceData.snapshot = object;
 
       for (let change of changes) {
-        definition.update(object, change);
+        object = definition.update(object, change);
       }
 
-      resourceData.snapshot = _.cloneDeep(object);
+      resourceMap.set(resource, object);
     } else {
-      let snapshot = _.cloneDeep(broadcastSnapshot!);
+      let snapshot = broadcastSnapshot!;
 
-      object = _.cloneDeep(snapshot);
-
-      if (definition.init) {
-        definition.init(object);
-      }
+      object = snapshot;
 
       resourceData = {
         snapshot,
@@ -323,26 +314,22 @@ export class Client {
     let {resourceDataMap, resourceMap} = subjectData;
 
     let object = resourceMap.get(resource)!;
-    let snapshotBeforeChange = _.cloneDeep(object);
+    let snapshotBeforeChange = object;
 
     let resourceData = resourceDataMap.get(resource)!;
     let {snapshot, changes} = resourceData;
 
     shiftFirstChangeIfMatch(changes, uid);
 
-    resetObjectToSnapshot(object, snapshot);
+    object = definition.update(snapshot, change);
 
-    if (definition.init) {
-      definition.init(object);
-    }
-
-    definition.update(object, change);
+    resourceData.snapshot = object;
 
     for (let change of changes) {
-      definition.update(object, change);
+      object = definition.update(object, change);
     }
 
-    resourceData.snapshot = _.cloneDeep(object);
+    resourceMap.set(resource, object);
 
     subjectData.timestamp = timestamp;
 
@@ -356,47 +343,6 @@ export class Client {
 
   private syncChange(change: Change): void {
     this.socket.emit('change', change);
-  }
-}
-
-function resetObjectToSnapshot(object: object, snapshot: object): void {
-  let objectKeys = Object.keys(object);
-  let snapshotKeys = Object.keys(snapshot);
-
-  for (let key of snapshotKeys) {
-    let objectValue = (object as any)[key];
-    let snapshotValue = (snapshot as any)[key];
-
-    if (_.isPlainObject(objectValue) && _.isPlainObject(snapshotValue)) {
-      resetObjectToSnapshot(objectValue, snapshotValue);
-    } else if (Array.isArray(objectValue) && Array.isArray(snapshotValue)) {
-      resetArrayToSnapshot(objectValue, snapshotValue);
-    } else {
-      (object as any)[key] = _.cloneDeep(snapshotValue);
-    }
-  }
-
-  let extraKeys = _.difference(objectKeys, snapshotKeys);
-
-  for (let key of extraKeys) {
-    delete (object as any)[key];
-  }
-}
-
-function resetArrayToSnapshot(array: any[], snapshot: any[]): void {
-  array.length = snapshot.length;
-
-  for (let i = 0; i < array.length; i++) {
-    let arrayValue = array[i];
-    let snapshotValue = snapshot[i];
-
-    if (_.isPlainObject(arrayValue) && _.isPlainObject(snapshotValue)) {
-      resetObjectToSnapshot(arrayValue, snapshotValue);
-    } else if (Array.isArray(arrayValue) && Array.isArray(snapshotValue)) {
-      resetArrayToSnapshot(arrayValue, snapshotValue);
-    } else {
-      array[i] = _.cloneDeep(snapshotValue);
-    }
   }
 }
 
