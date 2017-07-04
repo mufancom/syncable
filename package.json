@@ -1,6 +1,6 @@
 {
   "name": "syncable-packages",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "scripts": {
     "biu": "biu",
     "build:client": "rimraf syncable-client/bld && tsc -p syncable-client",
