@@ -9,7 +9,7 @@ import {
 import { Server } from './server';
 
 export abstract class SyncableDefinition
-  <TSyncable extends Syncable, TSubscription extends Subscription, TServer extends Server = Server> {
+  <TSyncable extends Syncable, TSubscription extends Subscription, TServer extends Server> {
   /** @internal */
   _server: TServer;
 

@@ -1,4 +1,4 @@
-import {EventEmitter} from 'events';
+import { EventEmitter } from 'events';
 
 import {
   BroadcastChange,
@@ -8,7 +8,7 @@ import {
   Syncable,
 } from 'syncable';
 
-import {SyncableDefinition} from './definition';
+import { SyncableDefinition } from './definition';
 
 export interface ResourceLock {
   unlock(): PromiseLike<void>;
@@ -40,7 +40,7 @@ export interface SocketServer extends SocketIO.Server {
 export abstract class Server extends EventEmitter {
   private errorEmitter: (error: any) => void = this.emit.bind(this, 'error');
 
-  private subjectToDefinitionMap = new Map<string, SyncableDefinition<Syncable, Subscription>>();
+  private subjectToDefinitionMap = new Map<string, SyncableDefinition<Syncable, Subscription, this>>();
   private subjectToSocketSetMap = new Map<string, Set<Socket>>();
 
   constructor(
