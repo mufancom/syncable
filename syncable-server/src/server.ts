@@ -61,7 +61,7 @@ export abstract class Server extends EventEmitter {
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
-  async spawnChange(change: Change): Promise<void> {
+  async spawnChange<T extends Change>(change: T): Promise<void> {
     let definition = this.subjectToDefinitionMap.get(change.subject)!;
 
     let lock = await this.lock(`resource-${change.resource}`, 1000);
