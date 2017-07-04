@@ -6,7 +6,17 @@ import {
   Syncable,
 } from 'syncable';
 
-export abstract class SyncableDefinition<TSyncable extends Syncable, TSubscription extends Subscription> {
+import { Server } from './server';
+
+export abstract class SyncableDefinition
+  <TSyncable extends Syncable, TSubscription extends Subscription, TServer extends Server = Server> {
+  /** @internal */
+  _server: TServer;
+
+  get server(): TServer {
+    return this._server;
+  }
+
   abstract hasSubscribedChange(change: BroadcastChange, subscription: TSubscription): boolean;
 
   abstract async loadSnapshots(subscription: TSubscription): Promise<TSyncable[]>;

@@ -56,8 +56,26 @@ export abstract class Server extends EventEmitter {
   abstract async generateTimestamp(): Promise<number>;
   abstract async queueChange(change: BroadcastChange): Promise<void>;
 
-  register(subject: string, definition: SyncableDefinition<Syncable, Subscription>): void {
+  register(subject: string, definition: SyncableDefinition<Syncable, Subscription, this>): void {
+    definition._server = this;
     this.subjectToDefinitionMap.set(subject, definition);
+  }
+
+  async spawnChange(change: Change): Promise<void> {
+    let definition = this.subjectToDefinitionMap.get(change.subject)!;
+
+    let lock = await this.lock(`resource-${change.resource}`, 1000);
+
+    try {
+      let timestamp = await this.generateTimestamp();
+      let broadcastChange: BroadcastChange = Object.assign({timestamp}, change);
+
+      let snapshot = await definition.mergeChange(broadcastChange);
+
+      await this.queueChange({snapshot, ...broadcastChange});
+    } finally {
+      await lock.unlock();
+    }
   }
 
   private initChangeQueueListener(): void {
@@ -107,7 +125,7 @@ export abstract class Server extends EventEmitter {
       });
 
       socket.on('change', change => {
-        this.handleChangeFromClient(change).catch(this.errorEmitter);
+        this.spawnChange(change).catch(this.errorEmitter);
       });
 
       socket.on('close', () => {
@@ -181,23 +199,6 @@ export abstract class Server extends EventEmitter {
     }
 
     info.postponeChanges = false;
-  }
-
-  private async handleChangeFromClient(change: Change): Promise<void> {
-    let definition = this.subjectToDefinitionMap.get(change.subject)!;
-
-    let lock = await this.lock(`resource-${change.resource}`, 1000);
-
-    try {
-      let timestamp = await this.generateTimestamp();
-      let broadcastChange: BroadcastChange = Object.assign({timestamp}, change);
-
-      let snapshot = await definition.mergeChange(broadcastChange);
-
-      await this.queueChange({snapshot, ...broadcastChange});
-    } finally {
-      await lock.unlock();
-    }
   }
 
   private async handleChangeFromQueue(change: BroadcastChange): Promise<void> {
