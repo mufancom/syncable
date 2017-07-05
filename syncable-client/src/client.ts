@@ -4,16 +4,19 @@ import * as uuid from 'uuid';
 import {
   BroadcastChange,
   BroadcastCreation,
+  BroadcastRemoval,
   Change,
   Creation,
   RawChange,
   RawCreation,
+  RawRemoval,
+  Removal,
   SnapshotsData,
   Subscription,
   Syncable,
 } from 'syncable';
 
-import {SyncableDefinition} from './definition';
+import { SyncableDefinition } from './definition';
 
 export interface Socket extends SocketIOClient.Socket {
   on(event: 'reconnect', listener: (attempt: number) => void): this;
@@ -41,7 +44,7 @@ export interface SubjectData<T extends Syncable> {
 export interface ChangeNotification<T extends Syncable> {
   subject: string;
   resource: string;
-  object: T;
+  object: T | undefined;
   snapshot: T | undefined;
 }
 
@@ -107,10 +110,15 @@ export class Client {
         case 'create':
           this.createByBroadcast(change as BroadcastCreation);
           break;
+        case 'remove':
+          this.removeByBroadcast(change as BroadcastRemoval);
+          break;
         default:
           this.updateByBroadcast(change);
           break;
       }
+
+      subjectData.timestamp = change.timestamp;
     });
 
     this.socket.on('snapshots', ({subject, snapshots}) => {
@@ -247,10 +255,44 @@ export class Client {
     this.syncChange(change);
   }
 
+  remove(rawRemoval: RawRemoval): void {
+    let change: Removal = Object.assign(
+      {
+        uid: uuid(),
+        // tslint:disable-next-line:no-unnecessary-type-assertion
+        type: 'remove' as 'remove',
+      },
+      rawRemoval,
+    );
+
+    let {subject, resource} = change;
+
+    let definition = this.subjectToDefinitionMap.get(subject)!;
+
+    definition.preprocessChange(change);
+
+    let {resourceDataMap, resourceMap} = this.subjectDataMap.get(subject)!;
+
+    let {changes} = resourceDataMap.get(resource)!;
+    let object = resourceMap.get(resource)!;
+
+    resourceMap.delete(resource);
+
+    changes.push(change);
+
+    this.change.next({
+      subject,
+      resource,
+      snapshot: object,
+      object: undefined,
+    });
+
+    this.syncChange(change);
+  }
+
   private createByBroadcast(creation: BroadcastCreation): void {
     let {
       uid,
-      timestamp,
       subject,
       resource,
       snapshot: broadcastSnapshot,
@@ -296,8 +338,6 @@ export class Client {
       resourceMap.set(resource, object);
     }
 
-    subjectData.timestamp = timestamp;
-
     this.change.next({
       subject,
       resource,
@@ -307,7 +347,8 @@ export class Client {
   }
 
   private updateByBroadcast(change: BroadcastChange): void {
-    let {uid, timestamp, subject, resource} = change;
+    let {uid, subject, resource} = change;
+
     let definition = this.subjectToDefinitionMap.get(subject)!;
     let subjectData = this.subjectDataMap.get(subject)!;
 
@@ -331,13 +372,31 @@ export class Client {
 
     resourceMap.set(resource, object);
 
-    subjectData.timestamp = timestamp;
-
     this.change.next({
       subject,
       resource,
       snapshot: snapshotBeforeChange,
       object,
+    });
+  }
+
+  private removeByBroadcast(removal: BroadcastRemoval): void {
+    let {subject, resource} = removal;
+
+    let subjectData = this.subjectDataMap.get(subject)!;
+
+    let {resourceDataMap, resourceMap} = subjectData;
+
+    let object = resourceMap.get(resource)!;
+
+    resourceDataMap.delete(resource);
+    resourceMap.delete(resource);
+
+    this.change.next({
+      subject,
+      resource,
+      snapshot: object,
+      object: undefined,
     });
   }
 

@@ -1,7 +1,7 @@
 import {
   BroadcastChange,
   BroadcastCreation,
-  // BroadcastRemoval,
+  BroadcastRemoval,
   Subscription,
   Syncable,
 } from 'syncable';
@@ -24,16 +24,17 @@ export abstract class SyncableDefinition
 
   abstract async create(change: BroadcastCreation): Promise<TSyncable>;
   abstract async update(change: BroadcastChange): Promise<undefined>;
-  // abstract async remove(change: BroadcastRemoval): Promise<undefined>;
+  abstract async remove(change: BroadcastRemoval): Promise<void>;
 
   async mergeChange(change: BroadcastChange): Promise<TSyncable | undefined> {
     switch (change.type) {
       case 'create':
-        return this.create(change as BroadcastCreation);
-      // case 'remove':
-      //   return this.remove(change as BroadcastRemoval);
+        return await this.create(change as BroadcastCreation);
+      case 'remove':
+        await this.remove(change as BroadcastRemoval);
+        return undefined;
       default:
-        return this.update(change);
+        return await this.update(change);
     }
   }
 }

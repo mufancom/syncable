@@ -2,13 +2,11 @@
 
 ## Roadmap
 
-- [ ] Client-side hooks
-- [ ] Server-side hooks
-  - Change spawning
-- [ ] Removal support
+- [x] Change spawning
+- [x] Removal support
+- [ ] Visibility support
 - [ ] Authorization hooks
 - [ ] Offline support
-- [ ] Visibility support
 
 ## Build
 

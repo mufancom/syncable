@@ -11,7 +11,7 @@ import {
 import { SyncableDefinition } from './definition';
 
 export interface ResourceLock {
-  unlock(): PromiseLike<void>;
+  release(): PromiseLike<void>;
 }
 
 export interface SubscriptionInfo {
@@ -74,7 +74,7 @@ export abstract class Server extends EventEmitter {
 
       await this.queueChange({snapshot, ...broadcastChange});
     } finally {
-      await lock.unlock();
+      await lock.release();
     }
   }
 

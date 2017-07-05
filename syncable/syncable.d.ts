@@ -20,6 +20,11 @@ export interface RawCreation {
   subject: string;
 }
 
+export interface RawRemoval {
+  subject: string;
+  resource: string;
+}
+
 export interface Change extends RawChange {
   /** Unique identifier of this change. */
   uid: string;
@@ -31,7 +36,8 @@ export interface Creation extends RawCreation {
   type: 'create';
 }
 
-export interface Removal extends Change {
+export interface Removal extends RawRemoval {
+  uid: string;
   type: 'remove';
 }
 
