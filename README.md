@@ -4,7 +4,7 @@
 
 - [x] Change spawning
 - [x] Removal support
-- [ ] Visibility support
+- [x] Visibility support
 - [ ] Authorization hooks
 - [ ] Offline support
 
