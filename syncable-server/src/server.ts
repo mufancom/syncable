@@ -2,7 +2,11 @@ import { EventEmitter } from 'events';
 
 import {
   BroadcastChange,
+  BroadcastCreation,
+  BroadcastRemoval,
   Change,
+  Creation,
+  Removal,
   SnapshotsData,
   Subscription,
   Syncable,
@@ -18,6 +22,7 @@ export interface SubscriptionInfo {
   subscription: Subscription;
   postponeChanges: boolean;
   changes: BroadcastChange[];
+  visibleSet: Set<string>;
   valid: boolean;
 }
 
@@ -61,18 +66,31 @@ export abstract class Server extends EventEmitter {
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
-  async spawnChange<T extends Change>(change: T): Promise<void> {
+  async spawnChange<T extends Change>(change: T): Promise<void>;
+  async spawnChange(change: Change): Promise<void> {
     let definition = this.subjectToDefinitionMap.get(change.subject)!;
 
     let lock = await this.lock(`resource-${change.resource}`, 1000);
 
     try {
       let timestamp = await this.generateTimestamp();
-      let broadcastChange: BroadcastChange = Object.assign({timestamp}, change);
+      let snapshot: Syncable | undefined;
+      let broadcastChange: BroadcastChange;
 
-      let snapshot = await definition.mergeChange(broadcastChange);
+      let {type} = change;
 
-      await this.queueChange({snapshot, ...broadcastChange});
+      if (type === 'create') {
+        snapshot = await definition.create(change as Creation, timestamp);
+        broadcastChange = {snapshot, timestamp, ...change};
+      } else if (type === 'remove') {
+        await definition.remove(change as Removal, timestamp);
+        broadcastChange = {timestamp, ...change};
+      } else {
+        snapshot = await definition.update(change, timestamp);
+        broadcastChange = {snapshot, timestamp, ...change};
+      }
+
+      await this.queueChange(broadcastChange);
     } finally {
       await lock.release();
     }
@@ -80,7 +98,11 @@ export abstract class Server extends EventEmitter {
 
   private initChangeQueueListener(): void {
     this.on('change', change => {
-      this.handleChangeFromQueue(change).catch(this.errorEmitter);
+      try {
+        this.handleChangeFromQueue(change);
+      } catch (error) {
+        this.emit('error', error);
+      }
     });
   }
 
@@ -90,7 +112,7 @@ export abstract class Server extends EventEmitter {
 
       socket.on('subscribe', subscription => {
         let {subjectToSubscriptionInfoMap} = socket;
-        let {subject} = subscription;
+        let {subject, timestamp, loaded} = subscription;
 
         let existingInfo = subjectToSubscriptionInfoMap.get(subject);
 
@@ -102,6 +124,7 @@ export abstract class Server extends EventEmitter {
           subscription,
           postponeChanges: false,
           changes: [],
+          visibleSet: new Set<string>(loaded),
           valid: true,
         };
 
@@ -117,7 +140,7 @@ export abstract class Server extends EventEmitter {
 
         socket.emit('subscribed', subscription);
 
-        if (subscription.timestamp) {
+        if (timestamp) {
           this.loadAndEmitChanges(socket, info).catch(this.errorEmitter);
         } else {
           this.loadAndEmitSnapshots(socket, info).catch(this.errorEmitter);
@@ -139,7 +162,7 @@ export abstract class Server extends EventEmitter {
   private async loadAndEmitSnapshots(socket: Socket, info: SubscriptionInfo): Promise<void> {
     info.postponeChanges = true;
 
-    let {subscription} = info;
+    let {subscription, visibleSet} = info;
 
     let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
 
@@ -147,6 +170,10 @@ export abstract class Server extends EventEmitter {
 
     if (!info.valid) {
       return;
+    }
+
+    for (let {uid} of snapshots) {
+      visibleSet.add(uid);
     }
 
     let data: SnapshotsData = Object.assign({snapshots}, subscription);
@@ -201,8 +228,9 @@ export abstract class Server extends EventEmitter {
     info.postponeChanges = false;
   }
 
-  private async handleChangeFromQueue(change: BroadcastChange): Promise<void> {
-    let {subject} = change;
+  private handleChangeFromQueue(change: BroadcastChange): void {
+    let {subject, resource, type, snapshot} = change;
+
     let socketSet = this.subjectToSocketSetMap.get(subject);
 
     if (!socketSet) {
@@ -213,18 +241,52 @@ export abstract class Server extends EventEmitter {
 
     for (let socket of socketSet) {
       let {subjectToSubscriptionInfoMap} = socket;
-      let {subscription, changes, postponeChanges} = subjectToSubscriptionInfoMap.get(subject)!;
+      let {subscription, changes, postponeChanges, visibleSet} = subjectToSubscriptionInfoMap.get(subject)!;
 
       if (!definition.hasSubscribedChange(change, subscription)) {
         continue;
       }
 
-      if (postponeChanges) {
-        changes.push(change);
-        continue;
+      let changeToBroadcast: BroadcastChange;
+
+      if (type === 'remove') {
+        if (visibleSet.has(resource)) {
+          visibleSet.delete(resource);
+          changeToBroadcast = change;
+        } else {
+          continue;
+        }
+      } else if (type === 'create') {
+        if (definition.testVisibility(snapshot!, subscription)) {
+          visibleSet.add(resource);
+          changeToBroadcast = pruneAsBroadcastCreation(change);
+        } else {
+          continue;
+        }
+      } else {
+        if (definition.testVisibility(snapshot!, subscription)) {
+          if (visibleSet.has(resource)) {
+            let {snapshot: _, ...changeWithoutSnapshot} = change;
+            changeToBroadcast = changeWithoutSnapshot;
+          } else {
+            visibleSet.add(resource);
+            changeToBroadcast = pruneAsBroadcastCreation(change);
+          }
+        } else {
+          if (visibleSet.has(resource)) {
+            visibleSet.delete(resource);
+            changeToBroadcast = pruneAsBroadcastRemoval(change);
+          } else {
+            continue;
+          }
+        }
       }
 
-      socket.emit('change', change);
+      if (postponeChanges) {
+        changes.push(changeToBroadcast);
+      } else {
+        socket.emit('change', changeToBroadcast);
+      }
     }
   }
 }
@@ -235,4 +297,36 @@ export interface Server {
 
   emit(event: 'change', change: BroadcastChange): boolean;
   emit(event: 'error', error: any): boolean;
+}
+
+function pruneAsBroadcastCreation({
+  uid,
+  subject,
+  resource,
+  snapshot,
+  timestamp,
+}: BroadcastChange): BroadcastCreation {
+  return {
+    uid,
+    subject,
+    resource,
+    type: 'create',
+    snapshot: snapshot!,
+    timestamp,
+  };
+}
+
+function pruneAsBroadcastRemoval({
+  uid,
+  subject,
+  resource,
+  timestamp,
+}: BroadcastChange): BroadcastRemoval {
+  return {
+    uid,
+    subject,
+    resource,
+    type: 'remove',
+    timestamp,
+  };
 }

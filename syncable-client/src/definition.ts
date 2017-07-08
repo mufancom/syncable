@@ -20,6 +20,7 @@ export abstract class SyncableDefinition<T extends Syncable> {
 
   abstract generateSubscription(): RawSubscription;
   abstract preprocessChange(change: RawChange): void;
+  abstract testVisibility(object: T): boolean;
 
   abstract create(change: Creation): T;
   abstract update(object: T, change: Change): T;

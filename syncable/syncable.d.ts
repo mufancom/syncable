@@ -43,15 +43,17 @@ export interface Removal extends RawRemoval {
 
 export interface BroadcastChange extends Change {
   timestamp: number;
-  snapshot?: Syncable;
+  snapshot?: Syncable | undefined;
 }
 
 export interface BroadcastCreation extends BroadcastChange {
   type: 'create';
+  snapshot: Syncable;
 }
 
-export interface BroadcastRemoval extends BroadcastChange {
+export interface BroadcastRemoval extends Change {
   type: 'remove';
+  timestamp: number;
 }
 
 export interface RawSubscription {
@@ -64,6 +66,8 @@ export interface Subscription extends RawSubscription {
   uid: string;
   /** Specify timestamp to skip snapshots. */
   timestamp?: number;
+  /** Loaded syncable UIDs. */
+  loaded?: string[];
 }
 
 export interface SnapshotsData extends Subscription {

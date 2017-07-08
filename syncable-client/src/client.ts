@@ -157,10 +157,13 @@ export class Client {
         {timestamp, definition, resourceMap, resourceDataMap},
       ] of this.subjectDataMap
     ) {
-      let subscription: Subscription = Object.assign(
-        {uid: uuid(), subject, timestamp},
-        definition.generateSubscription(),
-      );
+      let subscription: Subscription = {
+        uid: uuid(),
+        subject,
+        timestamp,
+        loaded: timestamp ? Array.from(resourceMap.keys()) : undefined,
+        ...definition.generateSubscription(),
+      };
 
       let subjectData: SubjectData<Syncable> = {
         timestamp,
@@ -199,6 +202,10 @@ export class Client {
 
     let object = definition.create(change);
 
+    if (!definition.testVisibility(object)) {
+      throw new Error(`The object created is not visible at creation: ${JSON.stringify(object)}`);
+    }
+
     let resourceData: ResourceData<Syncable> = {
       snapshot: object,
       changes: [change],
@@ -228,13 +235,18 @@ export class Client {
     definition.preprocessChange(change);
 
     let {changes} = resourceDataMap.get(resource)!;
-    let object = resourceMap.get(resource)!;
+    let object: Syncable | undefined = resourceMap.get(resource)!;
 
     let snapshotBeforeChange = object;
 
     object = definition.update(object, change);
 
-    resourceMap.set(resource, object);
+    if (definition.testVisibility(object)) {
+      resourceMap.set(resource, object);
+    } else {
+      object = undefined;
+      resourceMap.delete(resource);
+    }
 
     changes.push(change);
 
@@ -302,7 +314,7 @@ export class Client {
 
       shiftFirstChangeIfMatch(changes, uid);
 
-      object = broadcastSnapshot!;
+      object = broadcastSnapshot;
 
       resourceData.snapshot = object;
 
@@ -312,7 +324,7 @@ export class Client {
 
       resourceMap.set(resource, object);
     } else {
-      let snapshot = broadcastSnapshot!;
+      let snapshot = broadcastSnapshot;
 
       object = snapshot;
 

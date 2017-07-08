@@ -1,7 +1,8 @@
 import {
   BroadcastChange,
-  BroadcastCreation,
-  BroadcastRemoval,
+  Change,
+  Creation,
+  Removal,
   Subscription,
   Syncable,
 } from 'syncable';
@@ -18,23 +19,12 @@ export abstract class SyncableDefinition
   }
 
   abstract hasSubscribedChange(change: BroadcastChange, subscription: TSubscription): boolean;
+  abstract testVisibility(object: TSyncable, subscription: TSubscription): boolean;
 
   abstract async loadSnapshots(subscription: TSubscription): Promise<TSyncable[]>;
   abstract async loadChanges(subscription: TSubscription): Promise<BroadcastChange[]>;
 
-  abstract async create(change: BroadcastCreation): Promise<TSyncable>;
-  abstract async update(change: BroadcastChange): Promise<undefined>;
-  abstract async remove(change: BroadcastRemoval): Promise<void>;
-
-  async mergeChange(change: BroadcastChange): Promise<TSyncable | undefined> {
-    switch (change.type) {
-      case 'create':
-        return await this.create(change as BroadcastCreation);
-      case 'remove':
-        await this.remove(change as BroadcastRemoval);
-        return undefined;
-      default:
-        return await this.update(change);
-    }
-  }
+  abstract async create(change: Creation, timestamp: number): Promise<TSyncable>;
+  abstract async update(change: Change, timestamp: number): Promise<TSyncable | undefined>;
+  abstract async remove(change: Removal, timestamp: number): Promise<void>;
 }
