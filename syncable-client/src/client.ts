@@ -120,7 +120,7 @@ export class Client {
       subjectData.timestamp = change.timestamp;
     });
 
-    this.socket.on('snapshots', ({subject, snapshots}) => {
+    this.socket.on('snapshots', ({subject, snapshots, timestamp}) => {
       let subjectData = this.subjectDataMap.get(subject)!;
       let {subscribed, resourceDataMap, resourceMap} = subjectData;
 
@@ -136,13 +136,13 @@ export class Client {
           changes: [],
         };
 
-        let {uid, timestamp} = snapshot;
+        let {uid} = snapshot;
 
         resourceDataMap.set(uid, resourceData);
         resourceMap.set(uid, snapshot);
-
-        subjectData.timestamp = Math.max(subjectData.timestamp || 0, timestamp);
       }
+
+      subjectData.timestamp = timestamp;
 
       this.ready.next({subject, resourceMap});
     });
@@ -161,7 +161,8 @@ export class Client {
         uid: uuid(),
         subject,
         timestamp,
-        loaded: timestamp ? Array.from(resourceMap.keys()) : undefined,
+        loaded: typeof timestamp === 'number' ?
+          Array.from(resourceMap.keys()) : undefined,
         ...definition.generateSubscription(),
       };
 

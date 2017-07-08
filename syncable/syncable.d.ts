@@ -72,4 +72,5 @@ export interface Subscription extends RawSubscription {
 
 export interface SnapshotsData extends Subscription {
   snapshots: Syncable[];
+  timestamp: number;
 }

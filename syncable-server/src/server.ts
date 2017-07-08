@@ -140,7 +140,7 @@ export abstract class Server extends EventEmitter {
 
         socket.emit('subscribed', subscription);
 
-        if (timestamp) {
+        if (typeof timestamp === 'number') {
           this.loadAndEmitChanges(socket, info).catch(this.errorEmitter);
         } else {
           this.loadAndEmitSnapshots(socket, info).catch(this.errorEmitter);
@@ -166,17 +166,24 @@ export abstract class Server extends EventEmitter {
 
     let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
 
+    let snapshotsTimestamp = await this.generateTimestamp();
+
     let snapshots = await definition.loadSnapshots(subscription);
 
     if (!info.valid) {
       return;
     }
 
-    for (let {uid} of snapshots) {
+    for (let {uid, timestamp} of snapshots) {
       visibleSet.add(uid);
+      snapshotsTimestamp = Math.max(snapshotsTimestamp, timestamp);
     }
 
-    let data: SnapshotsData = Object.assign({snapshots}, subscription);
+    let data: SnapshotsData = {
+      snapshots,
+      timestamp: snapshotsTimestamp,
+      ...subscription,
+    };
 
     socket.emit('snapshots', data);
 
