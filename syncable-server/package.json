@@ -1,6 +1,6 @@
 {
   "name": "syncable-server",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Syncable server.",
   "main": "bld/index.js",
   "types": "bld/index.d.ts",
