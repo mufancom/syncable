@@ -1,3 +1,4 @@
+import * as isEqual from 'lodash.isequal';
 import { Subject } from 'rxjs/Subject';
 import * as uuid from 'uuid';
 
@@ -242,6 +243,10 @@ export class Client {
 
     object = definition.update(object, change);
 
+    if (isEqual(object, snapshotBeforeChange)) {
+      return;
+    }
+
     if (definition.testVisibility(object)) {
       resourceMap.set(resource, object);
     } else {
@@ -279,6 +284,10 @@ export class Client {
     let {changes} = resourceDataMap.get(resource)!;
     let object = resourceMap.get(resource)!;
 
+    if (!object) {
+      return;
+    }
+
     resourceMap.delete(resource);
 
     changes.push(change);
@@ -305,6 +314,10 @@ export class Client {
 
     let resourceData = resourceDataMap.get(resource);
     let object = resourceMap.get(resource);
+
+    if (isEqual(object, broadcastSnapshot)) {
+      return;
+    }
 
     let snapshotBeforeChange: Syncable | undefined;
 
@@ -366,6 +379,10 @@ export class Client {
       object = definition.update(object, change);
     }
 
+    if (isEqual(object, snapshotBeforeChange)) {
+      return;
+    }
+
     resourceMap.set(resource, object);
 
     this.change.next({
@@ -384,6 +401,10 @@ export class Client {
     let {resourceDataMap, resourceMap} = subjectData;
 
     let object = resourceMap.get(resource)!;
+
+    if (!object) {
+      return;
+    }
 
     resourceDataMap.delete(resource);
     resourceMap.delete(resource);
