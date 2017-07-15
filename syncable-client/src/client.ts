@@ -8,7 +8,7 @@ import {
   BroadcastCreation,
   BroadcastRemoval,
   Change,
-  Creation,
+  ClientCreation,
   RawChange,
   RawCreation,
   RawRemoval,
@@ -309,17 +309,19 @@ export class Client {
   }
 
   create(rawCreation: RawCreation): Syncable {
-    let change: Creation = Object.assign(
+    let resource = uuid();
+
+    let change: ClientCreation = Object.assign(
       {
         uid: uuid(),
-        resource: uuid(),
+        resource,
         // tslint:disable-next-line:no-unnecessary-type-assertion
         type: 'create' as 'create',
       },
       rawCreation,
     );
 
-    let {subject, resource} = change;
+    let {subject} = change;
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
 
     definition.preprocessChange(change);

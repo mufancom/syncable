@@ -30,7 +30,13 @@ export interface Change extends RawChange {
   uid: string;
 }
 
-export interface Creation extends RawCreation {
+export interface ServerCreation extends RawCreation {
+  uid: string;
+  resource?: string;
+  type: 'create';
+}
+
+export interface ClientCreation extends RawCreation {
   uid: string;
   resource: string;
   type: 'create';

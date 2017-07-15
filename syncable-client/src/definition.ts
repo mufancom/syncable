@@ -1,6 +1,6 @@
 import {
   Change,
-  Creation,
+  ClientCreation,
   RawChange,
   RawSubscription,
   Syncable,
@@ -22,6 +22,6 @@ export abstract class SyncableDefinition<T extends Syncable> {
   abstract preprocessChange(change: RawChange): void;
   abstract testVisibility(object: T): boolean;
 
-  abstract create(change: Creation): T;
+  abstract create(change: ClientCreation): T;
   abstract update(object: T, change: Change): T;
 }

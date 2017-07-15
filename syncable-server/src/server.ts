@@ -5,8 +5,8 @@ import {
   BroadcastCreation,
   BroadcastRemoval,
   Change,
-  Creation,
   Removal,
+  ServerCreation,
   SnapshotsData,
   Subscription,
   Syncable,
@@ -66,33 +66,39 @@ export abstract class Server extends EventEmitter {
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
-  async spawnChange<T extends Change>(change: T): Promise<void>;
-  async spawnChange(change: Change): Promise<void> {
-    let definition = this.subjectToDefinitionMap.get(change.subject)!;
+  async spawnChange<T extends Change | ServerCreation>(change: T): Promise<void>;
+  async spawnChange(change: Change | ServerCreation): Promise<void> {
+    let {subject, type, resource} = change;
 
-    let lock = await this.lock(`resource-${change.resource}`, 1000);
+    let definition = this.subjectToDefinitionMap.get(subject)!;
+
+    let lock: ResourceLock | undefined;
+
+    if (resource) {
+      lock = await this.lock(`resource-${resource}`, 1000);
+    }
 
     try {
       let timestamp = await this.generateTimestamp();
       let snapshot: Syncable | undefined;
       let broadcastChange: BroadcastChange;
 
-      let {type} = change;
-
       if (type === 'create') {
-        snapshot = await definition.create(change as Creation, timestamp);
-        broadcastChange = {snapshot, timestamp, ...change};
+        snapshot = await definition.create(change as ServerCreation, timestamp);
+        broadcastChange = {...change as ServerCreation, resource: snapshot.uid, snapshot, timestamp};
       } else if (type === 'remove') {
         await definition.remove(change as Removal, timestamp);
-        broadcastChange = {timestamp, ...change};
+        broadcastChange = {...change as Removal, timestamp};
       } else {
-        snapshot = await definition.update(change, timestamp);
-        broadcastChange = {snapshot, timestamp, ...change};
+        snapshot = await definition.update(change as Change, timestamp);
+        broadcastChange = {...change as Change, snapshot, timestamp};
       }
 
       await this.queueChange(broadcastChange);
     } finally {
-      await lock.release();
+      if (lock) {
+        await lock.release();
+      }
     }
   }
 
