@@ -1,0 +1,93 @@
+msc {
+  locker                            [label="locaker"],
+  messageQueueServer                [label="message queue server"],
+  server,
+  serverSyncable                    [label="<<server>>\nsyncable"],
+  subscribed                        [label="<<server>>\nsubscribed after work", textbgcolor=gray, linecolor=gray, textcolor=white],
+  serverSubjectSyncableDefinitation [label="<<server>>\nsubject syncable definitation"],
+  clientSyncableChange              [label="client syncable change", textbgcolor=gray, linecolor=gray, textcolor=white],
+  clientSyncable                    [label="<<client>>\nsyncable"],
+  client; 
+
+  server          => server         [label="create syncable server"];
+  serverSyncable  => messageQueueServer [label="subscribe `change` message"];
+  server          => serverSyncable [label="register subjects syncable definition"];
+  client          => client         [label="create\nsyncable client"];
+  client          => clientSyncable [label="register subjects syncable definition"];
+  ...;
+  clientSyncable  => serverSyncable [label="emit: connect"]; 
+  serverSyncable  => serverSyncable [label="init client socket"];
+  serverSyncable  >> clientSyncable [label="emit: connected"];
+
+  clientSyncable loop serverSyncable [label="subscribe subject of registed subjects (at connected of reconnected)", textcolor="#795548", linecolor="#795548"] {
+    clientSyncable  => serverSyncable [label="subscribe(subject, subscription)"];
+    serverSyncable  => serverSyncable [label="restore subject subscription info\nadd subscriber to this subject"];
+    serverSyncable  >> clientSyncable [label="emit: subscribed"];
+
+    serverSyncable alt clientSyncable [label="if: first time subscribe", id="C1", linecolor=green] {
+      serverSyncable                    => subscribed [label="loadAndEmitSnapshots()"];
+      subscribed                        => subscribed [label="turn on change sync blocker,\nemit snapshots to be subscriber first"];
+      subscribed                        >> subscribed [label="timestamp = generate new timestamp"];
+      subscribed                        => serverSubjectSyncableDefinitation [label="loadSnapshots()"];
+      serverSubjectSyncableDefinitation >> subscribed [label="snapshots"];
+
+      subscribed alt clientSyncable [label="if: is valid subscription info", linecolor=black, textcolor=black] {
+        subscribed      => subscribed       [label="-\nreset visible snapshots"];
+        subscribed      >> subscribed       [label="timestamp = latest timestamp"];
+        subscribed      => clientSyncable   [label="emit: snapshots"];
+        clientSyncable  rbox clientSyncable [label="@alt: client received snapshots", textbgcolor="#9C27B0", linecolor="#9C27B0"];
+        subscribed      => clientSyncable   [label="emit: change\n(emit each latest change of blocked changes)"];
+        clientSyncable  rbox clientSyncable [label="@alt: client received change", textbgcolor="#61CE3C", linecolor="#61CE3C"];
+        subscribed      => subscribed       [label="clean up changes,\nturn off change sync blocker"];
+      };
+      
+      subscribed >> serverSyncable [label="done"];
+
+      --- [label="elif: re-subscribe", linecolor=green, id="C1"];
+
+      serverSyncable                    => subscribed [label="loadAndEmitChanges"];
+      subscribed                        => subscribed [label="turn on change sync blocker,\nemit realtime changes to be subscriber first"];
+      subscribed                        => serverSubjectSyncableDefinitation [label="loadChanges()"];
+      serverSubjectSyncableDefinitation >> subscribed [label="realtime changes"];
+
+      subscribed alt clientSyncable [label="if: is valid subscription info", linecolor=black, textcolor=black] {
+
+        subscribed      => clientSyncable   [label="emit: realtime changes(emit each change of realtime changes)"];
+        subscribed      >> subscribed       [label="latestTimestamp = latest timestamp"];
+        clientSyncable  rbox clientSyncable [label="@alt: client received change", textbgcolor="#61CE3C", linecolor="#61CE3C"];
+        subscribed      => clientSyncable   [label="emit: change\n(emit each latest change of blocked changes)"];
+        clientSyncable  rbox clientSyncable [label="@alt: client received change", textbgcolor="#61CE3C", linecolor="#61CE3C"];
+        subscribed      => subscribed       [label="turn off change sync blocker"];
+      };
+      
+      subscribed >> serverSyncable [label="done"];
+    };
+
+  };
+
+  ...;
+
+  clientSyncable alt serverSyncable [label="client received snapshots", linecolor="#9C27B0", textcolor="#9C27B0"] {
+    serverSyncable >> clientSyncable [label="emit: snapshots"];
+    clientSyncable note clientSyncable [label="Only one snapshots event hit for a specified subject is expected.", textbgcolor="#FFFFFF", linecolor=black, textcolor=black];
+    clientSyncable >> clientSyncable [label="-\n\nrestore/reset each\nsnapshot, snapshotData"];
+    clientSyncable >> clientSyncable [label="restore timestamp"];
+    clientSyncable => clientSyncable [label="-\n\nnotify syncable readied"];
+  };
+
+  ...;
+
+  clientSyncable alt serverSyncable [label="client received change", linecolor="#61CE3C", textcolor="#61CE3C"] {
+    serverSyncable >> clientSyncable [label="emit: change"];
+    clientSyncable alt serverSyncable [label="switch change.type"] {
+      --- [label="case 'create'"];
+      clientSyncable => clientSyncableChange [label="createByBroadCast()"];
+      --- [label="case 'remove'"];
+      clientSyncable => clientSyncableChange [label="removeByBroadCast()"];
+      --- [label="case default"];
+      clientSyncable => clientSyncableChange [label="updateByBroadCast()"];
+    };
+  };
+  
+  ...;
+}
