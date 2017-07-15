@@ -3,5 +3,6 @@ import 'rxjs/add/operator/first';
 
 export * from './client';
 export * from './definition';
+export * from './compound-definition';
 export * from './resource-host';
 export * from './store';
