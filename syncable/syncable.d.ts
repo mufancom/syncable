@@ -80,3 +80,8 @@ export interface SnapshotsData extends Subscription {
   snapshots: Syncable[];
   timestamp: number;
 }
+
+export interface Request {
+  subject: string;
+  resources: string[];
+}

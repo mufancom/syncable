@@ -6,6 +6,7 @@ import {
   BroadcastRemoval,
   Change,
   Removal,
+  Request,
   ServerCreation,
   SnapshotsData,
   Subscription,
@@ -13,15 +14,17 @@ import {
 } from 'syncable';
 
 import { SyncableDefinition } from './definition';
+import { ObjectQueue } from './object-queue';
 
 export interface ResourceLock {
   release(): PromiseLike<void>;
 }
 
+export type Visibility = boolean | 'upon-request';
+
 export interface SubscriptionInfo {
   subscription: Subscription;
-  postponeChanges: boolean;
-  changes: BroadcastChange[];
+  changeEmitter: ObjectQueue<BroadcastChange>;
   visibleSet: Set<string>;
   valid: boolean;
 }
@@ -31,6 +34,7 @@ export interface Socket extends SocketIO.Socket {
 
   on(event: 'change', listener: (change: Change) => void): this;
   on(event: 'subscribe', listener: (subscription: Subscription) => void): this;
+  on(event: 'request', listener: (request: Request) => void): this;
   on(event: 'close', listener: () => void): this;
 
   emit(event: 'subscribed', data: Subscription): boolean;
@@ -128,8 +132,7 @@ export abstract class Server extends EventEmitter {
 
         let info: SubscriptionInfo = {
           subscription,
-          postponeChanges: false,
-          changes: [],
+          changeEmitter: new ObjectQueue<BroadcastChange>(change => socket.emit('change', change)),
           visibleSet: new Set<string>(loaded),
           valid: true,
         };
@@ -153,6 +156,10 @@ export abstract class Server extends EventEmitter {
         }
       });
 
+      socket.on('request', request => {
+        this.loadAndEmitUponRequest(socket, request).catch(this.errorEmitter);
+      });
+
       socket.on('change', change => {
         this.spawnChange(change).catch(this.errorEmitter);
       });
@@ -166,9 +173,9 @@ export abstract class Server extends EventEmitter {
   }
 
   private async loadAndEmitSnapshots(socket: Socket, info: SubscriptionInfo): Promise<void> {
-    info.postponeChanges = true;
+    let {changeEmitter, subscription, visibleSet} = info;
 
-    let {subscription, visibleSet} = info;
+    changeEmitter.pause();
 
     let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
 
@@ -199,22 +206,54 @@ export abstract class Server extends EventEmitter {
       resourceToTimestampMap.set(uid, timestamp);
     }
 
-    for (let change of info.changes) {
-      let timestamp = resourceToTimestampMap.get(change.resource);
+    changeEmitter.resume(({resource, timestamp}) => {
+      let resourceTimestamp = resourceToTimestampMap.get(resource);
+      return !resourceTimestamp || resourceTimestamp < timestamp;
+    });
+  }
 
-      if (!timestamp || timestamp < change.timestamp) {
-        socket.emit('change', change);
-      }
+  private async loadAndEmitUponRequest(socket: Socket, request: Request): Promise<void> {
+    let {subject, resources} = request;
+    let {subjectToSubscriptionInfoMap} = socket;
+
+    let {changeEmitter, visibleSet, subscription} = subjectToSubscriptionInfoMap.get(subject)!;
+
+    resources = resources.filter(resource => !visibleSet.has(resource));
+
+    if (resources.length) {
+      return;
     }
 
-    info.changes = [];
-    info.postponeChanges = false;
+    changeEmitter.pause();
+
+    let definition = this.subjectToDefinitionMap.get(subject)!;
+
+    let snapshots = await definition.loadSnapshots(subscription, resources);
+
+    for (let snapshot of snapshots) {
+      let {uid: resource, timestamp} = snapshot;
+
+      let creation: BroadcastCreation = {
+        uid: '',
+        subject,
+        resource,
+        type: 'create',
+        snapshot,
+        timestamp,
+      };
+
+      socket.emit('change', creation);
+
+      visibleSet.add(resource);
+    }
+
+    changeEmitter.resume();
   }
 
   private async loadAndEmitChanges(socket: Socket, info: SubscriptionInfo): Promise<void> {
-    info.postponeChanges = true;
+    let {changeEmitter, subscription} = info;
 
-    let {subscription} = info;
+    changeEmitter.pause();
 
     let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
 
@@ -230,15 +269,7 @@ export abstract class Server extends EventEmitter {
 
     let latestTimestamp = changes.length ? changes[changes.length - 1].timestamp : 0;
 
-    let {changes: postponedChanges} = info;
-
-    for (let change of postponedChanges) {
-      if (change.timestamp > latestTimestamp) {
-        socket.emit('change', change);
-      }
-    }
-
-    info.postponeChanges = false;
+    changeEmitter.resume(({timestamp}) => timestamp > latestTimestamp);
   }
 
   private handleChangeFromQueue(change: BroadcastChange): void {
@@ -254,7 +285,7 @@ export abstract class Server extends EventEmitter {
 
     for (let socket of socketSet) {
       let {subjectToSubscriptionInfoMap} = socket;
-      let {subscription, changes, postponeChanges, visibleSet} = subjectToSubscriptionInfoMap.get(subject)!;
+      let {subscription, changeEmitter, visibleSet} = subjectToSubscriptionInfoMap.get(subject)!;
 
       if (!definition.hasSubscribedChange(change, subscription)) {
         continue;
@@ -277,13 +308,17 @@ export abstract class Server extends EventEmitter {
           continue;
         }
       } else {
-        if (definition.testVisibility(snapshot!, subscription)) {
+        let visibility = definition.testVisibility(snapshot!, subscription);
+
+        if (visibility) {
           if (visibleSet.has(resource)) {
             let {snapshot: _, ...changeWithoutSnapshot} = change;
             changeToBroadcast = changeWithoutSnapshot;
-          } else {
+          } else if (visibility === true) {
             visibleSet.add(resource);
             changeToBroadcast = pruneAsBroadcastCreation(change);
+          } else {
+            continue;
           }
         } else {
           if (visibleSet.has(resource)) {
@@ -295,11 +330,7 @@ export abstract class Server extends EventEmitter {
         }
       }
 
-      if (postponeChanges) {
-        changes.push(changeToBroadcast);
-      } else {
-        socket.emit('change', changeToBroadcast);
-      }
+      changeEmitter.add(changeToBroadcast);
     }
   }
 }

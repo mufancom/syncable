@@ -7,7 +7,7 @@ import {
   Syncable,
 } from 'syncable';
 
-import { Server } from './server';
+import { Server, Visibility } from './server';
 
 export abstract class SyncableDefinition
   <TSyncable extends Syncable, TSubscription extends Subscription, TServer extends Server> {
@@ -19,9 +19,9 @@ export abstract class SyncableDefinition
   }
 
   abstract hasSubscribedChange(change: BroadcastChange, subscription: TSubscription): boolean;
-  abstract testVisibility(object: TSyncable, subscription: TSubscription): boolean;
+  abstract testVisibility(object: TSyncable, subscription: TSubscription): Visibility;
 
-  abstract async loadSnapshots(subscription: TSubscription): Promise<TSyncable[]>;
+  abstract async loadSnapshots(subscription: TSubscription, resources?: string[]): Promise<TSyncable[]>;
   abstract async loadChanges(subscription: TSubscription): Promise<BroadcastChange[]>;
 
   abstract async create(change: ServerCreation, timestamp: number): Promise<TSyncable>;
