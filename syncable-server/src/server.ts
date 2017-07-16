@@ -220,7 +220,7 @@ export abstract class Server extends EventEmitter {
 
     resources = resources.filter(resource => !visibleSet.has(resource));
 
-    if (resources.length) {
+    if (!resources.length) {
       return;
     }
 

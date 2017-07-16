@@ -13,6 +13,7 @@ import {
   RawCreation,
   RawRemoval,
   Removal,
+  Request,
   SnapshotsData,
   Subscription,
   Syncable,
@@ -32,8 +33,9 @@ export interface Socket extends SocketIOClient.Socket {
   on(event: 'change', listener: (change: BroadcastChange) => void): this;
   on(event: 'snapshots', listener: (data: SnapshotsData) => void): this;
 
-  emit(event: 'change', change: Change): this;
   emit(event: 'subscribe', subscription: Subscription): this;
+  emit(event: 'change', change: Change): this;
+  emit(event: 'request', request: Request): this;
 }
 
 interface SyncableResourceData<T extends Syncable> {
@@ -190,7 +192,7 @@ export class Client {
 
   init(): void {
     for (let {definition} of this.compoundSubjectDataMap.values()) {
-      definition._client = this;
+      definition.onInit(this);
     }
 
     this.socket.on('reconnect', () => {
@@ -306,6 +308,15 @@ export class Client {
 
   getChangeObservable<T extends Syncable>(subject: string): Observable<ChangeNotification<T>> {
     return this.change.filter(notification => notification.subject === subject);
+  }
+
+  request(subject: string, resources: string[]): void {
+    let request: Request = {
+      subject,
+      resources,
+    };
+
+    this.socket.emit('request', request);
   }
 
   create(rawCreation: RawCreation): Syncable {

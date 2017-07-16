@@ -20,13 +20,12 @@ export interface Dependency<T extends Syncable, TEntry extends Syncable> {
 }
 
 export abstract class CompoundDefinition<T, TEntry extends Syncable> {
-  /** @internal */
-  _client: Client;
-
   entry: string;
   dependencies: Dependency<Syncable, TEntry>[] = [];
 
   abstract buildCompound(entry: TEntry, host: CompoundDependencyHost): T;
+
+  onInit(_client: Client): void { }
 
   protected registerEntry(
     subject: string,
