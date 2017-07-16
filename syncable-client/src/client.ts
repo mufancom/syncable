@@ -191,10 +191,6 @@ export class Client {
   }
 
   init(): void {
-    for (let {definition} of this.compoundSubjectDataMap.values()) {
-      definition.onInit(this);
-    }
-
     this.socket.on('reconnect', () => {
       this.subscribe();
     });
@@ -609,7 +605,35 @@ export class Client {
 
     for (let object of syncableResourceMap.values()) {
       let compound = definition.buildCompound(object, dependencyHost);
-      compoundResourceMap.set(object.uid, compound);
+
+      if (compound !== undefined) {
+        compoundResourceMap.set(object.uid, compound);
+      }
+    }
+
+    let absenceSet = new Set<string>();
+
+    for (
+      let [
+        subject,
+        {compoundEntryResolver, resourceMap},
+      ] of dependencyDataMap
+    ) {
+      if (subject === definition.entry) {
+        continue;
+      }
+
+      for (let object of resourceMap.values()) {
+        let entry = compoundEntryResolver(object, dependencyHost);
+
+        if (typeof entry === 'string') {
+          absenceSet.add(entry);
+        }
+      }
+    }
+
+    if (absenceSet.size) {
+      this.request(definition.entry, Array.from(absenceSet));
     }
 
     this.ready.next({
@@ -686,7 +710,12 @@ export class Client {
       }
     }
 
-    let updateCompound = (entry: Syncable) => {
+    let updateCompound = (entry: Syncable | string) => {
+      if (typeof entry === 'string') {
+        this.request(definition.entry, [entry]);
+        return;
+      }
+
       let {uid} = entry;
 
       let compoundSnapshot = resourceMap.get(uid);
@@ -696,7 +725,11 @@ export class Client {
         return;
       }
 
-      resourceMap.set(uid, compound);
+      if (compound !== undefined) {
+        resourceMap.set(uid, compound);
+      } else {
+        resourceMap.delete(uid);
+      }
 
       this.change.next({
         subject: compoundSubject,

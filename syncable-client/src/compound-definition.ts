@@ -1,9 +1,9 @@
 import { Syncable } from 'syncable';
 
-import { Client, CompoundDependencyHost } from './client';
+import { CompoundDependencyHost } from './client';
 
 export type CompoundEntryResolver<T extends Syncable, TEntry extends Syncable> =
-  (object: T, host: CompoundDependencyHost) => TEntry | undefined;
+  (object: T, host: CompoundDependencyHost) => TEntry | string | undefined;
 
 export interface CompoundDependencyOptions<T extends Syncable, TEntry extends Syncable> {
   indexes?: (keyof T)[];
@@ -23,9 +23,7 @@ export abstract class CompoundDefinition<T, TEntry extends Syncable> {
   entry: string;
   dependencies: Dependency<Syncable, TEntry>[] = [];
 
-  abstract buildCompound(entry: TEntry, host: CompoundDependencyHost): T;
-
-  onInit(_client: Client): void { }
+  abstract buildCompound(entry: TEntry, host: CompoundDependencyHost): T | undefined;
 
   protected registerEntry(
     subject: string,
