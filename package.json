@@ -22,6 +22,6 @@
     "tslint": "^5.4.3",
     "tslint-language-service": "^0.9.6",
     "typescript": "^2.3.4",
-    "vts": "^5.4.6"
+    "vts": "^5.4.7"
   }
 }
