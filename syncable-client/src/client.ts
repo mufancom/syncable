@@ -14,6 +14,7 @@ import {
   RawRemoval,
   Removal,
   Request,
+  ServerCreation,
   SnapshotsData,
   Subscription,
   Syncable,
@@ -34,7 +35,7 @@ export interface Socket extends SocketIOClient.Socket {
   on(event: 'snapshots', listener: (data: SnapshotsData) => void): this;
 
   emit(event: 'subscribe', subscription: Subscription): this;
-  emit(event: 'change', change: Change): this;
+  emit(event: 'change', change: Change | ServerCreation): this;
   emit(event: 'request', request: Request): this;
 }
 
@@ -315,18 +316,27 @@ export class Client {
     this.socket.emit('request', request);
   }
 
-  create(rawCreation: RawCreation): Syncable {
+  create(rawCreation: RawCreation, serverCreation = false): Syncable | undefined {
+    if (serverCreation) {
+      let serverChange: ServerCreation = {
+        uid: uuid(),
+        type: 'create',
+        ...rawCreation,
+      };
+
+      this.syncChange(serverChange);
+
+      return undefined;
+    }
+
     let resource = uuid();
 
-    let change: ClientCreation = Object.assign(
-      {
-        uid: uuid(),
-        resource,
-        // tslint:disable-next-line:no-unnecessary-type-assertion
-        type: 'create' as 'create',
-      },
-      rawCreation,
-    );
+    let change: ClientCreation = {
+      uid: uuid(),
+      resource,
+      type: 'create',
+      ...rawCreation,
+    };
 
     let {subject} = change;
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
@@ -548,7 +558,7 @@ export class Client {
     });
   }
 
-  private syncChange(change: Change): void {
+  private syncChange(change: Change | ServerCreation): void {
     this.socket.emit('change', change);
   }
 

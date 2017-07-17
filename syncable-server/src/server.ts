@@ -1,5 +1,7 @@
 import { EventEmitter } from 'events';
 
+import * as uuid from 'uuid';
+
 import {
   BroadcastChange,
   BroadcastCreation,
@@ -228,13 +230,13 @@ export abstract class Server extends EventEmitter {
 
     let definition = this.subjectToDefinitionMap.get(subject)!;
 
-    let snapshots = await definition.loadSnapshots(subscription, resources);
+    let snapshots = await definition.loadSnapshotsUponRequest(subscription, resources);
 
     for (let snapshot of snapshots) {
       let {uid: resource, timestamp} = snapshot;
 
       let creation: BroadcastCreation = {
-        uid: '',
+        uid: uuid(),
         subject,
         resource,
         type: 'create',

@@ -18,10 +18,14 @@ export abstract class SyncableDefinition
     return this._server;
   }
 
+  async loadSnapshotsUponRequest(_subscription: TSubscription, _resources: string[]): Promise<TSyncable[]> {
+    return [];
+  }
+
   abstract hasSubscribedChange(change: BroadcastChange, subscription: TSubscription): boolean;
   abstract testVisibility(object: TSyncable, subscription: TSubscription): Visibility;
 
-  abstract async loadSnapshots(subscription: TSubscription, resources?: string[]): Promise<TSyncable[]>;
+  abstract async loadSnapshots(subscription: TSubscription): Promise<TSyncable[]>;
   abstract async loadChanges(subscription: TSubscription): Promise<BroadcastChange[]>;
 
   abstract async create(change: ServerCreation, timestamp: number): Promise<TSyncable>;
