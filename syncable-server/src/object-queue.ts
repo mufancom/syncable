@@ -1,38 +1,42 @@
 export type ObjectQueueHandler<T> = (object: T) => void;
 export type ObjectQueueFilter<T> = (object: T) => boolean;
 
-export class ObjectQueue<T> {
-  private pending: T[] | undefined;
-
-  constructor(
-    private handler: ObjectQueueHandler<T>,
-  ) { }
+export abstract class ObjectQueue<T> {
+  private channelToPendingObjectsMap = new Map<string, T[]>();
 
   add(object: T): void {
-    if (this.pending) {
-      this.pending.push(object);
+    let channel = this.resolveChannel(object);
+    let pendingObjects = this.channelToPendingObjectsMap.get(channel);
+
+    if (pendingObjects) {
+      pendingObjects.push(object);
     } else {
-      this.handler(object);
+      this.emit(object);
     }
   }
 
-  pause(): void {
-    if (!this.pending) {
-      this.pending = [];
+  pause(channel: string): void {
+    if (!this.channelToPendingObjectsMap.has(channel)) {
+      this.channelToPendingObjectsMap.set(channel, []);
     }
   }
 
-  resume(filter?: ObjectQueueFilter<T>): void {
-    if (!this.pending) {
+  resume(channel: string, filter?: ObjectQueueFilter<T>): void {
+    let pendingObjects = this.channelToPendingObjectsMap.get(channel);
+
+    if (!pendingObjects) {
       return;
     }
 
-    for (let object of this.pending) {
+    for (let object of pendingObjects) {
       if (!filter || filter(object)) {
-        this.handler(object);
+        this.emit(object);
       }
     }
 
-    this.pending = undefined;
+    this.channelToPendingObjectsMap.delete(channel);
   }
+
+  protected abstract emit(object: T): void;
+  protected abstract resolveChannel(_object: T): string;
 }

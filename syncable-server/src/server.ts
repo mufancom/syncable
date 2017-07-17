@@ -48,6 +48,22 @@ export interface SocketServer extends SocketIO.Server {
   on(event: 'connection' | 'connect', listener: (socket: Socket) => void): SocketIO.Namespace;
 }
 
+export class ChangeEmitter extends ObjectQueue<BroadcastChange> {
+  constructor(
+    private socket: Socket,
+  ) {
+    super();
+  }
+
+  protected emit(object: BroadcastChange): void {
+    this.socket.emit('change', object);
+  }
+
+  protected resolveChannel({subject}: BroadcastChange): string {
+    return subject;
+  }
+}
+
 export abstract class Server extends EventEmitter {
   private errorEmitter: (error: any) => void = this.emit.bind(this, 'error');
 
@@ -134,7 +150,7 @@ export abstract class Server extends EventEmitter {
 
         let info: SubscriptionInfo = {
           subscription,
-          changeEmitter: new ObjectQueue<BroadcastChange>(change => socket.emit('change', change)),
+          changeEmitter: new ChangeEmitter(socket),
           visibleSet: new Set<string>(loaded),
           valid: true,
         };
@@ -176,10 +192,11 @@ export abstract class Server extends EventEmitter {
 
   private async loadAndEmitSnapshots(socket: Socket, info: SubscriptionInfo): Promise<void> {
     let {changeEmitter, subscription, visibleSet} = info;
+    let {subject} = subscription;
 
-    changeEmitter.pause();
+    changeEmitter.pause(subject);
 
-    let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
+    let definition = this.subjectToDefinitionMap.get(subject)!;
 
     let snapshotsTimestamp = await this.generateTimestamp();
 
@@ -208,7 +225,7 @@ export abstract class Server extends EventEmitter {
       resourceToTimestampMap.set(uid, timestamp);
     }
 
-    changeEmitter.resume(({resource, timestamp}) => {
+    changeEmitter.resume(subject, ({resource, timestamp}) => {
       let resourceTimestamp = resourceToTimestampMap.get(resource);
       return !resourceTimestamp || resourceTimestamp < timestamp;
     });
@@ -226,7 +243,7 @@ export abstract class Server extends EventEmitter {
       return;
     }
 
-    changeEmitter.pause();
+    changeEmitter.pause(subject);
 
     let definition = this.subjectToDefinitionMap.get(subject)!;
 
@@ -249,15 +266,16 @@ export abstract class Server extends EventEmitter {
       visibleSet.add(resource);
     }
 
-    changeEmitter.resume();
+    changeEmitter.resume(subject);
   }
 
   private async loadAndEmitChanges(socket: Socket, info: SubscriptionInfo): Promise<void> {
     let {changeEmitter, subscription} = info;
+    let {subject} = subscription;
 
-    changeEmitter.pause();
+    changeEmitter.pause(subject);
 
-    let definition = this.subjectToDefinitionMap.get(subscription.subject)!;
+    let definition = this.subjectToDefinitionMap.get(subject)!;
 
     let changes = await definition.loadChanges(subscription);
 
@@ -271,7 +289,7 @@ export abstract class Server extends EventEmitter {
 
     let latestTimestamp = changes.length ? changes[changes.length - 1].timestamp : 0;
 
-    changeEmitter.resume(({timestamp}) => timestamp > latestTimestamp);
+    changeEmitter.resume(subject, ({timestamp}) => timestamp > latestTimestamp);
   }
 
   private handleChangeFromQueue(change: BroadcastChange): void {
