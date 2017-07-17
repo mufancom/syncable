@@ -123,9 +123,14 @@ export class Client {
   private syncableSubjectDataMap = new Map<string, SyncableSubjectData<Syncable>>();
   private compoundSubjectDataMap = new Map<string, CompoundSubjectData<any>>();
   private syncableSubjectToCompoundSubjectSetMap = new Map<string, Set<string>>();
+  private syncingChangeSet = new Set<string>();
 
   constructor(socket: SocketIOClient.Socket) {
     this.socket = socket as Socket;
+  }
+
+  get syncing(): boolean {
+    return !!this.syncingChangeSet.size;
   }
 
   register<T extends Syncable>(subject: string, definition: SyncableDefinition<T>): void {
@@ -206,7 +211,9 @@ export class Client {
     });
 
     this.socket.on('change', change => {
-      let {subject} = change;
+      let {subject, uid} = change;
+
+      this.syncingChangeSet.delete(uid);
 
       let subjectData = this.syncableSubjectDataMap.get(subject)!;
 
@@ -549,6 +556,7 @@ export class Client {
   }
 
   private syncChange(change: Change): void {
+    this.syncingChangeSet.add(change.uid);
     this.socket.emit('change', change);
   }
 
