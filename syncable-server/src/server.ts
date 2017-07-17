@@ -140,7 +140,7 @@ export abstract class Server extends EventEmitter {
 
       socket.on('subscribe', subscription => {
         let {subjectToSubscriptionInfoMap} = socket;
-        let {subject, timestamp, loaded} = subscription;
+        let {subject, loaded} = subscription;
 
         let existingInfo = subjectToSubscriptionInfoMap.get(subject);
 
@@ -167,11 +167,7 @@ export abstract class Server extends EventEmitter {
 
         socket.emit('subscribed', subscription);
 
-        if (typeof timestamp === 'number') {
-          this.loadAndEmitChanges(socket, info).catch(this.errorEmitter);
-        } else {
-          this.loadAndEmitSnapshots(socket, info).catch(this.errorEmitter);
-        }
+        this.initSubscription(socket, info).catch(this.errorEmitter);
       });
 
       socket.on('request', request => {
@@ -188,6 +184,16 @@ export abstract class Server extends EventEmitter {
         }
       });
     });
+  }
+
+  private async initSubscription(socket: Socket, info: SubscriptionInfo): Promise<void> {
+    let {subscription: {timestamp}} = info;
+
+    if (typeof timestamp === 'number') {
+      await this.loadAndEmitChanges(socket, info);
+    } else {
+      await this.loadAndEmitSnapshots(socket, info);
+    }
   }
 
   private async loadAndEmitSnapshots(socket: Socket, info: SubscriptionInfo): Promise<void> {
@@ -307,7 +313,7 @@ export abstract class Server extends EventEmitter {
       let {subjectToSubscriptionInfoMap} = socket;
       let {subscription, changeEmitter, visibleSet} = subjectToSubscriptionInfoMap.get(subject)!;
 
-      if (!definition.hasSubscribedChange(change, subscription)) {
+      if (!definition.hasSubscribedChange(change, subscription, socket)) {
         continue;
       }
 
