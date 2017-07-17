@@ -206,7 +206,7 @@ export abstract class Server extends EventEmitter {
 
     let snapshotsTimestamp = await this.generateTimestamp();
 
-    let snapshots = await definition.loadSnapshots(subscription);
+    let snapshots = await definition.loadSnapshots(subscription, socket);
 
     if (!info.valid) {
       return;
@@ -253,7 +253,7 @@ export abstract class Server extends EventEmitter {
 
     let definition = this.subjectToDefinitionMap.get(subject)!;
 
-    let snapshots = await definition.loadSnapshotsUponRequest(subscription, resources);
+    let snapshots = await definition.loadSnapshotsUponRequest(resources, subscription, socket);
 
     for (let snapshot of snapshots) {
       let {uid: resource, timestamp} = snapshot;
@@ -283,7 +283,7 @@ export abstract class Server extends EventEmitter {
 
     let definition = this.subjectToDefinitionMap.get(subject)!;
 
-    let changes = await definition.loadChanges(subscription);
+    let changes = await definition.loadChanges(subscription, socket);
 
     if (!info.valid) {
       return;
@@ -327,14 +327,14 @@ export abstract class Server extends EventEmitter {
           continue;
         }
       } else if (type === 'create') {
-        if (definition.testVisibility(snapshot!, subscription)) {
+        if (definition.testVisibility(snapshot!, subscription, socket)) {
           visibleSet.add(resource);
           changeToBroadcast = pruneAsBroadcastCreation(change);
         } else {
           continue;
         }
       } else {
-        let visibility = definition.testVisibility(snapshot!, subscription);
+        let visibility = definition.testVisibility(snapshot!, subscription, socket);
 
         if (visibility) {
           if (visibleSet.has(resource)) {
