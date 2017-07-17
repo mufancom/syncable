@@ -350,7 +350,10 @@ export class Client {
 
     definition.preprocessChange(change);
 
-    let object = definition.create(change);
+    let object = {
+      ...definition.create(change),
+      syncing: true,
+    };
 
     if (!definition.testVisibility(object)) {
       throw new Error(`The object created is not visible at creation: ${JSON.stringify(object)}`);
@@ -389,7 +392,10 @@ export class Client {
 
     let snapshotBeforeChange = object;
 
-    object = definition.update(object, change);
+    object = {
+      ...definition.update(object, change),
+      syncing: true,
+    };
 
     if (isEqual(object, snapshotBeforeChange)) {
       return;
@@ -461,7 +467,15 @@ export class Client {
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
 
     let resourceData = resourceDataMap.get(resource);
+
     let object = resourceMap.get(resource);
+
+    if (object) {
+      object = {
+        ...object,
+        syncing: false,
+      };
+    }
 
     if (isEqual(object, broadcastSnapshot)) {
       return;
@@ -519,7 +533,10 @@ export class Client {
 
     shiftFirstChangeIfMatch(changes, uid);
 
-    object = definition.update(snapshot, change);
+    object = {
+      ...definition.update(snapshot, change),
+      syncing: false,
+    };
 
     resourceData.snapshot = object;
 
