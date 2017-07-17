@@ -5,6 +5,7 @@ export interface Syncable {
   uid: string;
   /** Timestamp. */
   timestamp: number;
+  syncing?: boolean;
 }
 
 export interface RawChange {
