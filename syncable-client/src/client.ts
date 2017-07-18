@@ -117,8 +117,9 @@ export class CompoundDependencyHost {
 }
 
 export class Client {
-  readonly ready = new Subject<ReadyNotification<Syncable>>();
-  readonly change = new Subject<ChangeNotification<Syncable>>();
+  private subjectToReadyPromiseMap = new Map<string, Promise<void>>();
+  private subjectToReadyObservableMap = new Map<string, Subject<ReadyNotification<any>>>();
+  private subjectToChangeObservableMap = new Map<string, Subject<ChangeNotification<any>>>();
 
   private socket: Socket;
   private syncableSubjectDataMap = new Map<string, SyncableSubjectData<Syncable>>();
@@ -137,16 +138,16 @@ export class Client {
   }
 
   register<T extends Syncable>(subject: string, definition: SyncableDefinition<T>): void {
-    let subjectData: SyncableSubjectData<T> = {
+    this.syncableSubjectDataMap.set(subject, {
       timestamp: undefined,
       subscription: undefined,
       subscribed: undefined,
       definition,
       resourceMap: new Map<string, T>(),
       resourceDataMap: new Map<string, SyncableResourceData<T>>(),
-    };
+    });
 
-    this.syncableSubjectDataMap.set(subject, subjectData);
+    this.initNotifications(subject);
   }
 
   registerCompound<T, TEntry extends Syncable>(subject: string, definition: CompoundDefinition<T, TEntry>): void {
@@ -196,6 +197,8 @@ export class Client {
     };
 
     compoundSubjectDataMap.set(subject, subjectData);
+
+    this.initNotifications(subject);
   }
 
   init(): void {
@@ -312,12 +315,16 @@ export class Client {
     return this.compoundSubjectDataMap.get(subject)!.resourceMap as Map<string, T>;
   }
 
+  getReadyPromise(subject: string): Promise<void> {
+    return this.subjectToReadyPromiseMap.get(subject)!;
+  }
+
   getReadyObservable<T extends Syncable>(subject: string): Observable<ReadyNotification<T>> {
-    return this.ready.filter(notification => notification.subject === subject);
+    return this.subjectToReadyObservableMap.get(subject)!.first();
   }
 
   getChangeObservable<T extends Syncable>(subject: string): Observable<ChangeNotification<T>> {
-    return this.change.filter(notification => notification.subject === subject);
+    return this.subjectToChangeObservableMap.get(subject)!.first();
   }
 
   request(subject: string, resources: string[]): void {
@@ -598,13 +605,29 @@ export class Client {
     });
   }
 
+  private initNotifications(subject: string): void {
+    let readySubject = new Subject<ReadyNotification<any>>();
+    let changeSubject = new Subject<ChangeNotification<any>>();
+
+    this.subjectToReadyObservableMap.set(subject, readySubject);
+    this.subjectToChangeObservableMap.set(subject, changeSubject);
+
+    let promise = new Promise<void>((resolve, reject) => {
+      readySubject.first().subscribe(() => resolve(), reject);
+    });
+
+    this.subjectToReadyPromiseMap.set(subject, promise);
+  }
+
   private syncChange(change: Change | ServerCreation): void {
     this.syncingChangeSet.add(change.uid);
     this.socket.emit('change', change);
   }
 
   private onSyncableReady(notification: ReadyNotification<Syncable>): void {
-    let compoundSubjectSet = this.syncableSubjectToCompoundSubjectSetMap.get(notification.subject);
+    let {subject} = notification;
+
+    let compoundSubjectSet = this.syncableSubjectToCompoundSubjectSetMap.get(subject);
 
     if (compoundSubjectSet) {
       for (let compoundSubject of compoundSubjectSet) {
@@ -612,11 +635,13 @@ export class Client {
       }
     }
 
-    this.ready.next(notification);
+    this.subjectToReadyObservableMap.get(subject)!.next(notification);
   }
 
   private onSyncableChange(notification: ChangeNotification<Syncable>): void {
-    let compoundSubjectSet = this.syncableSubjectToCompoundSubjectSetMap.get(notification.subject);
+    let {subject} = notification;
+
+    let compoundSubjectSet = this.syncableSubjectToCompoundSubjectSetMap.get(subject);
 
     if (compoundSubjectSet) {
       for (let compoundSubject of compoundSubjectSet) {
@@ -624,7 +649,7 @@ export class Client {
       }
     }
 
-    this.change.next(notification);
+    this.subjectToChangeObservableMap.get(subject)!.next(notification);
   }
 
   private handleCompoundDependencyReady(
@@ -687,10 +712,12 @@ export class Client {
       this.request(definition.entry, Array.from(absenceSet));
     }
 
-    this.ready.next({
-      subject: compoundSubject,
-      resourceMap: compoundResourceMap,
-    });
+    this.subjectToReadyObservableMap
+      .get(compoundSubject)!
+      .next({
+        subject: compoundSubject,
+        resourceMap: compoundResourceMap,
+      });
   }
 
   private initCompoundDependencyIndexes(
@@ -782,12 +809,14 @@ export class Client {
         resourceMap.delete(uid);
       }
 
-      this.change.next({
-        subject: compoundSubject,
-        resource: uid,
-        snapshot: compoundSnapshot,
-        object: compound,
-      });
+      this.subjectToChangeObservableMap
+        .get(compoundSubject)!
+        .next({
+          subject: compoundSubject,
+          resource: uid,
+          snapshot: compoundSnapshot,
+          object: compound,
+        });
     };
 
     let removeCompound = ({uid}: Syncable) => {
@@ -799,12 +828,14 @@ export class Client {
 
       resourceMap.delete(uid);
 
-      this.change.next({
-        subject: compoundSubject,
-        resource: uid,
-        snapshot: compoundSnapshot,
-        object: undefined,
-      });
+      this.subjectToChangeObservableMap
+        .get(compoundSubject)!
+        .next({
+          subject: compoundSubject,
+          resource: uid,
+          snapshot: compoundSnapshot,
+          object: undefined,
+        });
     };
 
     if (subject === definition.entry) {
