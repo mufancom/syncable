@@ -7,6 +7,7 @@ export type CompoundEntryResolver<T extends Syncable, TEntry extends Syncable> =
 
 export interface CompoundDependencyOptions<T extends Syncable, TEntry extends Syncable> {
   indexes?: (keyof T)[];
+  requestAbsentEntries?: boolean;
   compoundEntryResolver: CompoundEntryResolver<T, TEntry>;
 }
 

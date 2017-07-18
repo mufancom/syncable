@@ -56,6 +56,7 @@ interface SyncableSubjectData<T extends Syncable> {
 export interface DependencyData<T extends Syncable, TEntry extends Syncable> {
   indexToResourceSetMapMap: Map<string, Map<any, Set<T>>>;
   resourceMap: Map<string, T>;
+  requestAbsentEntries: boolean;
   compoundEntryResolver: CompoundEntryResolver<T, TEntry>;
 }
 
@@ -161,6 +162,7 @@ export class Client {
         subject: syncableSubject,
         options: {
           indexes = [],
+          requestAbsentEntries = false,
           compoundEntryResolver,
         },
       } of dependencies
@@ -175,6 +177,7 @@ export class Client {
       dependencyDataMap.set(syncableSubject, {
         indexToResourceSetMapMap,
         compoundEntryResolver,
+        requestAbsentEntries,
         resourceMap: this.getResourceMap(syncableSubject),
       });
 
@@ -692,10 +695,10 @@ export class Client {
     for (
       let [
         subject,
-        {compoundEntryResolver, resourceMap},
+        {compoundEntryResolver, resourceMap, requestAbsentEntries},
       ] of dependencyDataMap
     ) {
-      if (subject === definition.entry) {
+      if (subject === definition.entry || !requestAbsentEntries) {
         continue;
       }
 
