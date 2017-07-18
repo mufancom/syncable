@@ -126,6 +126,8 @@ export class Client {
   private syncableSubjectToCompoundSubjectSetMap = new Map<string, Set<string>>();
   private syncingChangeSet = new Set<string>();
 
+  private subjectToPendingRequestResourceSetMap: Map<string, Set<string>> | undefined;
+
   constructor(socket: SocketIOClient.Socket) {
     this.socket = socket as Socket;
   }
@@ -197,6 +199,10 @@ export class Client {
   }
 
   init(): void {
+    for (let {definition} of this.compoundSubjectDataMap.values()) {
+      definition._client = this;
+    }
+
     this.socket.on('reconnect', () => {
       this.subscribe();
     });
@@ -315,12 +321,22 @@ export class Client {
   }
 
   request(subject: string, resources: string[]): void {
-    let request: Request = {
-      subject,
-      resources,
-    };
+    if (!this.subjectToPendingRequestResourceSetMap) {
+      this.subjectToPendingRequestResourceSetMap = new Map<string, Set<string>>();
+      this.scheduleRequest();
+    }
 
-    this.socket.emit('request', request);
+    let map = this.subjectToPendingRequestResourceSetMap;
+    let set = map.get(subject);
+
+    if (!set) {
+      set = new Set<string>();
+      map.set(subject, set);
+    }
+
+    for (let resource of resources) {
+      set.add(resource);
+    }
   }
 
   create(rawCreation: RawCreation, serverCreation = false): Syncable | undefined {
@@ -811,6 +827,25 @@ export class Client {
     if (previousEntry && previousEntry !== entry) {
       updateCompound(previousEntry);
     }
+  }
+
+  private scheduleRequest(): void {
+    setTimeout(() => {
+      let map = this.subjectToPendingRequestResourceSetMap;
+
+      if (!map) {
+        return;
+      }
+
+      this.subjectToPendingRequestResourceSetMap = undefined;
+
+      for (let [subject, set] of map) {
+        this.socket.emit('request', {
+          subject,
+          resources: Array.from(set),
+        });
+      }
+    }, 100);
   }
 }
 

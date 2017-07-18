@@ -1,6 +1,6 @@
 import { Syncable } from 'syncable';
 
-import { CompoundDependencyHost } from './client';
+import { Client, CompoundDependencyHost } from './client';
 
 export type CompoundEntryResolver<T extends Syncable, TEntry extends Syncable> =
   (object: T, host: CompoundDependencyHost) => TEntry | string | undefined;
@@ -20,8 +20,15 @@ export interface Dependency<T extends Syncable, TEntry extends Syncable> {
 }
 
 export abstract class CompoundDefinition<T, TEntry extends Syncable> {
+  /** @internal */
+  _client: Client;
+
   entry: string;
   dependencies: Dependency<Syncable, TEntry>[] = [];
+
+  get client(): Client {
+    return this._client;
+  }
 
   abstract buildCompound(entry: TEntry, host: CompoundDependencyHost): T | undefined;
 
