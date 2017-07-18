@@ -3,7 +3,7 @@ import { Syncable } from 'syncable';
 import { Client, CompoundDependencyHost } from './client';
 
 export type CompoundEntryResolver<T extends Syncable, TEntry extends Syncable> =
-  (object: T, host: CompoundDependencyHost) => TEntry | string | undefined;
+  (object: T, host: CompoundDependencyHost) => TEntry | TEntry[] | string | undefined;
 
 export interface CompoundDependencyOptions<T extends Syncable, TEntry extends Syncable> {
   indexes?: (keyof T)[];

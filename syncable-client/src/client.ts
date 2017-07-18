@@ -1,3 +1,4 @@
+import * as difference from 'lodash.difference';
 import * as isEqual from 'lodash.isequal';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
@@ -791,12 +792,7 @@ export class Client {
       }
     }
 
-    let updateCompound = (entry: Syncable | string) => {
-      if (typeof entry === 'string') {
-        this.request(definition.entry, [entry]);
-        return;
-      }
-
+    let updateCompound = (entry: Syncable) => {
       let {uid} = entry;
 
       let compoundSnapshot = resourceMap.get(uid);
@@ -851,15 +847,29 @@ export class Client {
       return;
     }
 
-    let previousEntry = snapshot && compoundEntryResolver(snapshot, dependencyHost);
-    let entry = object && compoundEntryResolver(object, dependencyHost);
+    let previousEntries = snapshot && compoundEntryResolver(snapshot, dependencyHost);
+    let entries = object && compoundEntryResolver(object, dependencyHost);
 
-    if (entry) {
-      updateCompound(entry);
+    if (typeof entries === 'string') {
+      this.request(definition.entry, [entries]);
+    } else if (entries) {
+      entries = Array.isArray(entries) ? entries : [entries];
+
+      for (let entry of entries) {
+        updateCompound(entry);
+      }
     }
 
-    if (previousEntry && previousEntry !== entry) {
-      updateCompound(previousEntry);
+    if (previousEntries && typeof previousEntries !== 'string') {
+      previousEntries = Array.isArray(previousEntries) ? previousEntries : [previousEntries];
+
+      if (entries && typeof entries !== 'string') {
+        previousEntries = difference(previousEntries, entries);
+      }
+
+      for (let entry of previousEntries) {
+        updateCompound(entry);
+      }
     }
   }
 

@@ -5,3 +5,11 @@ declare module 'lodash.isequal' {
 
   export = isEqual;
 }
+
+declare module 'lodash.difference' {
+  function difference<T>(a: T[], b: T[]): T[];
+
+  namespace difference { }
+
+  export = difference;
+}
