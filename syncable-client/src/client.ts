@@ -668,17 +668,17 @@ export class Client {
       dependencyHost,
     } = this.compoundSubjectDataMap.get(compoundSubject)!;
 
+    pendingDependencySet.delete(subject);
+
+    if (pendingDependencySet.size) {
+      return;
+    }
+
     let {entry, dependencies} = definition;
 
     for (let dependency of dependencies) {
       let {indexToResourceSetMapMap, resourceMap} = dependencyDataMap.get(dependency.subject)!;
       this.initCompoundDependencyIndexes(resourceMap, indexToResourceSetMapMap, dependency);
-    }
-
-    pendingDependencySet.delete(subject);
-
-    if (pendingDependencySet.size) {
-      return;
     }
 
     let {resourceMap: syncableResourceMap} = dependencyDataMap.get(entry)!;
