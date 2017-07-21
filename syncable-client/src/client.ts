@@ -84,13 +84,6 @@ export interface ChangeNotification<T> {
   snapshot: T | undefined;
 }
 
-export type SyncStateType = 'idle' | 'syncing' | 'fail';
-export interface SyncState {
-  resource: string | undefined;
-  type: SyncStateType;
-  text?: string;
-}
-
 export class CompoundDependencyHost {
   constructor(
     private dependencyDataMap: Map<string, DependencyData<Syncable, Syncable>>,
@@ -139,14 +132,15 @@ export class Client {
   private syncableSubjectToCompoundSubjectSetMap = new Map<string, Set<string>>();
 
   private subjectToPendingRequestResourceSetMap: Map<string, Set<string>> | undefined;
-  private syncingStateChange = new Subject<SyncState>();
+  private syncingChange = new Subject<boolean>();
+  private syncingChangeSet = new Set<string>();
 
   constructor(socket: SocketIOClient.Socket) {
     this.socket = socket as Socket;
   }
 
-  get syncingState(): Observable<SyncState> {
-    return Observable.from(this.syncingStateChange);
+  get syncing(): Observable<boolean> {
+    return Observable.from(this.syncingChange);
   }
 
   register<T extends Syncable>(subject: string, definition: SyncableDefinition<T>): void {
@@ -235,9 +229,14 @@ export class Client {
     });
 
     this.socket.on('change', change => {
-      let {subject, resource} = change;
+      let {subject, uid} = change;
 
-      this.syncingStateChange.next({ resource, type: 'idle' });
+      this.syncingChangeSet.delete(uid);
+
+      if (this.syncingChangeSet.size === 0) {
+        this.syncingChange.next(false);
+      }
+
       let subjectData = this.syncableSubjectDataMap.get(subject)!;
 
       if (!subjectData.subscribed) {
@@ -633,8 +632,11 @@ export class Client {
   }
 
   private syncChange(change: Change | ServerCreation): void {
-    let {resource} = change;
-    this.syncingStateChange.next({ resource, type: 'syncing' });
+    let {uid} = change;
+
+    this.syncingChangeSet.add(uid);
+    this.syncingChange.next(true);
+
     this.socket.emit('change', change);
   }
 
