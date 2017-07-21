@@ -4,6 +4,9 @@ import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import * as uuid from 'uuid';
 
+import 'rxjs/add/observable/from';
+import 'rxjs/add/operator/debounceTime';
+
 import {
   BroadcastChange,
   BroadcastCreation,
@@ -81,6 +84,13 @@ export interface ChangeNotification<T> {
   snapshot: T | undefined;
 }
 
+export type SyncStateType = 'idle' | 'syncing' | 'fail';
+export interface SyncState {
+  resource: string | undefined;
+  type: SyncStateType;
+  text?: string;
+}
+
 export class CompoundDependencyHost {
   constructor(
     private dependencyDataMap: Map<string, DependencyData<Syncable, Syncable>>,
@@ -127,16 +137,16 @@ export class Client {
   private syncableSubjectDataMap = new Map<string, SyncableSubjectData<Syncable>>();
   private compoundSubjectDataMap = new Map<string, CompoundSubjectData<any>>();
   private syncableSubjectToCompoundSubjectSetMap = new Map<string, Set<string>>();
-  private syncingChangeSet = new Set<string>();
 
   private subjectToPendingRequestResourceSetMap: Map<string, Set<string>> | undefined;
+  private syncingStateChange = new Subject<SyncState>();
 
   constructor(socket: SocketIOClient.Socket) {
     this.socket = socket as Socket;
   }
 
-  get syncing(): boolean {
-    return !!this.syncingChangeSet.size;
+  get syncingState(): Observable<SyncState> {
+    return Observable.from(this.syncingStateChange);
   }
 
   register<T extends Syncable>(subject: string, definition: SyncableDefinition<T>): void {
@@ -225,10 +235,9 @@ export class Client {
     });
 
     this.socket.on('change', change => {
-      let {subject, uid} = change;
+      let {subject, resource} = change;
 
-      this.syncingChangeSet.delete(uid);
-
+      this.syncingStateChange.next({ resource, type: 'idle' });
       let subjectData = this.syncableSubjectDataMap.get(subject)!;
 
       if (!subjectData.subscribed) {
@@ -624,7 +633,8 @@ export class Client {
   }
 
   private syncChange(change: Change | ServerCreation): void {
-    this.syncingChangeSet.add(change.uid);
+    let {resource} = change;
+    this.syncingStateChange.next({ resource, type: 'syncing' });
     this.socket.emit('change', change);
   }
 
