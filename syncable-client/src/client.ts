@@ -456,14 +456,11 @@ export class Client {
   }
 
   remove(rawRemoval: RawRemoval): void {
-    let change: Removal = Object.assign(
-      {
-        uid: uuid(),
-        // tslint:disable-next-line:no-unnecessary-type-assertion
-        type: 'remove' as 'remove',
-      },
-      rawRemoval,
-    );
+    let change: Removal = {
+      uid: uuid(),
+      type: 'remove',
+      ...rawRemoval,
+    };
 
     let {subject, resource} = change;
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
