@@ -18,9 +18,18 @@ export abstract class SyncableDefinition<T extends Syncable> {
   // abstract getChangesStore(): Store<Change>;
   // abstract getSnapshotsStore(): Store<T>;
 
-  abstract generateSubscription(): RawSubscription;
-  abstract preprocessChange(change: RawChange): void;
-  abstract testVisibility(object: T): boolean;
+  /** Override to customize. */
+  generateSubscription(): RawSubscription {
+    return {};
+  }
+
+  /** Override to customize. */
+  preprocessChange(_change: RawChange): void { }
+
+  /** Override to customize. */
+  testVisibility(_object: T): boolean {
+    return true;
+  }
 
   abstract create(change: ClientCreation): T;
   abstract update(object: T, change: Change): T;

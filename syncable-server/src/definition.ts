@@ -33,7 +33,13 @@ export abstract class SyncableDefinition<
     return [];
   }
 
-  abstract onChange(change: BroadcastChange, subscription: TSubscription, socket: Socket): boolean;
+  abstract onChange(
+    change: BroadcastChange,
+    changeSession: TSession,
+    subscription: TSubscription,
+    socket: Socket,
+  ): boolean;
+
   abstract testVisibility(object: TSyncable, subscription: TSubscription, socket: Socket): Visibility;
 
   abstract async loadSnapshots(subscription: TSubscription, socket: Socket): Promise<TSyncable[]>;
