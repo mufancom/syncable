@@ -64,10 +64,10 @@ export class ChangeEmitter extends ObjectQueue<BroadcastChange> {
   }
 }
 
-export abstract class Server extends EventEmitter {
+export abstract class Server<TSession> extends EventEmitter {
   private errorEmitter: (error: any) => void = this.emit.bind(this, 'error');
 
-  private subjectToDefinitionMap = new Map<string, SyncableDefinition<Syncable, Subscription, this>>();
+  private subjectToDefinitionMap = new Map<string, SyncableDefinition<Syncable, Subscription, TSession, this>>();
   private subjectToSocketSetMap = new Map<string, Set<Socket>>();
 
   constructor(
@@ -79,17 +79,13 @@ export abstract class Server extends EventEmitter {
     this.initSocketServer();
   }
 
-  abstract async lock(resource: string, ttl: number): Promise<ResourceLock>;
-  abstract async generateTimestamp(): Promise<number>;
-  abstract async queueChange(change: BroadcastChange): Promise<void>;
-
-  register(subject: string, definition: SyncableDefinition<Syncable, Subscription, this>): void {
+  register(subject: string, definition: SyncableDefinition<Syncable, Subscription, TSession, this>): void {
     definition._server = this;
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
-  async spawnChange<T extends Change | ServerCreation>(change: T): Promise<void>;
-  async spawnChange(change: Change | ServerCreation): Promise<void> {
+  async spawnChange<T extends Change | ServerCreation>(change: T, session: TSession): Promise<void>;
+  async spawnChange(change: Change | ServerCreation, session: TSession): Promise<void> {
     let {subject, type, resource} = change;
 
     let definition = this.subjectToDefinitionMap.get(subject)!;
@@ -106,13 +102,13 @@ export abstract class Server extends EventEmitter {
       let broadcastChange: BroadcastChange;
 
       if (type === 'create') {
-        snapshot = await definition.create(change as ServerCreation, timestamp);
+        snapshot = await definition.create(change as ServerCreation, timestamp, session);
         broadcastChange = {...change as ServerCreation, resource: snapshot.uid, snapshot, timestamp};
       } else if (type === 'remove') {
-        await definition.remove(change as Removal, timestamp);
+        await definition.remove(change as Removal, timestamp, session);
         broadcastChange = {...change as Removal, timestamp};
       } else {
-        snapshot = await definition.update(change as Change, timestamp);
+        snapshot = await definition.update(change as Change, timestamp, session);
         broadcastChange = {...change as Change, snapshot, timestamp};
       }
 
@@ -123,6 +119,13 @@ export abstract class Server extends EventEmitter {
       }
     }
   }
+
+  protected abstract getUser(socket: Socket): TSession;
+
+  protected abstract async lock(resource: string, ttl: number): Promise<ResourceLock>;
+  protected abstract async generateTimestamp(): Promise<number>;
+
+  protected abstract async queueChange(change: BroadcastChange): Promise<void>;
 
   private initChangeQueueListener(): void {
     this.on('change', change => {
@@ -175,7 +178,8 @@ export abstract class Server extends EventEmitter {
       });
 
       socket.on('change', change => {
-        this.spawnChange(change).catch(this.errorEmitter);
+        let user = this.getUser(socket);
+        this.spawnChange(change, user).catch(this.errorEmitter);
       });
 
       socket.on('close', () => {
@@ -313,7 +317,7 @@ export abstract class Server extends EventEmitter {
       let {subjectToSubscriptionInfoMap} = socket;
       let {subscription, changeEmitter, visibleSet} = subjectToSubscriptionInfoMap.get(subject)!;
 
-      if (!definition.hasSubscribedChange(change, subscription, socket)) {
+      if (!definition.onChange(change, subscription, socket)) {
         continue;
       }
 
@@ -361,7 +365,7 @@ export abstract class Server extends EventEmitter {
   }
 }
 
-export interface Server {
+export interface Server<TSession> {
   on(event: 'change', listener: (change: BroadcastChange) => void): this;
   on(event: 'error', listener: (error: any) => void): this;
 

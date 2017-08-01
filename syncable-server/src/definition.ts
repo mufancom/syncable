@@ -13,8 +13,11 @@ import {
   Visibility,
 } from './server';
 
-export abstract class SyncableDefinition
-  <TSyncable extends Syncable, TSubscription extends Subscription, TServer extends Server> {
+export abstract class SyncableDefinition<
+  TSyncable extends Syncable,
+  TSubscription extends Subscription,
+  TSession,
+  TServer extends Server<TSession>> {
   /** @internal */
   _server: TServer;
 
@@ -30,13 +33,13 @@ export abstract class SyncableDefinition
     return [];
   }
 
-  abstract hasSubscribedChange(change: BroadcastChange, subscription: TSubscription, socket: Socket): boolean;
+  abstract onChange(change: BroadcastChange, subscription: TSubscription, socket: Socket): boolean;
   abstract testVisibility(object: TSyncable, subscription: TSubscription, socket: Socket): Visibility;
 
   abstract async loadSnapshots(subscription: TSubscription, socket: Socket): Promise<TSyncable[]>;
   abstract async loadChanges(subscription: TSubscription, socket: Socket): Promise<BroadcastChange[]>;
 
-  abstract async create(change: ServerCreation, timestamp: number): Promise<TSyncable>;
-  abstract async update(change: Change, timestamp: number): Promise<TSyncable | undefined>;
-  abstract async remove(change: Removal, timestamp: number): Promise<void>;
+  abstract async create(change: ServerCreation, timestamp: number, session: TSession): Promise<TSyncable>;
+  abstract async update(change: Change, timestamp: number, session: TSession): Promise<TSyncable | undefined>;
+  abstract async remove(change: Removal, timestamp: number, session: TSession): Promise<void>;
 }
