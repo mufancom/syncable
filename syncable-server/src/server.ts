@@ -167,11 +167,11 @@ export abstract class Server extends EventEmitter {
 
         socket.emit('subscribed', subscription);
 
-        this.initSubscription(socket, info).catch(this.errorEmitter);
+        this.initSubscription(info, socket).catch(this.errorEmitter);
       });
 
       socket.on('request', request => {
-        this.loadAndEmitUponRequest(socket, request).catch(this.errorEmitter);
+        this.loadAndEmitUponRequest(request, socket).catch(this.errorEmitter);
       });
 
       socket.on('change', change => {
@@ -186,17 +186,17 @@ export abstract class Server extends EventEmitter {
     });
   }
 
-  private async initSubscription(socket: Socket, info: SubscriptionInfo): Promise<void> {
+  private async initSubscription(info: SubscriptionInfo, socket: Socket): Promise<void> {
     let {subscription: {timestamp}} = info;
 
     if (typeof timestamp === 'number') {
-      await this.loadAndEmitChanges(socket, info);
+      await this.loadAndEmitChanges(info, socket);
     } else {
-      await this.loadAndEmitSnapshots(socket, info);
+      await this.loadAndEmitSnapshots(info, socket);
     }
   }
 
-  private async loadAndEmitSnapshots(socket: Socket, info: SubscriptionInfo): Promise<void> {
+  private async loadAndEmitSnapshots(info: SubscriptionInfo, socket: Socket): Promise<void> {
     let {changeEmitter, subscription, visibleSet} = info;
     let {subject} = subscription;
 
@@ -237,7 +237,7 @@ export abstract class Server extends EventEmitter {
     });
   }
 
-  private async loadAndEmitUponRequest(socket: Socket, request: Request): Promise<void> {
+  private async loadAndEmitUponRequest(request: Request, socket: Socket): Promise<void> {
     let {subject, resources} = request;
     let {subjectToSubscriptionInfoMap} = socket;
 
@@ -275,7 +275,7 @@ export abstract class Server extends EventEmitter {
     changeEmitter.resume(subject);
   }
 
-  private async loadAndEmitChanges(socket: Socket, info: SubscriptionInfo): Promise<void> {
+  private async loadAndEmitChanges(info: SubscriptionInfo, socket: Socket): Promise<void> {
     let {changeEmitter, subscription} = info;
     let {subject} = subscription;
 
