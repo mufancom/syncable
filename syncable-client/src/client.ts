@@ -530,7 +530,7 @@ export class Client<TClientSession> {
 
       let {changes} = resourceData;
 
-      shiftFirstChangeIfMatch(changes, uid);
+      shiftPrecedingChangesIfMatch(changes, uid);
 
       object = broadcastSnapshot;
 
@@ -573,7 +573,7 @@ export class Client<TClientSession> {
     let resourceData = resourceDataMap.get(resource)!;
     let {snapshot, changes} = resourceData;
 
-    shiftFirstChangeIfMatch(changes, uid);
+    shiftPrecedingChangesIfMatch(changes, uid);
 
     object = {
       ...definition.update(snapshot, change, session),
@@ -912,10 +912,7 @@ export class Client<TClientSession> {
   }
 }
 
-function shiftFirstChangeIfMatch(changes: Change[], uid: string): void {
-  let change = changes[0];
-
-  if (change && change.uid === uid) {
-    changes.shift();
-  }
+function shiftPrecedingChangesIfMatch(changes: Change[], uid: string): void {
+  let index = changes.findIndex(change => change.uid === uid);
+  changes.splice(0, index + 1);
 }
