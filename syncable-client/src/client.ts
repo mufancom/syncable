@@ -12,6 +12,7 @@ import {
   BroadcastCreation,
   BroadcastRemoval,
   Change,
+  ClientBroadcastChangeData,
   ClientCreation,
   RawChange,
   RawCreation,
@@ -32,10 +33,10 @@ import {
   Dependency,
 } from './compound-definition';
 
-export interface Socket extends SocketIOClient.Socket {
+export interface Socket<TClientSession> extends SocketIOClient.Socket {
   on(event: 'reconnect', listener: (attempt: number) => void): this;
   on(event: 'subscribed', listener: (subscription: Subscription) => void): this;
-  on(event: 'change', listener: (change: BroadcastChange) => void): this;
+  on(event: 'change', listener: (change: ClientBroadcastChangeData<BroadcastChange, TClientSession>) => void): this;
   on(event: 'snapshots', listener: (data: SnapshotsData) => void): this;
 
   emit(event: 'subscribe', subscription: Subscription): this;
@@ -48,11 +49,11 @@ interface SyncableResourceData<T extends Syncable> {
   changes: Change[];
 }
 
-interface SyncableSubjectData<T extends Syncable> {
+interface SyncableSubjectData<T extends Syncable, TClientSession> {
   timestamp: number | undefined;
   subscription: Subscription | undefined;
   subscribed: boolean | undefined;
-  definition: SyncableDefinition<T>;
+  definition: SyncableDefinition<T, TClientSession>;
   resourceDataMap: Map<string, SyncableResourceData<T>>;
   resourceMap: Map<string, T>;
 }
@@ -64,8 +65,8 @@ export interface DependencyData<T extends Syncable, TEntry extends Syncable> {
   compoundEntryResolver: CompoundEntryResolver<T, TEntry>;
 }
 
-interface CompoundSubjectData<T> {
-  definition: CompoundDefinition<T, Syncable>;
+interface CompoundSubjectData<T, TClientSession> {
+  definition: CompoundDefinition<T, Syncable, TClientSession>;
   resourceMap: Map<string, T>;
   pendingDependencySet: Set<string>;
   dependencyDataMap: Map<string, DependencyData<Syncable, Syncable>>;
@@ -121,29 +122,35 @@ export class CompoundDependencyHost {
   }
 }
 
-export class Client {
+export class Client<TClientSession> {
   private subjectToReadyPromiseMap = new Map<string, Promise<void>>();
   private subjectToReadyObservableMap = new Map<string, Subject<ReadyNotification<any>>>();
   private subjectToChangeObservableMap = new Map<string, Subject<ChangeNotification<any>>>();
 
-  private socket: Socket;
-  private syncableSubjectDataMap = new Map<string, SyncableSubjectData<Syncable>>();
-  private compoundSubjectDataMap = new Map<string, CompoundSubjectData<any>>();
+  private socket: Socket<TClientSession>;
+  private syncableSubjectDataMap = new Map<string, SyncableSubjectData<Syncable, TClientSession>>();
+  private compoundSubjectDataMap = new Map<string, CompoundSubjectData<any, any>>();
   private syncableSubjectToCompoundSubjectSetMap = new Map<string, Set<string>>();
 
   private subjectToPendingRequestResourceSetMap: Map<string, Set<string>> | undefined;
   private syncingChange = new Subject<boolean>();
   private syncingChangeSet = new Set<string>();
 
-  constructor(socket: SocketIOClient.Socket) {
-    this.socket = socket as Socket;
+  constructor(
+    socket: SocketIOClient.Socket,
+    public session: TClientSession,
+  ) {
+    this.socket = socket as Socket<TClientSession>;
   }
 
   get syncing(): Observable<boolean> {
     return Observable.from(this.syncingChange);
   }
 
-  register<T extends Syncable>(subject: string, definition: SyncableDefinition<T>): void {
+  register<T extends Syncable>(
+    subject: string,
+    definition: SyncableDefinition<T, TClientSession>,
+  ): void {
     this.syncableSubjectDataMap.set(subject, {
       timestamp: undefined,
       subscription: undefined,
@@ -156,7 +163,10 @@ export class Client {
     this.initNotifications(subject);
   }
 
-  registerCompound<T, TEntry extends Syncable>(subject: string, definition: CompoundDefinition<T, TEntry>): void {
+  registerCompound<T, TEntry extends Syncable>(
+    subject: string,
+    definition: CompoundDefinition<T, TEntry, TClientSession>,
+  ): void {
     let {compoundSubjectDataMap, syncableSubjectToCompoundSubjectSetMap} = this;
     let {dependencies} = definition;
 
@@ -196,7 +206,7 @@ export class Client {
       }
     }
 
-    let subjectData: CompoundSubjectData<T> = {
+    let subjectData: CompoundSubjectData<T, TClientSession> = {
       definition,
       resourceMap: new Map<string, T>(),
       pendingDependencySet: new Set(dependencies.map(({subject}) => subject)),
@@ -228,7 +238,7 @@ export class Client {
       }
     });
 
-    this.socket.on('change', change => {
+    this.socket.on('change', ({change, session}) => {
       let {subject, uid} = change;
 
       this.syncingChangeSet.delete(uid);
@@ -251,7 +261,7 @@ export class Client {
           this.removeByBroadcast(change as BroadcastRemoval);
           break;
         default:
-          this.updateByBroadcast(change);
+          this.updateByBroadcast(change, session!);
           break;
       }
 
@@ -304,7 +314,7 @@ export class Client {
         ...definition.generateSubscription(),
       };
 
-      let subjectData: SyncableSubjectData<Syncable> = {
+      let subjectData: SyncableSubjectData<Syncable, TClientSession> = {
         timestamp,
         subscription,
         subscribed: false,
@@ -386,7 +396,7 @@ export class Client {
     definition.preprocessChange(change);
 
     let object = {
-      ...definition.create(change),
+      ...definition.create(change, this.session),
       syncing: true,
     };
 
@@ -428,7 +438,7 @@ export class Client {
     let snapshotBeforeChange = object;
 
     object = {
-      ...definition.update(object, change),
+      ...definition.update(object, change, this.session),
       syncing: true,
     };
 
@@ -527,7 +537,7 @@ export class Client {
       resourceData.snapshot = object;
 
       for (let change of changes) {
-        object = definition.update(object, change);
+        object = definition.update(object, change, this.session);
       }
 
       resourceMap.set(resource, object);
@@ -553,7 +563,7 @@ export class Client {
     });
   }
 
-  private updateByBroadcast(change: BroadcastChange): void {
+  private updateByBroadcast(change: BroadcastChange, session: TClientSession): void {
     let {uid, subject, resource} = change;
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
 
@@ -566,14 +576,14 @@ export class Client {
     shiftFirstChangeIfMatch(changes, uid);
 
     object = {
-      ...definition.update(snapshot, change),
+      ...definition.update(snapshot, change, session),
       syncing: false,
     };
 
     resourceData.snapshot = object;
 
     for (let change of changes) {
-      object = definition.update(object, change);
+      object = definition.update(object, change, this.session);
     }
 
     if (isEqual(object, snapshotBeforeChange)) {

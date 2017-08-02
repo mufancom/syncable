@@ -63,6 +63,11 @@ export interface BroadcastRemoval extends Change {
   timestamp: number;
 }
 
+export interface ClientBroadcastChangeData<TBroadcastChange extends BroadcastChange, TClientSession> {
+  change: TBroadcastChange;
+  session: TClientSession | undefined;
+}
+
 export interface RawSubscription {
 }
 

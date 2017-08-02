@@ -13,7 +13,7 @@ export interface ResourceStoreItem<T extends Syncable> {
   object: T;
 }
 
-export abstract class SyncableDefinition<T extends Syncable> {
+export abstract class SyncableDefinition<T extends Syncable, TClientSession> {
   // TODO:
   // abstract getChangesStore(): Store<Change>;
   // abstract getSnapshotsStore(): Store<T>;
@@ -31,6 +31,6 @@ export abstract class SyncableDefinition<T extends Syncable> {
     return true;
   }
 
-  abstract create(change: ClientCreation): T;
-  abstract update(object: T, change: Change): T;
+  abstract create(change: ClientCreation, session: TClientSession): T;
+  abstract update(object: T, change: Change, session: TClientSession): T;
 }

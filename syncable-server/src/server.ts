@@ -7,6 +7,7 @@ import {
   BroadcastCreation,
   BroadcastRemoval,
   Change,
+  ClientBroadcastChangeData,
   Removal,
   Request,
   ServerCreation,
@@ -24,15 +25,20 @@ export interface ResourceLock {
 
 export type Visibility = boolean | 'upon-request';
 
-export interface SubscriptionInfo {
+export interface SubscriptionInfo<TClientSession> {
   subscription: Subscription;
-  changeEmitter: ObjectQueue<BroadcastChange>;
+  changeEmitter: ObjectQueue<ClientBroadcastChangeData<BroadcastChange, TClientSession>>;
   visibleSet: Set<string>;
   valid: boolean;
 }
 
-export interface Socket extends SocketIO.Socket {
-  subjectToSubscriptionInfoMap: Map<string, SubscriptionInfo>;
+export interface ServerBroadcastChangeData<TSession> {
+  change: BroadcastChange;
+  session: TSession;
+}
+
+export interface Socket<TClientSession> extends SocketIO.Socket {
+  subjectToSubscriptionInfoMap: Map<string, SubscriptionInfo<TClientSession>>;
 
   on(event: 'change', listener: (change: Change) => void): this;
   on(event: 'subscribe', listener: (subscription: Subscription) => void): this;
@@ -40,38 +46,43 @@ export interface Socket extends SocketIO.Socket {
   on(event: 'close', listener: () => void): this;
 
   emit(event: 'subscribed', data: Subscription): boolean;
-  emit(event: 'change', change: BroadcastChange): boolean;
+  emit(event: 'change', data: ClientBroadcastChangeData<BroadcastChange, TClientSession>): boolean;
   emit(event: 'snapshots', data: SnapshotsData): boolean;
 }
 
-export interface SocketServer extends SocketIO.Server {
-  on(event: 'connection' | 'connect', listener: (socket: Socket) => void): SocketIO.Namespace;
+export interface SocketServer<TClientSession> extends SocketIO.Server {
+  on(event: 'connection' | 'connect', listener: (socket: Socket<TClientSession>) => void): SocketIO.Namespace;
 }
 
-export class ChangeEmitter extends ObjectQueue<BroadcastChange> {
+export class ChangeEmitter<TClientSession>
+extends ObjectQueue<ClientBroadcastChangeData<BroadcastChange, TClientSession>> {
   constructor(
-    private socket: Socket,
+    private socket: Socket<TClientSession>,
   ) {
     super();
   }
 
-  protected emit(object: BroadcastChange): void {
+  protected emit(object: ClientBroadcastChangeData<BroadcastChange, TClientSession>): void {
     this.socket.emit('change', object);
   }
 
-  protected resolveChannel({subject}: BroadcastChange): string {
+  protected resolveChannel({change: {subject}}: ClientBroadcastChangeData<BroadcastChange, TClientSession>): string {
     return subject;
   }
 }
 
-export abstract class Server<TSession> extends EventEmitter {
+export abstract class Server<TSession, TClientSession> extends EventEmitter {
   private errorEmitter: (error: any) => void = this.emit.bind(this, 'error');
 
-  private subjectToDefinitionMap = new Map<string, SyncableDefinition<Syncable, Subscription, TSession, this>>();
-  private subjectToSocketSetMap = new Map<string, Set<Socket>>();
+  private subjectToDefinitionMap = new Map<
+    string,
+    SyncableDefinition<Syncable, Subscription, TSession, TClientSession, this>
+  >();
+
+  private subjectToSocketSetMap = new Map<string, Set<Socket<TClientSession>>>();
 
   constructor(
-    private socketServer: SocketServer,
+    private socketServer: SocketServer<TClientSession>,
   ) {
     super();
 
@@ -79,7 +90,10 @@ export abstract class Server<TSession> extends EventEmitter {
     this.initSocketServer();
   }
 
-  register(subject: string, definition: SyncableDefinition<Syncable, Subscription, TSession, this>): void {
+  register(
+    subject: string,
+    definition: SyncableDefinition<Syncable, Subscription, TSession, TClientSession, this>,
+  ): void {
     definition._server = this;
     this.subjectToDefinitionMap.set(subject, definition);
   }
@@ -120,7 +134,8 @@ export abstract class Server<TSession> extends EventEmitter {
     }
   }
 
-  protected abstract getSession(socket: Socket): TSession;
+  protected abstract getSession(socket: Socket<TClientSession>): TSession;
+  protected abstract resolveClientSession(session: TSession): TClientSession;
 
   protected abstract async lock(resource: string, ttl: number): Promise<ResourceLock>;
   protected abstract async generateTimestamp(): Promise<number>;
@@ -139,7 +154,7 @@ export abstract class Server<TSession> extends EventEmitter {
 
   private initSocketServer(): void {
     this.socketServer.on('connect', socket => {
-      socket.subjectToSubscriptionInfoMap = new Map<string, SubscriptionInfo>();
+      socket.subjectToSubscriptionInfoMap = new Map<string, SubscriptionInfo<TClientSession>>();
 
       socket.on('subscribe', subscription => {
         let {subjectToSubscriptionInfoMap} = socket;
@@ -151,7 +166,7 @@ export abstract class Server<TSession> extends EventEmitter {
           existingInfo.valid = false;
         }
 
-        let info: SubscriptionInfo = {
+        let info: SubscriptionInfo<TClientSession> = {
           subscription,
           changeEmitter: new ChangeEmitter(socket),
           visibleSet: new Set<string>(loaded),
@@ -190,7 +205,10 @@ export abstract class Server<TSession> extends EventEmitter {
     });
   }
 
-  private async initSubscription(info: SubscriptionInfo, socket: Socket): Promise<void> {
+  private async initSubscription(
+    info: SubscriptionInfo<TClientSession>,
+    socket: Socket<TClientSession>,
+  ): Promise<void> {
     let {subscription: {timestamp}} = info;
 
     if (typeof timestamp === 'number') {
@@ -200,7 +218,10 @@ export abstract class Server<TSession> extends EventEmitter {
     }
   }
 
-  private async loadAndEmitSnapshots(info: SubscriptionInfo, socket: Socket): Promise<void> {
+  private async loadAndEmitSnapshots(
+    info: SubscriptionInfo<TClientSession>,
+    socket: Socket<TClientSession>,
+  ): Promise<void> {
     let {changeEmitter, subscription, visibleSet} = info;
     let {subject} = subscription;
 
@@ -235,13 +256,13 @@ export abstract class Server<TSession> extends EventEmitter {
       resourceToTimestampMap.set(uid, timestamp);
     }
 
-    changeEmitter.resume(subject, ({resource, timestamp}) => {
+    changeEmitter.resume(subject, ({change: {resource, timestamp}}) => {
       let resourceTimestamp = resourceToTimestampMap.get(resource);
       return !resourceTimestamp || resourceTimestamp < timestamp;
     });
   }
 
-  private async loadAndEmitUponRequest(request: Request, socket: Socket): Promise<void> {
+  private async loadAndEmitUponRequest(request: Request, socket: Socket<TClientSession>): Promise<void> {
     let {subject, resources} = request;
     let {subjectToSubscriptionInfoMap} = socket;
 
@@ -271,7 +292,10 @@ export abstract class Server<TSession> extends EventEmitter {
         timestamp,
       };
 
-      socket.emit('change', creation);
+      socket.emit('change', {
+        change: creation,
+        session: undefined,
+      });
 
       visibleSet.add(resource);
     }
@@ -279,7 +303,10 @@ export abstract class Server<TSession> extends EventEmitter {
     changeEmitter.resume(subject);
   }
 
-  private async loadAndEmitChanges(info: SubscriptionInfo, socket: Socket): Promise<void> {
+  private async loadAndEmitChanges(
+    info: SubscriptionInfo<TClientSession>,
+    socket: Socket<TClientSession>,
+  ): Promise<void> {
     let {changeEmitter, subscription} = info;
     let {subject} = subscription;
 
@@ -297,9 +324,9 @@ export abstract class Server<TSession> extends EventEmitter {
       socket.emit('change', change);
     }
 
-    let latestTimestamp = changes.length ? changes[changes.length - 1].timestamp : 0;
+    let latestTimestamp = changes.length ? changes[changes.length - 1].change.timestamp : 0;
 
-    changeEmitter.resume(subject, ({timestamp}) => timestamp > latestTimestamp);
+    changeEmitter.resume(subject, ({change: {timestamp}}) => timestamp > latestTimestamp);
   }
 
   private handleChangeFromQueue(change: BroadcastChange, session: TSession): void {
@@ -311,6 +338,7 @@ export abstract class Server<TSession> extends EventEmitter {
       return;
     }
 
+    let clientSession = this.resolveClientSession(session);
     let definition = this.subjectToDefinitionMap.get(subject)!;
 
     for (let socket of socketSet) {
@@ -360,21 +388,19 @@ export abstract class Server<TSession> extends EventEmitter {
         }
       }
 
-      changeEmitter.add(changeToBroadcast);
+      changeEmitter.add({
+        change: changeToBroadcast,
+        session: clientSession,
+      });
     }
   }
 }
 
-export interface BroadcastChangeData<TSession> {
-  change: BroadcastChange;
-  session: TSession;
-}
-
-export interface Server<TSession> {
-  on(event: 'change', listener: (data: BroadcastChangeData<TSession>) => void): this;
+export interface Server<TSession, TClientSession> {
+  on(event: 'change', listener: (data: ServerBroadcastChangeData<TSession>) => void): this;
   on(event: 'error', listener: (error: any) => void): this;
 
-  emit(event: 'change', data: BroadcastChangeData<TSession>): boolean;
+  emit(event: 'change', data: ServerBroadcastChangeData<TSession>): boolean;
   emit(event: 'error', error: any): boolean;
 }
 

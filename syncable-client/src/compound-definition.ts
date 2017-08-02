@@ -20,14 +20,14 @@ export interface Dependency<T extends Syncable, TEntry extends Syncable> {
   options: CompoundDependencyOptions<T, TEntry>;
 }
 
-export abstract class CompoundDefinition<T, TEntry extends Syncable> {
+export abstract class CompoundDefinition<T, TEntry extends Syncable, TClientSession> {
   /** @internal */
-  _client: Client;
+  _client: Client<TClientSession>;
 
   entry: string;
   dependencies: Dependency<Syncable, TEntry>[] = [];
 
-  get client(): Client {
+  get client(): Client<TClientSession> {
     return this._client;
   }
 

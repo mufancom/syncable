@@ -1,6 +1,7 @@
 import {
   BroadcastChange,
   Change,
+  ClientBroadcastChangeData,
   Removal,
   ServerCreation,
   Subscription,
@@ -17,7 +18,8 @@ export abstract class SyncableDefinition<
   TSyncable extends Syncable,
   TSubscription extends Subscription,
   TSession,
-  TServer extends Server<TSession>> {
+  TClientSession,
+  TServer extends Server<TSession, TClientSession>> {
   /** @internal */
   _server: TServer;
 
@@ -28,7 +30,7 @@ export abstract class SyncableDefinition<
   async loadSnapshotsUponRequest(
     _resources: string[],
     _subscription: TSubscription,
-    _socket: Socket,
+    _socket: Socket<TClientSession>,
   ): Promise<TSyncable[]> {
     return [];
   }
@@ -37,13 +39,24 @@ export abstract class SyncableDefinition<
     change: BroadcastChange,
     changeSession: TSession,
     subscription: TSubscription,
-    socket: Socket,
+    socket: Socket<TClientSession>,
   ): boolean;
 
-  abstract testVisibility(object: TSyncable, subscription: TSubscription, socket: Socket): Visibility;
+  abstract testVisibility(
+    object: TSyncable,
+    subscription: TSubscription,
+    socket: Socket<TClientSession>,
+  ): Visibility;
 
-  abstract async loadSnapshots(subscription: TSubscription, socket: Socket): Promise<TSyncable[]>;
-  abstract async loadChanges(subscription: TSubscription, socket: Socket): Promise<BroadcastChange[]>;
+  abstract async loadSnapshots(
+    subscription: TSubscription,
+    socket: Socket<TClientSession>,
+  ): Promise<TSyncable[]>;
+
+  abstract async loadChanges(
+    subscription: TSubscription,
+    socket: Socket<TClientSession>,
+  ): Promise<ClientBroadcastChangeData<BroadcastChange, TClientSession>[]>;
 
   abstract async create(change: ServerCreation, timestamp: number, session: TSession): Promise<TSyncable>;
   abstract async update(change: Change, timestamp: number, session: TSession): Promise<TSyncable | undefined>;
