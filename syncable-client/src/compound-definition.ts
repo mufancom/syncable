@@ -35,12 +35,12 @@ export abstract class CompoundDefinition<T, TEntry extends Syncable, TClientSess
 
   protected registerEntry(
     subject: string,
-    {indexes}: CompoundEntryOptions<TEntry> = {},
+    options: CompoundEntryOptions<TEntry> = {},
   ): void {
     let dependency: Dependency<TEntry, TEntry> = {
       subject,
       options: {
-        indexes,
+        ...options,
         compoundEntryResolver(object: TEntry) { return object; },
       },
     };
