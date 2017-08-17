@@ -519,10 +519,6 @@ export class Client<TClientSession> {
       };
     }
 
-    if (isEqual(object, broadcastSnapshot)) {
-      return;
-    }
-
     let snapshotBeforeChange: Syncable | undefined;
 
     if (resourceData && object) {
@@ -580,8 +576,6 @@ export class Client<TClientSession> {
       syncing: false,
     };
 
-    resourceData.snapshot = object;
-
     for (let change of changes) {
       object = definition.update(object, change, this.session);
     }
@@ -590,6 +584,7 @@ export class Client<TClientSession> {
       return;
     }
 
+    resourceData.snapshot = object;
     resourceMap.set(resource, object);
 
     this.onSyncableChange({
