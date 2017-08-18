@@ -5,7 +5,7 @@ export interface Syncable {
   uid: string;
   /** Timestamp. */
   timestamp: number;
-  syncing?: boolean;
+  syncing?: true;
 }
 
 /*

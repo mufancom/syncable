@@ -82,7 +82,7 @@ export interface ChangeNotification<T> {
   subject: string;
   resource: string;
   object: T | undefined;
-  snapshot: T | undefined;
+  before: T | undefined;
 }
 
 export class CompoundDependencyHost {
@@ -395,8 +395,10 @@ export class Client<TClientSession> {
 
     definition.preprocessChange(change);
 
-    let object = {
-      ...definition.create(change, this.session),
+    let snapshot = definition.create(change, this.session);
+
+    let object: Syncable = {
+      ...snapshot,
       syncing: true,
     };
 
@@ -405,7 +407,7 @@ export class Client<TClientSession> {
     }
 
     let resourceData: SyncableResourceData<Syncable> = {
-      snapshot: object,
+      snapshot,
       changes: [change],
     };
 
@@ -415,7 +417,7 @@ export class Client<TClientSession> {
     this.onSyncableChange({
       subject,
       resource,
-      snapshot: undefined,
+      before: undefined,
       object,
     });
 
@@ -435,16 +437,18 @@ export class Client<TClientSession> {
     let {changes} = resourceDataMap.get(resource)!;
     let object: Syncable | undefined = resourceMap.get(resource)!;
 
-    let snapshotBeforeChange = object;
+    let {syncing: _, ...objectBeforeChange} = object;
 
-    object = {
-      ...definition.update(object, change, this.session),
-      syncing: true,
-    };
+    object = definition.update(objectBeforeChange, change, this.session);
 
-    if (isEqual(object, snapshotBeforeChange)) {
+    if (isEqual(object, objectBeforeChange)) {
       return;
     }
+
+    object = {
+      ...object,
+      syncing: true,
+    };
 
     if (definition.testVisibility(object)) {
       resourceMap.set(resource, object);
@@ -458,7 +462,7 @@ export class Client<TClientSession> {
     this.onSyncableChange({
       subject,
       resource,
-      snapshot: snapshotBeforeChange,
+      before: objectBeforeChange,
       object,
     });
 
@@ -491,7 +495,7 @@ export class Client<TClientSession> {
     this.onSyncableChange({
       subject,
       resource,
-      snapshot: object,
+      before: object,
       object: undefined,
     });
 
@@ -509,20 +513,14 @@ export class Client<TClientSession> {
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
 
     let resourceData = resourceDataMap.get(resource);
-
     let object = resourceMap.get(resource);
 
-    if (object) {
-      object = {
-        ...object,
-        syncing: false,
-      };
-    }
-
-    let snapshotBeforeChange: Syncable | undefined;
+    let objectBeforeChange: Syncable | undefined;
 
     if (resourceData && object) {
-      snapshotBeforeChange = object;
+      let {syncing: _, ...objectWithoutSyncing} = object;
+
+      objectBeforeChange = objectWithoutSyncing;
 
       let {changes} = resourceData;
 
@@ -530,20 +528,17 @@ export class Client<TClientSession> {
 
       object = broadcastSnapshot;
 
-      resourceData.snapshot = object;
-
       for (let change of changes) {
         object = definition.update(object, change, this.session);
       }
 
+      resourceData.snapshot = object;
       resourceMap.set(resource, object);
     } else {
-      let snapshot = broadcastSnapshot;
-
-      object = snapshot;
+      object = broadcastSnapshot;
 
       resourceData = {
-        snapshot,
+        snapshot: object,
         changes: [],
       };
 
@@ -554,7 +549,7 @@ export class Client<TClientSession> {
     this.onSyncableChange({
       subject,
       resource,
-      snapshot: snapshotBeforeChange,
+      before: objectBeforeChange,
       object,
     });
   }
@@ -564,23 +559,20 @@ export class Client<TClientSession> {
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
 
     let object = resourceMap.get(resource)!;
-    let snapshotBeforeChange = object;
+    let {syncing: _, ...objectBeforeChange} = object;
 
     let resourceData = resourceDataMap.get(resource)!;
     let {snapshot, changes} = resourceData;
 
     shiftPrecedingChangesIfMatch(changes, uid);
 
-    object = {
-      ...definition.update(snapshot, change, session),
-      syncing: false,
-    };
+    object = definition.update(snapshot, change, session);
 
     for (let change of changes) {
       object = definition.update(object, change, this.session);
     }
 
-    if (isEqual(object, snapshotBeforeChange)) {
+    if (isEqual(object, objectBeforeChange)) {
       return;
     }
 
@@ -590,7 +582,7 @@ export class Client<TClientSession> {
     this.onSyncableChange({
       subject,
       resource,
-      snapshot: snapshotBeforeChange,
+      before: objectBeforeChange,
       object,
     });
   }
@@ -614,7 +606,7 @@ export class Client<TClientSession> {
     this.onSyncableChange({
       subject,
       resource,
-      snapshot: object,
+      before: object,
       object: undefined,
     });
   }
@@ -765,7 +757,7 @@ export class Client<TClientSession> {
 
   private handleCompoundDependencyChange(
     compoundSubject: string,
-    {subject, snapshot, object}: ChangeNotification<Syncable>,
+    {subject, before, object}: ChangeNotification<Syncable>,
   ): void {
     let {
       definition,
@@ -782,11 +774,11 @@ export class Client<TClientSession> {
     let {indexToResourceSetMapMap, compoundEntryResolver} = dependencyDataMap.get(subject)!;
 
     for (let [key, indexToResourceSetMap] of indexToResourceSetMapMap) {
-      if (snapshot) {
-        let index = (snapshot as any)[key];
+      if (before) {
+        let index = (before as any)[key];
 
         if (index) {
-          indexToResourceSetMap.get(index)!.delete(snapshot);
+          indexToResourceSetMap.get(index)!.delete(before);
         }
       }
 
@@ -827,7 +819,7 @@ export class Client<TClientSession> {
         .next({
           subject: compoundSubject,
           resource: uid,
-          snapshot: compoundSnapshot,
+          before: compoundSnapshot,
           object: compound,
         });
     };
@@ -846,7 +838,7 @@ export class Client<TClientSession> {
         .next({
           subject: compoundSubject,
           resource: uid,
-          snapshot: compoundSnapshot,
+          before: compoundSnapshot,
           object: undefined,
         });
     };
@@ -854,14 +846,14 @@ export class Client<TClientSession> {
     if (subject === definition.entry) {
       if (object) {
         updateCompound(object);
-      } else if (snapshot) {
-        removeCompound(snapshot);
+      } else if (before) {
+        removeCompound(before);
       }
 
       return;
     }
 
-    let previousEntries = snapshot && compoundEntryResolver(snapshot, dependencyHost);
+    let previousEntries = before && compoundEntryResolver(before, dependencyHost);
     let entries = object && compoundEntryResolver(object, dependencyHost);
 
     if (typeof entries === 'string') {
