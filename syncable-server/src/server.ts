@@ -8,6 +8,12 @@ import {
   BroadcastRemoval,
   Change,
   ClientBroadcastChangeData,
+  ClientCreation,
+  GeneralChange,
+  GeneralQueuedBroadcastChange,
+  QueuedBroadcastChange,
+  QueuedBroadcastCreation,
+  QueuedBroadcastRemoval,
   Removal,
   Request,
   ServerCreation,
@@ -32,8 +38,8 @@ export interface SubscriptionInfo<TClientSession> {
   valid: boolean;
 }
 
-export interface ServerBroadcastChangeData<TSession> {
-  change: BroadcastChange;
+export interface QueuedBroadcastChangeData<TSession> {
+  change: QueuedBroadcastChange;
   session: TSession;
 }
 
@@ -98,9 +104,9 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
-  async spawnChange<T extends Change | ServerCreation>(change: T, session: TSession): Promise<void>;
-  async spawnChange(change: Change | ServerCreation, session: TSession): Promise<void> {
-    let {subject, type, resource} = change;
+  async spawnChange<T extends GeneralChange>(change: T, session: TSession): Promise<void>;
+  async spawnChange(change: GeneralChange, session: TSession): Promise<void> {
+    let {uid, subject, resource} = change;
 
     let definition = this.subjectToDefinitionMap.get(subject)!;
 
@@ -112,21 +118,40 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 
     try {
       let timestamp = await this.generateTimestamp();
-      let snapshot: Syncable | undefined;
-      let broadcastChange: BroadcastChange;
 
-      if (type === 'create') {
-        snapshot = await definition.create(change as ServerCreation, timestamp, session);
-        broadcastChange = {...change as ServerCreation, resource: snapshot.uid, snapshot, timestamp};
-      } else if (type === 'remove') {
-        await definition.remove(change as Removal, timestamp, session);
-        broadcastChange = {...change as Removal, timestamp};
+      if (isCreation(change)) {
+        let snapshot = await definition.create(change, timestamp, session);
+
+        let queuedBroadcastCreation: QueuedBroadcastCreation = {
+          uid,
+          subject,
+          resource: snapshot.uid,
+          type: 'create',
+          snapshot,
+          timestamp,
+        };
+
+        await this.queueChange(queuedBroadcastCreation, session);
+      } else if (isRemoval(change)) {
+        await definition.remove(change, timestamp, session);
+
+        let queuedBroadcastRemoval: QueuedBroadcastRemoval = {
+          ...change,
+          timestamp,
+        };
+
+        await this.queueChange(queuedBroadcastRemoval, session);
       } else {
-        snapshot = await definition.update(change as Change, timestamp, session);
-        broadcastChange = {...change as Change, snapshot, timestamp};
-      }
+        let snapshot = await definition.update(change, timestamp, session);
 
-      await this.queueChange(broadcastChange, session);
+        let queuedBroadcastChange: QueuedBroadcastChange = {
+          ...change,
+          snapshot,
+          timestamp,
+        };
+
+        await this.queueChange(queuedBroadcastChange, session);
+      }
     } finally {
       if (lock) {
         await lock.release();
@@ -329,8 +354,8 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
     changeEmitter.resume(subject, ({change: {timestamp}}) => timestamp > latestTimestamp);
   }
 
-  private handleChangeFromQueue(change: BroadcastChange, session: TSession): void {
-    let {subject, resource, type, snapshot} = change;
+  private handleChangeFromQueue(change: GeneralQueuedBroadcastChange, session: TSession): void {
+    let {subject, resource} = change;
 
     let socketSet = this.subjectToSocketSetMap.get(subject);
 
@@ -351,22 +376,22 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 
       let changeToBroadcast: BroadcastChange;
 
-      if (type === 'remove') {
+      if (isQueuedBroadcastCreation(change)) {
+        if (definition.testVisibility(change.snapshot, subscription, socket)) {
+          visibleSet.add(resource);
+          changeToBroadcast = pruneAsBroadcastCreation(change);
+        } else {
+          continue;
+        }
+      } else if (isQueuedBroadcastRemoval(change)) {
         if (visibleSet.has(resource)) {
           visibleSet.delete(resource);
           changeToBroadcast = change;
         } else {
           continue;
         }
-      } else if (type === 'create') {
-        if (definition.testVisibility(snapshot!, subscription, socket)) {
-          visibleSet.add(resource);
-          changeToBroadcast = pruneAsBroadcastCreation(change);
-        } else {
-          continue;
-        }
       } else {
-        let visibility = definition.testVisibility(snapshot!, subscription, socket);
+        let visibility = definition.testVisibility(change.snapshot, subscription, socket);
 
         if (visibility) {
           if (visibleSet.has(resource)) {
@@ -397,11 +422,27 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 }
 
 export interface Server<TSession, TClientSession> {
-  on(event: 'change', listener: (data: ServerBroadcastChangeData<TSession>) => void): this;
+  on(event: 'change', listener: (data: QueuedBroadcastChangeData<TSession>) => void): this;
   on(event: 'error', listener: (error: any) => void): this;
 
-  emit(event: 'change', data: ServerBroadcastChangeData<TSession>): boolean;
+  emit(event: 'change', data: QueuedBroadcastChangeData<TSession>): boolean;
   emit(event: 'error', error: any): boolean;
+}
+
+function isCreation(object: GeneralChange): object is ClientCreation | ServerCreation {
+  return object.type === 'create';
+}
+
+function isRemoval(object: GeneralChange): object is Removal {
+  return object.type === 'remove';
+}
+
+function isQueuedBroadcastCreation(object: GeneralQueuedBroadcastChange): object is QueuedBroadcastCreation {
+  return object.type === 'create';
+}
+
+function isQueuedBroadcastRemoval(object: GeneralQueuedBroadcastChange): object is QueuedBroadcastRemoval {
+  return object.type === 'remove';
 }
 
 function pruneAsBroadcastCreation({
@@ -410,13 +451,13 @@ function pruneAsBroadcastCreation({
   resource,
   snapshot,
   timestamp,
-}: BroadcastChange): BroadcastCreation {
+}: QueuedBroadcastChange): BroadcastCreation {
   return {
     uid,
     subject,
     resource,
     type: 'create',
-    snapshot: snapshot!,
+    snapshot,
     timestamp,
   };
 }
@@ -426,7 +467,7 @@ function pruneAsBroadcastRemoval({
   subject,
   resource,
   timestamp,
-}: BroadcastChange): BroadcastRemoval {
+}: QueuedBroadcastChange): BroadcastRemoval {
   return {
     uid,
     subject,

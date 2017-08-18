@@ -8,27 +8,46 @@ export interface Syncable {
   syncing?: boolean;
 }
 
-export interface RawChange {
-  /** Subject of this change. */
-  subject: string;
-  /** Change type. */
-  type: string;
-  /** Resource that this change targets to. */
-  resource: string;
-}
+/*
+ * Creation/Removal/Change transformations explanation:
+ *
+ * RawCreation
+ *   | server-only: client.create() + uid + type + resource? -> ServerCreation
+ *   | both-end: client.create() + uid + type + resource -> ClientCreation
+ * ClientCreation
+ *   | server.spawnChange() => ServerCreation
+ * ServerCreation
+ *   | server.spawnChange() + resource! + snapshot + timestamp - ... -> QueuedBroadcastCreation
+ * QueuedBroadcastCreation
+ *   | server.handleChangeFromQueue() => BroadcastCreation
+ * BroadcastCreation
+ *
+ * RawRemoval
+ *   | client.remove() + uid + type -> Removal
+ * Removal
+ *   | server.spawnChange() + timestamp -> QueuedBroadcastRemoval
+ * QueuedBroadcastRemoval
+ *   | server.handleChangeFromQueue() => BroadcastRemoval
+ * BroadcastRemoval
+ *
+ * RawChange
+ *   | client.update() + uid -> Change
+ * Change
+ *   | server.spawnChange() + snapshot + timestamp -> QueuedBroadcastChange
+ * QueuedBroadcastChange
+ *   | server.handleChangeFromQueue() - snapshot -> BroadcastChange
+ *   | server.handleChangeFromQueue() - ... -> BroadcastCreation
+ *   | server.handleChangeFromQueue() - ... -> BroadcastRemoval
+ * BroadcastChange
+ */
+
+export type GeneralChange = ClientCreation | ServerCreation | Removal | Change;
+export type GeneralQueuedBroadcastChange = QueuedBroadcastCreation | QueuedBroadcastRemoval | QueuedBroadcastChange;
+
+// create
 
 export interface RawCreation {
   subject: string;
-}
-
-export interface RawRemoval {
-  subject: string;
-  resource: string;
-}
-
-export interface Change extends RawChange {
-  /** Unique identifier of this change. */
-  uid: string;
 }
 
 export interface ServerCreation extends RawCreation {
@@ -43,23 +62,54 @@ export interface ClientCreation extends RawCreation {
   type: 'create';
 }
 
+export interface BroadcastCreation extends ServerCreation {
+  resource: string;
+  snapshot: Syncable;
+  timestamp: number;
+}
+
+export interface QueuedBroadcastCreation extends BroadcastCreation { }
+
+// remove
+
+export interface RawRemoval {
+  subject: string;
+  resource: string;
+}
+
 export interface Removal extends RawRemoval {
   uid: string;
   type: 'remove';
 }
 
-export interface BroadcastChange extends Change {
+export interface BroadcastRemoval extends Removal {
   timestamp: number;
-  snapshot?: Syncable | undefined;
 }
 
-export interface BroadcastCreation extends BroadcastChange {
-  type: 'create';
+export interface QueuedBroadcastRemoval extends BroadcastRemoval { }
+
+// change
+
+export interface RawChange {
+  /** Subject of this change. */
+  subject: string;
+  /** Change type. */
+  type: string;
+  /** Resource that this change targets to. */
+  resource: string;
+}
+
+export interface Change extends RawChange {
+  /** Unique identifier of this change. */
+  uid: string;
+}
+
+export interface QueuedBroadcastChange extends Change {
+  timestamp: number;
   snapshot: Syncable;
 }
 
-export interface BroadcastRemoval extends Change {
-  type: 'remove';
+export interface BroadcastChange extends Change {
   timestamp: number;
 }
 

@@ -59,6 +59,6 @@ export abstract class SyncableDefinition<
   ): Promise<ClientBroadcastChangeData<BroadcastChange, TClientSession>[]>;
 
   abstract async create(change: ServerCreation, timestamp: number, session: TSession): Promise<TSyncable>;
-  abstract async update(change: Change, timestamp: number, session: TSession): Promise<TSyncable | undefined>;
+  abstract async update(change: Change, timestamp: number, session: TSession): Promise<TSyncable>;
   abstract async remove(change: Removal, timestamp: number, session: TSession): Promise<void>;
 }
