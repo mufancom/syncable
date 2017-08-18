@@ -555,7 +555,7 @@ export class Client<TClientSession> {
   }
 
   private updateByBroadcast(change: BroadcastChange, session: TClientSession): void {
-    let {uid, subject, resource} = change;
+    let {uid, subject, resource, timestamp} = change;
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
 
     let object = resourceMap.get(resource)!;
@@ -571,6 +571,8 @@ export class Client<TClientSession> {
     for (let change of changes) {
       object = definition.update(object, change, this.session);
     }
+
+    object = {...object, timestamp};
 
     if (isEqual(object, objectBeforeChange)) {
       return;
