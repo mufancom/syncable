@@ -28,11 +28,22 @@ export abstract class SyncableDefinition<
     return this._server;
   }
 
+  /** Override to customize. */
   pruneBroadcastChange(change: QueuedBroadcastChange): BroadcastChange {
     let {snapshot: _, ...broadcastChange} = change;
     return broadcastChange;
   }
 
+  /** Override to customize. */
+  testVisibility(
+    _object: TSyncable,
+    _subscription: TSubscription,
+    _socket: Socket<TClientSession>,
+  ): Visibility {
+    return true;
+  }
+
+  /** Override to customize. */
   async loadSnapshotsUponRequest(
     _resources: string[],
     _subscription: TSubscription,
@@ -47,12 +58,6 @@ export abstract class SyncableDefinition<
     subscription: TSubscription,
     socket: Socket<TClientSession>,
   ): boolean;
-
-  abstract testVisibility(
-    object: TSyncable,
-    subscription: TSubscription,
-    socket: Socket<TClientSession>,
-  ): Visibility;
 
   abstract async loadSnapshots(
     subscription: TSubscription,
