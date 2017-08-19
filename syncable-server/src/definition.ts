@@ -2,6 +2,7 @@ import {
   BroadcastChange,
   Change,
   ClientBroadcastChangeData,
+  QueuedBroadcastChange,
   Removal,
   ServerCreation,
   Subscription,
@@ -25,6 +26,11 @@ export abstract class SyncableDefinition<
 
   get server(): TServer {
     return this._server;
+  }
+
+  pruneBroadcastChange(change: QueuedBroadcastChange): BroadcastChange {
+    let {snapshot: _, ...broadcastChange} = change;
+    return broadcastChange;
   }
 
   async loadSnapshotsUponRequest(

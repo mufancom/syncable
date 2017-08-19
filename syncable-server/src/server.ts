@@ -395,8 +395,7 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 
         if (visibility) {
           if (visibleSet.has(resource)) {
-            let {snapshot: _, ...changeWithoutSnapshot} = change;
-            changeToBroadcast = changeWithoutSnapshot;
+            changeToBroadcast = definition.pruneBroadcastChange(change);
           } else if (visibility === true) {
             visibleSet.add(resource);
             changeToBroadcast = pruneAsBroadcastCreation(change);
