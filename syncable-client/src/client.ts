@@ -59,7 +59,7 @@ interface SyncableSubjectData<T extends Syncable, TClientSession> {
 }
 
 export interface DependencyData<T extends Syncable, TEntry extends Syncable> {
-  indexToResourceSetMapMap: Map<string, Map<any, Set<T>>>;
+  indexToResourceSetMapMap: Map<string, Map<string, Set<T>>>;
   resourceMap: Map<string, T>;
   requestAbsentEntries: boolean;
   compoundEntryResolver: CompoundEntryResolver<T, TEntry>;
@@ -93,6 +93,22 @@ export class CompoundDependencyHost {
   getDependencyResource<TDependency extends Syncable>(subject: string, uid: string): TDependency | undefined {
     let {resourceMap} = this.dependencyDataMap.get(subject)!;
     return resourceMap.get(uid) as TDependency;
+  }
+
+  getDependencyResources<TDependency extends Syncable>(subject: string, uids: string[]): TDependency[] {
+    let {resourceMap} = this.dependencyDataMap.get(subject)!;
+
+    let dependencies: TDependency[] = [];
+
+    for (let uid of uids) {
+      let dependency = resourceMap.get(uid) as TDependency | undefined;
+
+      if (dependency) {
+        dependencies.push(dependency);
+      }
+    }
+
+    return dependencies;
   }
 
   getDependencyResourceByIndex<TDependency extends Syncable, TKey extends keyof TDependency = keyof TDependency>(
@@ -183,9 +199,9 @@ export class Client<TClientSession> {
       } of dependencies
     ) {
       let indexToResourceSetMapMap = new Map(
-        indexes.map<[string, Map<any, Set<Syncable>>]>(key => [
+        indexes.map<[string, Map<string, Set<Syncable>>]>(key => [
           key,
-          new Map<any, Set<Syncable>>(),
+          new Map<string, Set<Syncable>>(),
         ]),
       );
 
@@ -734,23 +750,27 @@ export class Client<TClientSession> {
 
   private initCompoundDependencyIndexes(
     resourceMap: Map<string, Syncable>,
-    indexToResourceSetMapMap: Map<string, Map<any, Set<Syncable>>>,
+    indexToResourceSetMapMap: Map<string, Map<string, Set<Syncable>>>,
     {options: {indexes = []}}: Dependency<Syncable, Syncable>,
   ): void {
     for (let object of resourceMap.values()) {
       for (let key of indexes) {
         let indexToResourceSetMap = indexToResourceSetMapMap.get(key)!;
 
-        let index = object[key];
+        let indexes = object[key] as string | string[];
 
-        if (index) {
-          let resourceSet = indexToResourceSetMap.get(index);
+        if (indexes) {
+          indexes = Array.isArray(indexes) ? indexes : [indexes];
 
-          if (resourceSet) {
-            resourceSet.add(object);
-          } else {
-            resourceSet = new Set([object]);
-            indexToResourceSetMap.set(index, resourceSet);
+          for (let index of indexes) {
+            let resourceSet = indexToResourceSetMap.get(index);
+
+            if (resourceSet) {
+              resourceSet.add(object);
+            } else {
+              resourceSet = new Set([object]);
+              indexToResourceSetMap.set(index, resourceSet);
+            }
           }
         }
       }
@@ -777,24 +797,32 @@ export class Client<TClientSession> {
 
     for (let [key, indexToResourceSetMap] of indexToResourceSetMapMap) {
       if (before) {
-        let index = (before as any)[key];
+        let indexes = (before as any)[key] as string | string[];
 
-        if (index) {
-          indexToResourceSetMap.get(index)!.delete(before);
+        if (indexes) {
+          indexes = Array.isArray(indexes) ? indexes : [indexes];
+
+          for (let index of indexes) {
+            indexToResourceSetMap.get(index)!.delete(before);
+          }
         }
       }
 
       if (object) {
-        let index = (object as any)[key];
+        let indexes = (object as any)[key] as string | string[];
 
-        if (index) {
-          let resourceSet = indexToResourceSetMap.get(index);
+        if (indexes) {
+          indexes = Array.isArray(indexes) ? indexes : [indexes];
 
-          if (resourceSet) {
-            resourceSet.add(object);
-          } else {
-            resourceSet = new Set([object]);
-            indexToResourceSetMap.set(index, resourceSet);
+          for (let index of indexes) {
+            let resourceSet = indexToResourceSetMap.get(index);
+
+            if (resourceSet) {
+              resourceSet.add(object);
+            } else {
+              resourceSet = new Set([object]);
+              indexToResourceSetMap.set(index, resourceSet);
+            }
           }
         }
       }
