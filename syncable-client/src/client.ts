@@ -6,6 +6,7 @@ import * as uuid from 'uuid';
 
 import 'rxjs/add/observable/from';
 import 'rxjs/add/operator/debounceTime';
+import 'rxjs/add/operator/toPromise';
 
 import {
   BroadcastChange,
@@ -139,7 +140,7 @@ export class CompoundDependencyHost {
 }
 
 export class Client<TClientSession> {
-  private subjectToReadyPromiseMap = new Map<string, Promise<void>>();
+  private subjectToReadyPromiseMap = new Map<string, Promise<ReadyNotification<any>>>();
   private subjectToReadyObservableMap = new Map<string, Subject<ReadyNotification<any>>>();
   private subjectToChangeObservableMap = new Map<string, Subject<ChangeNotification<any>>>();
 
@@ -353,7 +354,7 @@ export class Client<TClientSession> {
     return this.compoundSubjectDataMap.get(subject)!.resourceMap as Map<string, T>;
   }
 
-  getReadyPromise(subject: string): Promise<void> {
+  getReadyPromise<T>(subject: string): Promise<ReadyNotification<T>> {
     return this.subjectToReadyPromiseMap.get(subject)!;
   }
 
@@ -443,7 +444,10 @@ export class Client<TClientSession> {
   }
 
   update(rawChange: RawChange): void {
-    let change: Change = Object.assign({uid: uuid()}, rawChange);
+    let change: Change = {
+      uid: uuid(),
+      ...rawChange,
+    };
 
     let {subject, resource} = change;
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
@@ -636,9 +640,7 @@ export class Client<TClientSession> {
     this.subjectToReadyObservableMap.set(subject, readySubject);
     this.subjectToChangeObservableMap.set(subject, changeSubject);
 
-    let promise = new Promise<void>((resolve, reject) => {
-      readySubject.first().subscribe(() => resolve(), reject);
-    });
+    let promise = readySubject.first().toPromise();
 
     this.subjectToReadyPromiseMap.set(subject, promise);
   }
