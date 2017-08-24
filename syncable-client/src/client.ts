@@ -455,13 +455,15 @@ export class Client<TClientSession> {
     definition.preprocessChange(change);
 
     let {changes} = resourceDataMap.get(resource)!;
-    let object: Syncable | undefined = resourceMap.get(resource)!;
 
-    let {syncing: _, ...objectBeforeChange} = object;
+    let objectBeforeChange = resourceMap.get(resource)!;
 
-    object = definition.update(objectBeforeChange, change, this.session);
+    let {syncing: _, ...objectBeforeChangeWithoutSyncing} = objectBeforeChange;
 
-    if (isEqual(object, objectBeforeChange)) {
+    let object: Syncable | undefined =
+      definition.update(objectBeforeChangeWithoutSyncing, change, this.session);
+
+    if (isEqual(object, objectBeforeChangeWithoutSyncing)) {
       return;
     }
 
@@ -527,44 +529,34 @@ export class Client<TClientSession> {
       uid,
       subject,
       resource,
-      snapshot: broadcastSnapshot,
+      snapshot: object,
     } = creation;
 
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
 
     let resourceData = resourceDataMap.get(resource);
-    let object = resourceMap.get(resource);
+    let objectBeforeChange = resourceMap.get(resource);
 
-    let objectBeforeChange: Syncable | undefined;
-
-    if (resourceData && object) {
-      let {syncing: _, ...objectWithoutSyncing} = object;
-
-      objectBeforeChange = objectWithoutSyncing;
-
+    if (resourceData && objectBeforeChange) {
       let {changes} = resourceData;
 
       shiftPrecedingChangesIfMatch(changes, uid);
-
-      object = broadcastSnapshot;
 
       for (let change of changes) {
         object = definition.update(object, change, this.session);
       }
 
       resourceData.snapshot = object;
-      resourceMap.set(resource, object);
     } else {
-      object = broadcastSnapshot;
-
       resourceData = {
         snapshot: object,
         changes: [],
       };
 
       resourceDataMap.set(resource, resourceData);
-      resourceMap.set(resource, object);
     }
+
+    resourceMap.set(resource, object);
 
     this.onSyncableChange({
       subject,
@@ -578,25 +570,20 @@ export class Client<TClientSession> {
     let {uid, subject, resource, timestamp} = change;
     let {definition, resourceDataMap, resourceMap} = this.syncableSubjectDataMap.get(subject)!;
 
-    let object = resourceMap.get(resource)!;
-    let {syncing: _, ...objectBeforeChange} = object;
-
     let resourceData = resourceDataMap.get(resource)!;
     let {snapshot, changes} = resourceData;
 
     shiftPrecedingChangesIfMatch(changes, uid);
 
-    object = definition.update(snapshot, change, session);
+    let objectBeforeChange = resourceMap.get(resource)!;
+
+    let object = definition.update(snapshot, change, session);
 
     for (let change of changes) {
       object = definition.update(object, change, this.session);
     }
 
     object = {...object, timestamp};
-
-    if (isEqual(object, objectBeforeChange)) {
-      return;
-    }
 
     resourceData.snapshot = object;
     resourceMap.set(resource, object);
