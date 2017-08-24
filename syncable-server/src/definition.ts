@@ -2,6 +2,7 @@ import {
   BroadcastChange,
   Change,
   ClientBroadcastChangeData,
+  GeneralQueuedBroadcastChange,
   QueuedBroadcastChange,
   Removal,
   ServerCreation,
@@ -53,7 +54,7 @@ export abstract class SyncableDefinition<
   }
 
   abstract onChange(
-    change: BroadcastChange,
+    change: GeneralQueuedBroadcastChange,
     changeSession: TSession,
     subscription: TSubscription,
     socket: Socket<TClientSession>,
