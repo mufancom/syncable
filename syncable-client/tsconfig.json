@@ -11,6 +11,7 @@
     "outDir": "bld",
     "rootDir": "src",
     "downlevelIteration": true,
+    "experimentalDecorators": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

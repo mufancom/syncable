@@ -1,11 +1,15 @@
 import * as difference from 'lodash.difference';
 import * as isEqual from 'lodash.isequal';
+import memorize from 'memorize-decorator';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import * as uuid from 'uuid';
 
 import 'rxjs/add/observable/from';
+import 'rxjs/add/observable/merge';
 import 'rxjs/add/operator/debounceTime';
+import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/publishReplay';
 import 'rxjs/add/operator/toPromise';
 
 import {
@@ -350,6 +354,20 @@ export class Client<TClientSession> {
     return this.syncableSubjectDataMap.get(subject)!.resourceMap as Map<string, T>;
   }
 
+  @memorize()
+  getResourceMapObservable<T extends Syncable>(subject: string): Observable<Map<string, T>> {
+    let resourceMap = this.syncableSubjectDataMap.get(subject)!.resourceMap as Map<string, T>;
+
+    return Observable
+      .merge(
+        this.subjectToReadyObservableMap.get(subject)!,
+        this.subjectToChangeObservableMap.get(subject)!,
+      )
+      .map(() => resourceMap)
+      .publishReplay(1)
+      .refCount();
+  }
+
   getCompoundResourceMap<T>(subject: string): Map<string, T> {
     return this.compoundSubjectDataMap.get(subject)!.resourceMap as Map<string, T>;
   }
@@ -363,7 +381,7 @@ export class Client<TClientSession> {
   }
 
   getChangeObservable<T extends Syncable>(subject: string): Observable<ChangeNotification<T>> {
-    return this.subjectToChangeObservableMap.get(subject)!.first();
+    return this.subjectToChangeObservableMap.get(subject)!;
   }
 
   request(subject: string, resources: string[]): void {
