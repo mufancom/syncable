@@ -597,13 +597,14 @@ export class Client<TClientSession> {
 
     let object = definition.update(snapshot, change, session);
 
+    object = {...object, timestamp};
+
+    resourceData.snapshot = object;
+
     for (let change of changes) {
       object = definition.update(object, change, this.session);
     }
 
-    object = {...object, timestamp};
-
-    resourceData.snapshot = object;
     resourceMap.set(resource, object);
 
     this.onSyncableChange({
