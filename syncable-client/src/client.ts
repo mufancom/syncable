@@ -624,11 +624,12 @@ export class Client<TClientSession> {
 
     let object = resourceMap.get(resource)!;
 
+    resourceDataMap.delete(resource);
+
     if (!object) {
       return;
     }
 
-    resourceDataMap.delete(resource);
     resourceMap.delete(resource);
 
     this.onSyncableChange({
