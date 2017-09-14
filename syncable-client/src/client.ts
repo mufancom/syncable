@@ -556,15 +556,15 @@ export class Client<TClientSession> {
     let objectBeforeChange = resourceMap.get(resource);
 
     if (resourceData && objectBeforeChange) {
-      let {changes} = resourceData;
+      resourceData.snapshot = object;
+
+      let changes = resourceData.changes;
 
       shiftPrecedingChangesIfMatch(changes, uid);
 
       for (let change of changes) {
         object = definition.update(object, change, this.session);
       }
-
-      resourceData.snapshot = object;
     } else {
       resourceData = {
         snapshot: object,
