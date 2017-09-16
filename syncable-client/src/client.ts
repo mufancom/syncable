@@ -356,7 +356,7 @@ export class Client<TClientSession> {
 
   @memorize()
   getResourceMapObservable<T extends Syncable>(subject: string): Observable<Map<string, T>> {
-    let resourceMap = this.syncableSubjectDataMap.get(subject)!.resourceMap as Map<string, T>;
+    let resourceMap = this.getResourceMap<T>(subject);
 
     return Observable
       .merge(
@@ -370,6 +370,20 @@ export class Client<TClientSession> {
 
   getCompoundResourceMap<T>(subject: string): Map<string, T> {
     return this.compoundSubjectDataMap.get(subject)!.resourceMap as Map<string, T>;
+  }
+
+  @memorize()
+  getCompoundResourceMapObservable<T>(subject: string): Observable<Map<string, T>> {
+    let resourceMap = this.getCompoundResourceMap<T>(subject);
+
+    return Observable
+      .merge(
+        this.subjectToReadyObservableMap.get(subject)!,
+        this.subjectToChangeObservableMap.get(subject)!,
+      )
+      .map(() => resourceMap)
+      .publishReplay(1)
+      .refCount();
   }
 
   getReadyPromise<T>(subject: string): Promise<ReadyNotification<T>> {
