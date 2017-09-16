@@ -12,6 +12,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "stripInternal": true,
+    "newLine": "LF",
     "types": [
       "node",
       "socket.io"

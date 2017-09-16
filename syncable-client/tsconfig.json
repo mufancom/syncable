@@ -18,6 +18,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "stripInternal": true,
+    "newLine": "LF",
     "types": [
       "socket.io-client"
     ],
