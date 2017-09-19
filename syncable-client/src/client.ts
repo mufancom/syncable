@@ -144,6 +144,8 @@ export class CompoundDependencyHost {
 }
 
 export class Client<TClientSession> {
+  readonly syncing: Observable<boolean>;
+
   private subjectToReadyPromiseMap = new Map<string, Promise<ReadyNotification<any>>>();
   private subjectToReadyObservableMap = new Map<string, Subject<ReadyNotification<any>>>();
   private subjectToChangeObservableMap = new Map<string, Subject<ChangeNotification<any>>>();
@@ -162,13 +164,7 @@ export class Client<TClientSession> {
     public session: TClientSession,
   ) {
     this.socket = socket as Socket<TClientSession>;
-  }
-
-  @memorize()
-  get syncing(): Observable<boolean> {
-    return this.syncingChange
-      .publishReplay(1)
-      .refCount();
+    this.syncing = this.syncingChange.publishReplay(1).refCount();
   }
 
   register<T extends Syncable>(
@@ -363,6 +359,7 @@ export class Client<TClientSession> {
 
     return Observable
       .merge(
+        Observable.from([resourceMap]),
         this.subjectToReadyObservableMap.get(subject)!,
         this.subjectToChangeObservableMap.get(subject)!,
       )
@@ -381,6 +378,7 @@ export class Client<TClientSession> {
 
     return Observable
       .merge(
+        Observable.from([resourceMap]),
         this.subjectToReadyObservableMap.get(subject)!,
         this.subjectToChangeObservableMap.get(subject)!,
       )
