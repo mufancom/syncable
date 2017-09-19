@@ -164,8 +164,11 @@ export class Client<TClientSession> {
     this.socket = socket as Socket<TClientSession>;
   }
 
+  @memorize()
   get syncing(): Observable<boolean> {
-    return Observable.from(this.syncingChange);
+    return this.syncingChange
+      .publishReplay(1)
+      .refCount();
   }
 
   register<T extends Syncable>(
