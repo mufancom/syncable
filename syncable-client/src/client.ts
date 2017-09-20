@@ -1,6 +1,7 @@
 import * as difference from 'lodash.difference';
 import * as isEqual from 'lodash.isequal';
 import memorize from 'memorize-decorator';
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import * as uuid from 'uuid';
@@ -144,7 +145,7 @@ export class CompoundDependencyHost {
 }
 
 export class Client<TClientSession> {
-  readonly syncing: Observable<boolean>;
+  readonly syncing = new BehaviorSubject<boolean>(false);
 
   private subjectToReadyPromiseMap = new Map<string, Promise<ReadyNotification<any>>>();
   private subjectToReadyObservableMap = new Map<string, Subject<ReadyNotification<any>>>();
@@ -156,7 +157,6 @@ export class Client<TClientSession> {
   private syncableSubjectToCompoundSubjectSetMap = new Map<string, Set<string>>();
 
   private subjectToPendingRequestResourceSetMap: Map<string, Set<string>> | undefined;
-  private syncingChange = new Subject<boolean>();
   private syncingChangeSet = new Set<string>();
 
   constructor(
@@ -164,7 +164,6 @@ export class Client<TClientSession> {
     public session: TClientSession,
   ) {
     this.socket = socket as Socket<TClientSession>;
-    this.syncing = this.syncingChange.publishReplay(1).refCount();
   }
 
   register<T extends Syncable>(
@@ -264,7 +263,7 @@ export class Client<TClientSession> {
       this.syncingChangeSet.delete(uid);
 
       if (this.syncingChangeSet.size === 0) {
-        this.syncingChange.next(false);
+        this.syncing.next(false);
       }
 
       let subjectData = this.syncableSubjectDataMap.get(subject)!;
@@ -671,7 +670,7 @@ export class Client<TClientSession> {
     let {uid} = change;
 
     this.syncingChangeSet.add(uid);
-    this.syncingChange.next(true);
+    this.syncing.next(true);
 
     this.socket.emit('change', change);
   }
