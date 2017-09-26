@@ -18,16 +18,18 @@
   },
   "homepage": "https://github.com/makeflow/syncable#readme",
   "peerDependencies": {
-    "syncable": "^0.1.0",
-    "rxjs": "^5.4.1"
+    "rxjs": "^5.4.1",
+    "syncable": "^0.1.0"
   },
   "devDependencies": {
     "@types/socket.io-client": "^1.4.29",
     "@types/uuid": "^3.0.0"
   },
   "dependencies": {
+    "extendable-error": "^0.1.5",
     "lodash.difference": "^4.5.0",
     "lodash.isequal": "^4.5.0",
+    "memorize-decorator": "^0.1.4",
     "uuid": "^3.1.0"
   }
 }

@@ -873,12 +873,6 @@ media-typer@0.3.0:
   version "0.3.0"
   resolved "http://registry.npm.taobao.org/media-typer/download/media-typer-0.3.0.tgz#8710d7af0aa626f8fffa1ce00168545263255748"
 
-memorize-decorator@^0.1.2:
-  version "0.1.2"
-  resolved "http://registry.npm.taobao.org/memorize-decorator/download/memorize-decorator-0.1.2.tgz#d2bc28b66054c1f39e94a63a8436d4b4e6c1caa4"
-  dependencies:
-    multikey-map "^0.1.0"
-
 merge-descriptors@1.0.1:
   version "1.0.1"
   resolved "http://registry.npm.taobao.org/merge-descriptors/download/merge-descriptors-1.0.1.tgz#b00aaa556dd8b44568150ec9d1b953f3f90cbb61"
@@ -942,10 +936,6 @@ minimist@^1.2.0:
 ms@2.0.0:
   version "2.0.0"
   resolved "http://registry.npm.taobao.org/ms/download/ms-2.0.0.tgz#5608aeadfc00be6c2901df5f9861788de0d597c8"
-
-multikey-map@^0.1.0:
-  version "0.1.0"
-  resolved "http://registry.npm.taobao.org/multikey-map/download/multikey-map-0.1.0.tgz#29d61efb0a30ac01b96a913e69133811105ca305"
 
 nan@^2.3.0:
   version "2.6.2"

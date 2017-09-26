@@ -1,3 +1,4 @@
+import ExtendableError from 'extendable-error';
 import * as difference from 'lodash.difference';
 import * as isEqual from 'lodash.isequal';
 import memorize from 'memorize-decorator';
@@ -38,6 +39,8 @@ import {
   CompoundEntryResolver,
   Dependency,
 } from './compound-definition';
+
+export class ChangeRejection extends ExtendableError { }
 
 export interface Socket<TClientSession> extends SocketIOClient.Socket {
   on(event: 'reconnect', listener: (attempt: number) => void): this;
@@ -90,6 +93,23 @@ export interface ChangeNotification<T> {
   object: T | undefined;
   before: T | undefined;
 }
+
+export interface CreateResult<T, U> {
+  object: T;
+  promise: Promise<U>;
+}
+
+export interface UpdateResult<T> {
+  object: T | undefined;
+  promise: Promise<T | undefined>;
+}
+
+export interface RemoveResult {
+  object: undefined;
+  promise: Promise<void>;
+}
+
+type SyncingChangeHandlers = [(object?: Syncable) => void, (error: any) => void];
 
 export class CompoundDependencyHost {
   constructor(
@@ -157,7 +177,7 @@ export class Client<TClientSession> {
   private syncableSubjectToCompoundSubjectSetMap = new Map<string, Set<string>>();
 
   private subjectToPendingRequestResourceSetMap: Map<string, Set<string>> | undefined;
-  private syncingChangeSet = new Set<string>();
+  private uidToSyncingChangeHandlersMap = new Map<string, SyncingChangeHandlers>();
 
   constructor(
     socket: SocketIOClient.Socket,
@@ -258,15 +278,7 @@ export class Client<TClientSession> {
     });
 
     this.socket.on('change', ({change, session}) => {
-      let {subject, uid} = change;
-
-      this.syncingChangeSet.delete(uid);
-
-      if (this.syncingChangeSet.size === 0) {
-        this.syncing.next(false);
-      }
-
-      let subjectData = this.syncableSubjectDataMap.get(subject)!;
+      let subjectData = this.syncableSubjectDataMap.get(change.subject)!;
 
       if (!subjectData.subscribed) {
         return;
@@ -417,7 +429,7 @@ export class Client<TClientSession> {
     }
   }
 
-  create(rawCreation: RawCreation, serverCreation = false): Syncable | undefined {
+  create(rawCreation: RawCreation, serverCreation = false): CreateResult<Syncable | undefined, Syncable> {
     if (serverCreation) {
       let serverChange: ServerCreation = {
         uid: uuid(),
@@ -425,9 +437,10 @@ export class Client<TClientSession> {
         ...rawCreation,
       };
 
-      this.syncChange(serverChange);
-
-      return undefined;
+      return {
+        object: undefined,
+        promise: this.syncChange(serverChange) as Promise<Syncable>,
+      };
     }
 
     let resource = uuid();
@@ -470,12 +483,13 @@ export class Client<TClientSession> {
       object,
     });
 
-    this.syncChange(change);
-
-    return object;
+    return {
+      object,
+      promise: this.syncChange(change) as Promise<Syncable>,
+    };
   }
 
-  update(rawChange: RawChange): void {
+  update(rawChange: RawChange): UpdateResult<Syncable> {
     let change: Change = {
       uid: uuid(),
       ...rawChange,
@@ -496,7 +510,10 @@ export class Client<TClientSession> {
       definition.update(objectBeforeChangeWithoutSyncing, change, this.session);
 
     if (isEqual(object, objectBeforeChangeWithoutSyncing)) {
-      return;
+      return {
+        object,
+        promise: Promise.resolve(object),
+      };
     }
 
     object = {
@@ -520,10 +537,13 @@ export class Client<TClientSession> {
       object,
     });
 
-    this.syncChange(change);
+    return {
+      object,
+      promise: this.syncChange(change),
+    };
   }
 
-  remove(rawRemoval: RawRemoval): void {
+  remove(rawRemoval: RawRemoval): RemoveResult {
     let change: Removal = {
       uid: uuid(),
       type: 'remove',
@@ -539,7 +559,10 @@ export class Client<TClientSession> {
     let object = resourceMap.get(resource)!;
 
     if (!object) {
-      return;
+      return {
+        object,
+        promise: Promise.resolve(object),
+      };
     }
 
     resourceMap.delete(resource);
@@ -553,7 +576,10 @@ export class Client<TClientSession> {
       object: undefined,
     });
 
-    this.syncChange(change);
+    return {
+      object: undefined,
+      promise: this.syncChange(change) as Promise<void>,
+    };
   }
 
   private createByBroadcast(creation: BroadcastCreation): void {
@@ -574,7 +600,7 @@ export class Client<TClientSession> {
 
       let changes = resourceData.changes;
 
-      shiftPrecedingChangesIfMatch(changes, uid);
+      this.shiftChanges(changes, uid);
 
       for (let change of changes) {
         object = definition.update(object, change, this.session);
@@ -596,6 +622,8 @@ export class Client<TClientSession> {
       before: objectBeforeChange,
       object,
     });
+
+    this.fulfillChange(uid, object);
   }
 
   private updateByBroadcast(change: BroadcastChange, session: TClientSession): void {
@@ -605,7 +633,7 @@ export class Client<TClientSession> {
     let resourceData = resourceDataMap.get(resource)!;
     let {snapshot, changes} = resourceData;
 
-    shiftPrecedingChangesIfMatch(changes, uid);
+    this.shiftChanges(changes, uid);
 
     let objectBeforeChange = resourceMap.get(resource)!;
 
@@ -627,10 +655,12 @@ export class Client<TClientSession> {
       before: objectBeforeChange,
       object,
     });
+
+    this.fulfillChange(uid, object);
   }
 
   private removeByBroadcast(removal: BroadcastRemoval): void {
-    let {subject, resource} = removal;
+    let {uid, subject, resource} = removal;
 
     let subjectData = this.syncableSubjectDataMap.get(subject)!;
 
@@ -640,18 +670,18 @@ export class Client<TClientSession> {
 
     resourceDataMap.delete(resource);
 
-    if (!object) {
-      return;
+    if (object) {
+      resourceMap.delete(resource);
+
+      this.onSyncableChange({
+        subject,
+        resource,
+        before: object,
+        object: undefined,
+      });
     }
 
-    resourceMap.delete(resource);
-
-    this.onSyncableChange({
-      subject,
-      resource,
-      before: object,
-      object: undefined,
-    });
+    this.fulfillChange(uid, undefined);
   }
 
   private initNotifications(subject: string): void {
@@ -666,13 +696,14 @@ export class Client<TClientSession> {
     this.subjectToReadyPromiseMap.set(subject, promise);
   }
 
-  private syncChange(change: Change | ServerCreation): void {
-    let {uid} = change;
+  private async syncChange(change: Change | ServerCreation): Promise<Syncable | undefined> {
+    let uid = change.uid;
 
-    this.syncingChangeSet.add(uid);
-    this.syncing.next(true);
-
-    this.socket.emit('change', change);
+    return new Promise<Syncable>((resolve, reject) => {
+      this.uidToSyncingChangeHandlersMap.set(uid, [resolve, reject]);
+      this.syncing.next(true);
+      this.socket.emit('change', change);
+    });
   }
 
   private onSyncableReady(notification: ReadyNotification<Syncable>): void {
@@ -950,9 +981,42 @@ export class Client<TClientSession> {
       }
     }, 100);
   }
-}
 
-function shiftPrecedingChangesIfMatch(changes: Change[], uid: string): void {
-  let index = changes.findIndex(change => change.uid === uid);
-  changes.splice(0, index + 1);
+  private shiftChanges(changes: Change[], uid: string): void {
+    let index = changes.findIndex(change => change.uid === uid);
+    let shifted = changes.splice(0, index + 1);
+    let discarded = shifted.slice(0, shifted.length - 1);
+
+    for (let {uid} of discarded) {
+      let handlers = this.uidToSyncingChangeHandlersMap.get(uid);
+
+      if (!handlers) {
+        continue;
+      }
+
+      this.uidToSyncingChangeHandlersMap.delete(uid);
+
+      if (this.uidToSyncingChangeHandlersMap.size === 0) {
+        this.syncing.next(false);
+      }
+
+      handlers[1](new ChangeRejection());
+    }
+  }
+
+  private fulfillChange(uid: string, object: Syncable | undefined): void {
+    let handlers = this.uidToSyncingChangeHandlersMap.get(uid);
+
+    if (!handlers) {
+      return;
+    }
+
+    this.uidToSyncingChangeHandlersMap.delete(uid);
+
+    if (this.uidToSyncingChangeHandlersMap.size === 0) {
+      this.syncing.next(false);
+    }
+
+    handlers[0](object);
+  }
 }

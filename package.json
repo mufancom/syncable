@@ -23,8 +23,5 @@
     "tslint-language-service": "^0.9.6",
     "typescript": "^2.3.4",
     "vts": "^5.4.7"
-  },
-  "dependencies": {
-    "memorize-decorator": "^0.1.2"
   }
 }
