@@ -42,7 +42,10 @@ export interface Syncable {
  */
 
 export type GeneralChange = ClientCreation | ServerCreation | Removal | Change;
-export type GeneralQueuedBroadcastChange = QueuedBroadcastCreation | QueuedBroadcastRemoval | QueuedBroadcastChange;
+export type GeneralQueuedBroadcastChange =
+  | QueuedBroadcastCreation
+  | QueuedBroadcastRemoval
+  | QueuedBroadcastChange;
 
 // create
 
@@ -68,7 +71,7 @@ export interface BroadcastCreation extends ServerCreation {
   timestamp: number;
 }
 
-export interface QueuedBroadcastCreation extends BroadcastCreation { }
+export interface QueuedBroadcastCreation extends BroadcastCreation {}
 
 // remove
 
@@ -86,7 +89,7 @@ export interface BroadcastRemoval extends Removal {
   timestamp: number;
 }
 
-export interface QueuedBroadcastRemoval extends BroadcastRemoval { }
+export interface QueuedBroadcastRemoval extends BroadcastRemoval {}
 
 // change
 
@@ -113,13 +116,15 @@ export interface BroadcastChange extends Change {
   timestamp: number;
 }
 
-export interface ClientBroadcastChangeData<TBroadcastChange extends BroadcastChange, TClientSession> {
+export interface ClientBroadcastChangeData<
+  TBroadcastChange extends BroadcastChange,
+  TClientSession
+> {
   change: TBroadcastChange;
   session: TClientSession | undefined;
 }
 
-export interface RawSubscription {
-}
+export interface RawSubscription {}
 
 export interface Subscription extends RawSubscription {
   /** Subject to subscribe. */

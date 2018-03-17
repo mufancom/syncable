@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 
 import * as uuid from 'uuid';
 
@@ -22,8 +22,8 @@ import {
   Syncable,
 } from 'syncable';
 
-import { SyncableDefinition } from './definition';
-import { ObjectQueue } from './object-queue';
+import {SyncableDefinition} from './definition';
+import {ObjectQueue} from './object-queue';
 
 export interface ResourceLock {
   release(): PromiseLike<void>;
@@ -33,7 +33,9 @@ export type Visibility = boolean | 'upon-request';
 
 export interface SubscriptionInfo<TClientSession> {
   subscription: Subscription;
-  changeEmitter: ObjectQueue<ClientBroadcastChangeData<BroadcastChange, TClientSession>>;
+  changeEmitter: ObjectQueue<
+    ClientBroadcastChangeData<BroadcastChange, TClientSession>
+  >;
   visibleSet: Set<string>;
   valid: boolean;
 }
@@ -52,27 +54,36 @@ export interface Socket<TClientSession> extends SocketIO.Socket {
   on(event: 'close', listener: () => void): this;
 
   emit(event: 'subscribed', data: Subscription): boolean;
-  emit(event: 'change', data: ClientBroadcastChangeData<BroadcastChange, TClientSession>): boolean;
+  emit(
+    event: 'change',
+    data: ClientBroadcastChangeData<BroadcastChange, TClientSession>,
+  ): boolean;
   emit(event: 'snapshots', data: SnapshotsData): boolean;
 }
 
 export interface SocketServer<TClientSession> extends SocketIO.Server {
-  on(event: 'connection' | 'connect', listener: (socket: Socket<TClientSession>) => void): SocketIO.Namespace;
+  on(
+    event: 'connection' | 'connect',
+    listener: (socket: Socket<TClientSession>) => void,
+  ): SocketIO.Namespace;
 }
 
-export class ChangeEmitter<TClientSession>
-extends ObjectQueue<ClientBroadcastChangeData<BroadcastChange, TClientSession>> {
-  constructor(
-    private socket: Socket<TClientSession>,
-  ) {
+export class ChangeEmitter<TClientSession> extends ObjectQueue<
+  ClientBroadcastChangeData<BroadcastChange, TClientSession>
+> {
+  constructor(private socket: Socket<TClientSession>) {
     super();
   }
 
-  protected emit(object: ClientBroadcastChangeData<BroadcastChange, TClientSession>): void {
+  protected emit(
+    object: ClientBroadcastChangeData<BroadcastChange, TClientSession>,
+  ): void {
     this.socket.emit('change', object);
   }
 
-  protected resolveChannel({change: {subject}}: ClientBroadcastChangeData<BroadcastChange, TClientSession>): string {
+  protected resolveChannel({
+    change: {subject},
+  }: ClientBroadcastChangeData<BroadcastChange, TClientSession>): string {
     return subject;
   }
 }
@@ -85,11 +96,12 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
     SyncableDefinition<Syncable, Subscription, TSession, TClientSession, this>
   >();
 
-  private subjectToSocketSetMap = new Map<string, Set<Socket<TClientSession>>>();
+  private subjectToSocketSetMap = new Map<
+    string,
+    Set<Socket<TClientSession>>
+  >();
 
-  constructor(
-    private socketServer: SocketServer<TClientSession>,
-  ) {
+  constructor(private socketServer: SocketServer<TClientSession>) {
     super();
 
     this.initChangeQueueListener();
@@ -98,14 +110,27 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 
   register(
     subject: string,
-    definition: SyncableDefinition<Syncable, Subscription, TSession, TClientSession, this>,
+    definition: SyncableDefinition<
+      Syncable,
+      Subscription,
+      TSession,
+      TClientSession,
+      this
+    >,
   ): void {
     definition._server = this;
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
-  async spawnChange<T extends GeneralChange>(change: T, session: TSession): Promise<void>;
-  async spawnChange(change: GeneralChange, session: TSession): Promise<void> {
+  async spawnChange(removal: Removal, session: TSession): Promise<void>;
+  async spawnChange<T extends GeneralChange, U extends Syncable>(
+    change: T,
+    session: TSession,
+  ): Promise<U>;
+  async spawnChange(
+    change: ServerCreation | Change | Removal,
+    session: TSession,
+  ): Promise<Syncable | void> {
     let {uid, subject, resource} = change;
 
     let definition = this.subjectToDefinitionMap.get(subject)!;
@@ -116,11 +141,13 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
       lock = await this.lock(`resource-${resource}`, 1000);
     }
 
+    let snapshot: Syncable | undefined;
+
     try {
       let timestamp = await this.generateTimestamp();
 
       if (isCreation(change)) {
-        let snapshot = await definition.create(change, timestamp, session);
+        snapshot = await definition.create(change, timestamp, session);
 
         let queuedBroadcastCreation: QueuedBroadcastCreation = {
           uid,
@@ -142,7 +169,7 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 
         await this.queueChange(queuedBroadcastRemoval, session);
       } else {
-        let snapshot = await definition.update(change, timestamp, session);
+        snapshot = await definition.update(change, timestamp, session);
 
         let queuedBroadcastChange: QueuedBroadcastChange = {
           ...change,
@@ -157,15 +184,23 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
         await lock.release();
       }
     }
+
+    return snapshot;
   }
 
   protected abstract getSession(socket: Socket<TClientSession>): TSession;
   protected abstract resolveClientSession(session: TSession): TClientSession;
 
-  protected abstract async lock(resource: string, ttl: number): Promise<ResourceLock>;
+  protected abstract async lock(
+    resource: string,
+    ttl: number,
+  ): Promise<ResourceLock>;
   protected abstract async generateTimestamp(): Promise<number>;
 
-  protected abstract async queueChange(change: BroadcastChange, session: TSession): Promise<void>;
+  protected abstract async queueChange(
+    change: BroadcastChange,
+    session: TSession,
+  ): Promise<void>;
 
   private initChangeQueueListener(): void {
     this.on('change', ({change, session}) => {
@@ -179,7 +214,10 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 
   private initSocketServer(): void {
     this.socketServer.on('connect', socket => {
-      socket.subjectToSubscriptionInfoMap = new Map<string, SubscriptionInfo<TClientSession>>();
+      socket.subjectToSubscriptionInfoMap = new Map<
+        string,
+        SubscriptionInfo<TClientSession>
+      >();
 
       socket.on('subscribe', subscription => {
         let {subjectToSubscriptionInfoMap} = socket;
@@ -287,11 +325,18 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
     });
   }
 
-  private async loadAndEmitUponRequest(request: Request, socket: Socket<TClientSession>): Promise<void> {
+  private async loadAndEmitUponRequest(
+    request: Request,
+    socket: Socket<TClientSession>,
+  ): Promise<void> {
     let {subject, resources} = request;
     let {subjectToSubscriptionInfoMap} = socket;
 
-    let {changeEmitter, visibleSet, subscription} = subjectToSubscriptionInfoMap.get(subject)!;
+    let {
+      changeEmitter,
+      visibleSet,
+      subscription,
+    } = subjectToSubscriptionInfoMap.get(subject)!;
 
     resources = resources.filter(resource => !visibleSet.has(resource));
 
@@ -303,7 +348,11 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 
     let definition = this.subjectToDefinitionMap.get(subject)!;
 
-    let snapshots = await definition.loadSnapshotsUponRequest(resources, subscription, socket);
+    let snapshots = await definition.loadSnapshotsUponRequest(
+      resources,
+      subscription,
+      socket,
+    );
 
     for (let snapshot of snapshots) {
       let {uid: resource, timestamp} = snapshot;
@@ -349,12 +398,20 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
       socket.emit('change', change);
     }
 
-    let latestTimestamp = changes.length ? changes[changes.length - 1].change.timestamp : 0;
+    let latestTimestamp = changes.length
+      ? changes[changes.length - 1].change.timestamp
+      : 0;
 
-    changeEmitter.resume(subject, ({change: {timestamp}}) => timestamp > latestTimestamp);
+    changeEmitter.resume(
+      subject,
+      ({change: {timestamp}}) => timestamp > latestTimestamp,
+    );
   }
 
-  private handleChangeFromQueue(change: GeneralQueuedBroadcastChange, session: TSession): void {
+  private handleChangeFromQueue(
+    change: GeneralQueuedBroadcastChange,
+    session: TSession,
+  ): void {
     let {subject, resource} = change;
 
     let socketSet = this.subjectToSocketSetMap.get(subject);
@@ -368,7 +425,11 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 
     for (let socket of socketSet) {
       let {subjectToSubscriptionInfoMap} = socket;
-      let {subscription, changeEmitter, visibleSet} = subjectToSubscriptionInfoMap.get(subject)!;
+      let {
+        subscription,
+        changeEmitter,
+        visibleSet,
+      } = subjectToSubscriptionInfoMap.get(subject)!;
 
       if (!definition.onChange(change, session, subscription, socket)) {
         continue;
@@ -391,7 +452,11 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
           continue;
         }
       } else {
-        let visibility = definition.testVisibility(change.snapshot, subscription, socket);
+        let visibility = definition.testVisibility(
+          change.snapshot,
+          subscription,
+          socket,
+        );
 
         if (visibility) {
           if (visibleSet.has(resource)) {
@@ -421,14 +486,19 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
 }
 
 export interface Server<TSession, TClientSession> {
-  on(event: 'change', listener: (data: QueuedBroadcastChangeData<TSession>) => void): this;
+  on(
+    event: 'change',
+    listener: (data: QueuedBroadcastChangeData<TSession>) => void,
+  ): this;
   on(event: 'error', listener: (error: any) => void): this;
 
   emit(event: 'change', data: QueuedBroadcastChangeData<TSession>): boolean;
   emit(event: 'error', error: any): boolean;
 }
 
-function isCreation(object: GeneralChange): object is ClientCreation | ServerCreation {
+function isCreation(
+  object: GeneralChange,
+): object is ClientCreation | ServerCreation {
   return object.type === 'create';
 }
 
@@ -436,11 +506,15 @@ function isRemoval(object: GeneralChange): object is Removal {
   return object.type === 'remove';
 }
 
-function isQueuedBroadcastCreation(object: GeneralQueuedBroadcastChange): object is QueuedBroadcastCreation {
+function isQueuedBroadcastCreation(
+  object: GeneralQueuedBroadcastChange,
+): object is QueuedBroadcastCreation {
   return object.type === 'create';
 }
 
-function isQueuedBroadcastRemoval(object: GeneralQueuedBroadcastChange): object is QueuedBroadcastRemoval {
+function isQueuedBroadcastRemoval(
+  object: GeneralQueuedBroadcastChange,
+): object is QueuedBroadcastRemoval {
   return object.type === 'remove';
 }
 
