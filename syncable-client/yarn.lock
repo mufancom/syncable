@@ -16,10 +16,6 @@
   dependencies:
     "@types/node" "*"
 
-asap@^2.0.6:
-  version "2.0.6"
-  resolved "http://registry.npm.taobao.org/asap/download/asap-2.0.6.tgz#e50347611d7e690943208bbdafebcbc2fb866d46"
-
 extendable-error@^0.1.5:
   version "0.1.5"
   resolved "http://registry.npm.taobao.org/extendable-error/download/extendable-error-0.1.5.tgz#122308a7097bc89a263b2c4fbf089c78140e3b6d"
@@ -31,23 +27,6 @@ lodash.difference@^4.5.0:
 lodash.isequal@^4.5.0:
   version "4.5.0"
   resolved "http://registry.npm.taobao.org/lodash.isequal/download/lodash.isequal-4.5.0.tgz#415c4478f2bcc30120c22ce10ed3226f7d3e18e0"
-
-memorize-decorator@^0.1.4:
-  version "0.1.4"
-  resolved "http://registry.npm.taobao.org/memorize-decorator/download/memorize-decorator-0.1.4.tgz#8bcf90ac625737002e41c665aac2c408e959d814"
-  dependencies:
-    asap "^2.0.6"
-    multikey-map "^0.2.0"
-
-mixed-map@^0.1.0:
-  version "0.1.1"
-  resolved "http://registry.npm.taobao.org/mixed-map/download/mixed-map-0.1.1.tgz#f3407171d13ed784ae3c1c6bb4f2c1233b4529e6"
-
-multikey-map@^0.2.0:
-  version "0.2.0"
-  resolved "http://registry.npm.taobao.org/multikey-map/download/multikey-map-0.2.0.tgz#3c2e7171e43c7facfa0910b81c4eb4c960650729"
-  dependencies:
-    mixed-map "^0.1.0"
 
 uuid@^3.1.0:
   version "3.1.0"

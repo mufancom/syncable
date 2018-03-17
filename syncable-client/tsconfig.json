@@ -2,10 +2,7 @@
   "compilerOptions": {
     "target": "es5",
     "module": "commonjs",
-    "lib": [
-      "es2015",
-      "dom"
-    ],
+    "lib": ["es2015", "dom"],
     "declaration": true,
     "sourceMap": true,
     "outDir": "bld",
@@ -19,17 +16,12 @@
     "noFallthroughCasesInSwitch": true,
     "stripInternal": true,
     "newLine": "LF",
-    "types": [
-      "socket.io-client"
-    ],
+    "types": ["socket.io-client"],
     "plugins": [
       {
         "name": "tslint-language-service"
       }
     ]
   },
-  "include": [
-    "src",
-    "types"
-  ]
+  "include": ["src", "types"]
 }

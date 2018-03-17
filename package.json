@@ -1,15 +1,15 @@
 {
   "name": "syncable-packages",
-  "version": "0.1.35",
+  "version": "0.2.0",
   "scripts": {
     "biu": "biu",
     "build:client": "rimraf syncable-client/bld && tsc -p syncable-client",
     "build:server": "rimraf syncable-server/bld && tsc -p syncable-server",
-    "build": "npm run build:client && npm run build:server",
+    "build": "yarn build:client && yarn build:server",
     "patch:syncable": "cd syncable && npm --no-git-tag-version version patch",
     "patch:syncable-client": "cd syncable-client && npm --no-git-tag-version version patch",
     "patch:syncable-server": "cd syncable-server && npm --no-git-tag-version version patch",
-    "patch": "npm run patch:syncable && npm run patch:syncable-client && npm run patch:syncable-server && git add */package.json && npm --force version patch",
+    "patch": "yarn patch:syncable && yarn patch:syncable-client && yarn patch:syncable-server && git add */package.json && npm --force version patch",
     "publish:syncable": "cd syncable && npm publish",
     "publish:syncable-client": "cd syncable-client && npm publish",
     "publish:syncable-server": "cd syncable-server && npm publish",
@@ -17,11 +17,12 @@
   },
   "devDependencies": {
     "biu": "^0.2.11",
+    "mobx": "^3.6.1",
+    "prettier": "^1.11.1",
     "rimraf": "^2.6.1",
-    "rxjs": "^5.4.1",
-    "tslint": "^5.4.3",
+    "tslint": "^5.9.1",
     "tslint-language-service": "^0.9.6",
     "typescript": "^2.3.4",
-    "vts": "^5.4.7"
+    "vts": "^5.8.3"
   }
 }

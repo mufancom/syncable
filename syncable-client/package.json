@@ -1,6 +1,6 @@
 {
   "name": "syncable-client",
-  "version": "0.1.35",
+  "version": "0.2.0",
   "description": "Syncable client.",
   "main": "bld/index.js",
   "types": "bld/index.d.ts",
@@ -18,8 +18,8 @@
   },
   "homepage": "https://github.com/makeflow/syncable#readme",
   "peerDependencies": {
-    "rxjs": "^5.4.1",
-    "syncable": "^0.1.0"
+    "mobx": "^3.6.1",
+    "syncable": "^0.2.0"
   },
   "devDependencies": {
     "@types/socket.io-client": "^1.4.29",
@@ -29,7 +29,6 @@
     "extendable-error": "^0.1.5",
     "lodash.difference": "^4.5.0",
     "lodash.isequal": "^4.5.0",
-    "memorize-decorator": "^0.1.4",
     "uuid": "^3.1.0"
   }
 }
