@@ -122,11 +122,11 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
     this.subjectToDefinitionMap.set(subject, definition);
   }
 
-  async spawnChange(removal: Removal, session: TSession): Promise<void>;
-  async spawnChange<T extends GeneralChange, U extends Syncable>(
+  async spawnChange<T extends GeneralChange, U extends Syncable = Syncable>(
     change: T,
     session: TSession,
   ): Promise<U>;
+  async spawnChange(removal: Removal, session: TSession): Promise<void>;
   async spawnChange(
     change: ServerCreation | Change | Removal,
     session: TSession,
@@ -256,8 +256,8 @@ export abstract class Server<TSession, TClientSession> extends EventEmitter {
       });
 
       socket.on('change', change => {
-        let user = this.getSession(socket);
-        this.spawnChange(change, user).catch(this.errorEmitter);
+        let session = this.getSession(socket);
+        this.spawnChange(change, session).catch(this.errorEmitter);
       });
 
       socket.on('close', () => {
