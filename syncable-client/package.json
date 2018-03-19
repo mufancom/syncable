@@ -1,6 +1,6 @@
 {
   "name": "syncable-client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Syncable client.",
   "main": "bld/index.js",
   "types": "bld/index.d.ts",
