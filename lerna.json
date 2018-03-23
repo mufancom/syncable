@@ -1,0 +1,10 @@
+{
+  "lerna": "2.9.0",
+  "packages": [
+    "syncable",
+    "syncable-client",
+    "syncable-server"
+  ],
+  "version": "0.2.2",
+  "npmClient": "yarn"
+}

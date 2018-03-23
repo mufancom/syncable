@@ -3,18 +3,10 @@
   "version": "0.2.1",
   "private": true,
   "scripts": {
-    "biu": "biu",
     "build:client": "rimraf syncable-client/bld && tsc -p syncable-client",
     "build:server": "rimraf syncable-server/bld && tsc -p syncable-server",
     "build": "yarn build:client && yarn build:server",
-    "patch:syncable": "cd syncable && npm --no-git-tag-version version patch",
-    "patch:syncable-client": "cd syncable-client && npm --no-git-tag-version version patch",
-    "patch:syncable-server": "cd syncable-server && npm --no-git-tag-version version patch",
-    "patch": "yarn patch:syncable && yarn patch:syncable-client && yarn patch:syncable-server && git add */package.json && npm --force version patch",
-    "publish:syncable": "cd syncable && npm publish",
-    "publish:syncable-client": "cd syncable-client && npm publish",
-    "publish:syncable-server": "cd syncable-server && npm publish",
-    "publish-all": "npm run publish:syncable && npm run publish:syncable-client && npm run publish:syncable-server"
+    "lerna:publish": "lerna publish --npm-client npm"
   },
   "devDependencies": {
     "biu": "^0.2.11",
