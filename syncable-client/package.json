@@ -22,8 +22,8 @@
     "!bld/**/*.js.map"
   ],
   "peerDependencies": {
-    "mobx": "^3.6.1",
-    "syncable": "^0.2.0"
+    "mobx": "*",
+    "syncable": "^0.2.1"
   },
   "devDependencies": {
     "@types/socket.io-client": "^1.4.29",

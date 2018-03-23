@@ -22,7 +22,7 @@
     "!bld/**/*.js.map"
   ],
   "peerDependencies": {
-    "syncable": "^0.2.0"
+    "syncable": "^0.2.1"
   },
   "devDependencies": {
     "@types/socket.io": "^1.4.29",
