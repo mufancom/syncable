@@ -26,7 +26,8 @@
   },
   "devDependencies": {
     "@types/socket.io": "^1.4.29",
-    "@types/uuid": "^3.0.0"
+    "@types/uuid": "^3.0.0",
+    "syncable": "^0.2.1"
   },
   "dependencies": {
     "uuid": "^3.1.0"

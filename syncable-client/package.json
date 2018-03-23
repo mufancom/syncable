@@ -27,7 +27,8 @@
   },
   "devDependencies": {
     "@types/socket.io-client": "^1.4.29",
-    "@types/uuid": "^3.0.0"
+    "@types/uuid": "^3.0.0",
+    "syncable": "^0.2.1"
   },
   "dependencies": {
     "extendable-error": "^0.1.5",
