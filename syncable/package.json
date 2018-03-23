@@ -15,5 +15,8 @@
     "url": "https://github.com/makeflow/syncable/issues"
   },
   "homepage": "https://github.com/makeflow/syncable#readme",
+  "files": [
+    "*.d.ts"
+  ],
   "devDependencies": {}
 }

@@ -17,6 +17,10 @@
     "url": "https://github.com/makeflow/syncable/issues"
   },
   "homepage": "https://github.com/makeflow/syncable#readme",
+  "files": [
+    "bld",
+    "!bld/**/*.js.map"
+  ],
   "peerDependencies": {
     "syncable": "^0.2.0"
   },
