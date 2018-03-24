@@ -10,20 +10,17 @@ import {
   Syncable,
 } from 'syncable';
 
-import {
-  Server,
-  Socket,
-  Visibility,
-} from './server';
+import {Server, Socket, Visibility} from './server';
 
 export abstract class SyncableDefinition<
   TSyncable extends Syncable,
   TSubscription extends Subscription,
   TSession,
   TClientSession,
-  TServer extends Server<TSession, TClientSession>> {
+  TServer extends Server<TSession, TClientSession>
+> {
   /** @internal */
-  _server: TServer;
+  _server!: TServer;
 
   get server(): TServer {
     return this._server;
@@ -70,7 +67,19 @@ export abstract class SyncableDefinition<
     socket: Socket<TClientSession>,
   ): Promise<ClientBroadcastChangeData<BroadcastChange, TClientSession>[]>;
 
-  abstract async create(change: ServerCreation, timestamp: number, session: TSession): Promise<TSyncable>;
-  abstract async update(change: Change, timestamp: number, session: TSession): Promise<TSyncable>;
-  abstract async remove(change: Removal, timestamp: number, session: TSession): Promise<void>;
+  abstract async create(
+    change: ServerCreation,
+    timestamp: number,
+    session: TSession,
+  ): Promise<TSyncable>;
+  abstract async update(
+    change: Change,
+    timestamp: number,
+    session: TSession,
+  ): Promise<TSyncable>;
+  abstract async remove(
+    change: Removal,
+    timestamp: number,
+    session: TSession,
+  ): Promise<void>;
 }
