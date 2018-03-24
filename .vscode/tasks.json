@@ -3,18 +3,19 @@
   "tasks": [
     {
       "taskName": "biu",
-      "command": "npm",
+      "command": "yarn",
       "isShellCommand": true,
       "isBackground": true,
       "isBuildCommand": true,
-      "args": ["run", "biu", "--", "-p", "8089"],
+      "args": ["biu", "-p", "8089"],
       "showOutput": "silent",
       "problemMatcher": {
         "owner": "typescript",
         "applyTo": "closedDocuments",
         "fileLocation": "absolute",
         "pattern": {
-          "regexp": "^\\[biu-problem:typescript:([^;]*);([^;]*);([^;]*);([^;]*);(.*)\\]$",
+          "regexp":
+            "^\\[biu-problem:typescript:([^;]*);([^;]*);([^;]*);([^;]*);(.*)\\]$",
           "severity": 1,
           "file": 2,
           "location": 3,

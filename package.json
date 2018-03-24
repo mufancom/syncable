@@ -10,7 +10,6 @@
   "devDependencies": {
     "biu": "^0.2.15",
     "lerna": "^2.9.0",
-    "mobx": "^3.6.1",
     "prettier": "^1.11.1",
     "rimraf": "^2.6.1",
     "tslint": "^5.9.1",

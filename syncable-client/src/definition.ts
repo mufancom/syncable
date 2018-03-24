@@ -26,5 +26,5 @@ export abstract class SyncableDefinition<T extends Syncable, TClientSession> {
   }
 
   abstract create(change: ClientCreation, session: TClientSession): T;
-  abstract update(object: T, change: Change, session: TClientSession): T;
+  abstract update(object: T, change: Change, session: TClientSession): void;
 }

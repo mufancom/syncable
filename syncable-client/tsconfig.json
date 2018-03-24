@@ -17,6 +17,10 @@
     "stripInternal": true,
     "newLine": "LF",
     "types": ["socket.io-client"],
+    "baseUrl": ".",
+    "paths": {
+      "mobx": ["../types/node_modules/mobx"]
+    },
     "plugins": [
       {
         "name": "tslint-language-service"

@@ -1871,10 +1871,6 @@ minimist@~0.0.1:
   dependencies:
     minimist "0.0.8"
 
-mobx@^3.6.1:
-  version "3.6.1"
-  resolved "http://registry.npm.taobao.org/mobx/download/mobx-3.6.1.tgz#ae63a8f00e1485a740d0f91ae2f6a5f68e303bea"
-
 modify-values@^1.0.0:
   version "1.0.0"
   resolved "http://registry.npm.taobao.org/modify-values/download/modify-values-1.0.0.tgz#e2b6cdeb9ce19f99317a53722f3dbf5df5eaaab2"

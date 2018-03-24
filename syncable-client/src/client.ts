@@ -1,6 +1,7 @@
 import ExtendableError from 'extendable-error';
-import * as isEqual from 'lodash.isequal';
-import {ObservableMap, observable} from 'mobx';
+import {cloneDeep, isEqual} from 'lodash';
+import {ObservableMap, observable, toJS} from 'mobx';
+import replaceObject from 'replace-object/mobx';
 import * as uuid from 'uuid';
 
 import {
@@ -22,6 +23,7 @@ import {
 } from 'syncable';
 
 import {SyncableDefinition} from './definition';
+import {assertNonObservable} from './utils';
 
 export class ChangeRejection extends ExtendableError {}
 
@@ -51,8 +53,8 @@ interface SyncableSubjectData<T extends Syncable, TClientSession> {
   subscription: Subscription | undefined;
   subscribed: boolean | undefined;
   definition: SyncableDefinition<T, TClientSession>;
-  resourceDataMap: ObservableMap<SyncableResourceData<T>>;
-  resourceMap: ObservableMap<T>;
+  resourceDataMap: Map<string, SyncableResourceData<T>>;
+  resourceMap: ObservableMap<string, T>;
 }
 
 export interface ReadyNotification<T> {
@@ -83,7 +85,7 @@ export interface RemoveResult {
 }
 
 type SyncingChangeHandlers = [
-  (object?: Syncable) => void,
+  (object$?: Syncable) => void,
   (error: any) => void
 ];
 
@@ -92,7 +94,8 @@ export class Client<TClientSession> {
 
   private socket: Socket<TClientSession>;
 
-  private readonly syncableSubjectDataMap = new ObservableMap<
+  private syncableSubjectDataMap = new Map<
+    string,
     SyncableSubjectData<Syncable, TClientSession>
   >();
 
@@ -118,8 +121,8 @@ export class Client<TClientSession> {
       subscription: undefined,
       subscribed: undefined,
       definition,
-      resourceMap: new ObservableMap<Syncable>(),
-      resourceDataMap: new ObservableMap<SyncableResourceData<Syncable>>(),
+      resourceMap: observable.map<string, Syncable>(),
+      resourceDataMap: new Map<string, SyncableResourceData<Syncable>>(),
     });
   }
 
@@ -179,7 +182,7 @@ export class Client<TClientSession> {
         let {uid} = snapshot;
 
         resourceDataMap.set(uid, resourceData);
-        resourceMap.set(uid, snapshot);
+        resourceMap.set(uid, observable(snapshot));
       }
 
       subjectData.timestamp = timestamp;
@@ -219,9 +222,11 @@ export class Client<TClientSession> {
     }
   }
 
-  getResourceMap<T extends Syncable>(subject: string): ObservableMap<T> {
-    return (this.syncableSubjectDataMap.get(subject)!
-      .resourceMap as ObservableMap<any>) as ObservableMap<T>;
+  getResourceMap<T extends Syncable>(
+    subject: string,
+  ): ObservableMap<string, T> {
+    return this.syncableSubjectDataMap.get(subject)!
+      .resourceMap as ObservableMap<string, T>;
   }
 
   request(subject: string, resources: string[]): void {
@@ -283,15 +288,17 @@ export class Client<TClientSession> {
 
     let snapshot = definition.create(change, this.session);
 
-    let object: Syncable = {
+    assertNonObservable(snapshot);
+
+    let object$ = observable<Syncable>({
       ...snapshot,
       syncing: true,
-    };
+    });
 
-    if (!definition.testVisibility(object)) {
+    if (!definition.testVisibility(object$)) {
       throw new Error(
         `The object created is not visible at creation: ${JSON.stringify(
-          object,
+          toJS(object$),
         )}`,
       );
     }
@@ -302,10 +309,10 @@ export class Client<TClientSession> {
     };
 
     resourceDataMap.set(resource, resourceData);
-    resourceMap.set(resource, object);
+    resourceMap.set(resource, object$);
 
     return {
-      object,
+      object: object$,
       promise: this.syncChange(change) as Promise<Syncable>,
     };
   }
@@ -327,39 +334,31 @@ export class Client<TClientSession> {
 
     let {changes} = resourceDataMap.get(resource)!;
 
-    let objectBeforeChange = resourceMap.get(resource)!;
+    let object$: Syncable | undefined = resourceMap.get(resource)!;
+    let objectBeforeChange = toJS(object$);
 
-    let {syncing: _, ...objectBeforeChangeWithoutSyncing} = objectBeforeChange;
+    // let {syncing: _, ...objectBeforeChangeWithoutSyncing} = object;
 
-    let object: Syncable | undefined = definition.update(
-      objectBeforeChangeWithoutSyncing,
-      change,
-      this.session,
-    );
+    definition.update(object$, change, this.session);
 
-    if (isEqual(object, objectBeforeChangeWithoutSyncing)) {
+    if (isEqual(toJS(object$), objectBeforeChange)) {
       return {
-        object,
-        promise: Promise.resolve(object),
+        object: object$,
+        promise: Promise.resolve(object$),
       };
     }
 
-    object = {
-      ...object,
-      syncing: true,
-    };
+    object$.syncing = true;
 
-    if (definition.testVisibility(object)) {
-      resourceMap.set(resource, object);
-    } else {
-      object = undefined;
+    if (!definition.testVisibility(object$)) {
+      object$ = undefined;
       resourceMap.delete(resource);
     }
 
     changes.push(change);
 
     return {
-      object,
+      object: object$,
       promise: this.syncChange(change),
     };
   }
@@ -380,17 +379,18 @@ export class Client<TClientSession> {
 
     definition.preprocessChange(change);
 
-    let {changes} = resourceDataMap.get(resource)!;
-    let object = resourceMap.get(resource)!;
+    let object$ = resourceMap.get(resource);
 
-    if (!object) {
+    if (!object$) {
       return {
-        object,
-        promise: Promise.resolve(object),
+        object: undefined,
+        promise: Promise.resolve(undefined),
       };
     }
 
     resourceMap.delete(resource);
+
+    let {changes} = resourceDataMap.get(resource)!;
 
     changes.push(change);
 
@@ -401,7 +401,7 @@ export class Client<TClientSession> {
   }
 
   private createByBroadcast(creation: BroadcastCreation): void {
-    let {uid, subject, resource, snapshot: object} = creation;
+    let {uid, subject, resource, snapshot} = creation;
 
     let {
       definition,
@@ -410,30 +410,38 @@ export class Client<TClientSession> {
     } = this.syncableSubjectDataMap.get(subject)!;
 
     let resourceData = resourceDataMap.get(resource);
-    let objectBeforeChange = resourceMap.get(resource);
+    let object$: Syncable;
 
-    if (resourceData && objectBeforeChange) {
-      resourceData.snapshot = object;
+    if (resourceData) {
+      resourceData.snapshot = snapshot;
 
       let changes = resourceData.changes;
 
       this.shiftChanges(changes, uid);
 
+      let object = cloneDeep(snapshot);
+
       for (let change of changes) {
-        object = definition.update(object, change, this.session);
+        definition.update(object, change, this.session);
       }
+
+      object$ = resourceMap.get(resource)!;
+
+      replaceObject(object$, object);
     } else {
       resourceData = {
-        snapshot: object,
+        snapshot,
         changes: [],
       };
 
       resourceDataMap.set(resource, resourceData);
+
+      object$ = observable(snapshot);
+
+      resourceMap.set(resource, object$);
     }
 
-    resourceMap.set(resource, object);
-
-    this.fulfillChange(uid, object);
+    this.fulfillChange(uid, object$);
   }
 
   private updateByBroadcast(
@@ -452,19 +460,21 @@ export class Client<TClientSession> {
 
     this.shiftChanges(changes, uid);
 
-    let object = definition.update(snapshot, change, session);
+    definition.update(snapshot, change, session);
 
-    object = {...object, timestamp};
+    snapshot.timestamp = timestamp;
 
-    resourceData.snapshot = object;
+    let object = cloneDeep(snapshot);
 
     for (let change of changes) {
-      object = definition.update(object, change, this.session);
+      definition.update(object, change, this.session);
     }
 
-    resourceMap.set(resource, object);
+    let object$ = resourceMap.get(resource)!;
 
-    this.fulfillChange(uid, object);
+    replaceObject(object$, object);
+
+    this.fulfillChange(uid, object$);
   }
 
   private removeByBroadcast(removal: BroadcastRemoval): void {
@@ -474,11 +484,11 @@ export class Client<TClientSession> {
 
     let {resourceDataMap, resourceMap} = subjectData;
 
-    let object = resourceMap.get(resource)!;
+    let object$ = resourceMap.get(resource)!;
 
     resourceDataMap.delete(resource);
 
-    if (object) {
+    if (object$) {
       resourceMap.delete(resource);
     }
 
@@ -538,7 +548,7 @@ export class Client<TClientSession> {
     }
   }
 
-  private fulfillChange(uid: string, object: Syncable | undefined): void {
+  private fulfillChange(uid: string, object$: Syncable | undefined): void {
     let handlers = this.uidToSyncingChangeHandlersMap.get(uid);
 
     if (!handlers) {
@@ -551,6 +561,6 @@ export class Client<TClientSession> {
       this.syncing = false;
     }
 
-    handlers[0](object);
+    handlers[0](object$);
   }
 }

@@ -1,0 +1,7 @@
+{
+  "name": "syncable-package-types",
+  "private": true,
+  "dependencies": {
+    "mobx": "^4.1.0"
+  }
+}
