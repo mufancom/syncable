@@ -1,6 +1,6 @@
 {
   "name": "syncable-client",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Syncable client.",
   "main": "bld/index.js",
   "types": "bld/index.d.ts",
@@ -25,7 +25,7 @@
     "@types/lodash": "^4.14.106",
     "@types/socket.io-client": "^1.4.29",
     "@types/uuid": "^3.0.0",
-    "syncable": "^0.2.1"
+    "syncable": "^0.2.2"
   },
   "dependencies": {
     "extendable-error": "^0.1.5",

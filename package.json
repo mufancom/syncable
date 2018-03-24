@@ -5,7 +5,7 @@
     "build:client": "rimraf syncable-client/bld && tsc -p syncable-client",
     "build:server": "rimraf syncable-server/bld && tsc -p syncable-server",
     "build": "yarn build:client && yarn build:server",
-    "lerna:publish": "lerna publish --npm-client npm"
+    "lerna:publish": "lerna publish --npm-client=npm --registry=https://registry.npmjs.org"
   },
   "devDependencies": {
     "biu": "^0.2.15",

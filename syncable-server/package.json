@@ -1,6 +1,6 @@
 {
   "name": "syncable-server",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Syncable server.",
   "main": "bld/index.js",
   "types": "bld/index.d.ts",
@@ -24,7 +24,7 @@
   "devDependencies": {
     "@types/socket.io": "^1.4.29",
     "@types/uuid": "^3.0.0",
-    "syncable": "^0.2.1"
+    "syncable": "^0.2.2"
   },
   "dependencies": {
     "uuid": "^3.1.0"
