@@ -1,0 +1,16 @@
+{
+  "extends": "../node_modules/vts/tsconfig-browser.json",
+  "compilerOptions": {
+    "declaration": true,
+    "experimentalDecorators": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "*": ["../types/node_modules/*"]
+    },
+
+    "rootDir": "src",
+    "outDir": "bld"
+  },
+  "include": ["src", "types"]
+}

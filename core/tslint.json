@@ -1,0 +1,6 @@
+{
+  "extends": "vts/tslint-prettier",
+  "rules": {
+    "no-console": [true, "log"]
+  }
+}

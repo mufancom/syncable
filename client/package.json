@@ -1,0 +1,30 @@
+{
+  "name": "@syncable/client",
+  "version": "2.0.0",
+  "description": "Syncable.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makeflow/syncable.git"
+  },
+  "keywords": [
+    "syncable"
+  ],
+  "author": "Makeflow Inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/makeflow/syncable/issues"
+  },
+  "homepage": "https://github.com/makeflow/syncable#readme",
+  "main": "bld/index.js",
+  "types": "bld/index.d.ts",
+  "files": [
+    "src",
+    "types"
+  ],
+  "peerDependencies": {
+    "@syncable/core": "^2.0.0"
+  },
+  "devDependencies": {
+    "@syncable/core": "^2.0.0"
+  }
+}
