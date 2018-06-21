@@ -1,0 +1,77 @@
+@startuml overview
+
+actor User
+
+box "client"
+participant Client order 3
+participant ClientContext order 2
+participant ClientChangePlant order 1
+participant ClientResource order 0
+end box
+
+box "server"
+participant Server order 4
+participant ServerContext order 5
+participant ServerChangePlant order 6
+participant ServerResource order 7
+end box
+
+== initialize ==
+
+Client -> Server: connect
+Server -> ServerContext: get entrance syncables
+ServerContext -> ServerContext: resolve requisite associations
+create ServerResource
+ServerContext -> ServerResource: create corresponding resources
+ServerContext -> ServerResource: validate read permission
+Server <-- ServerContext: context syncables
+Client <-- Server: context syncables
+Client -> ClientContext: add syncables to context
+create ClientResource
+ClientContext -> ClientResource: create corresponding resource
+Client -> Server: view query
+Server -> ServerContext: get queried syncables
+ServerContext -> ServerContext: resolve requisite associations
+ServerContext -> ServerResource: create corresponding resources
+ServerContext -> ServerResource: validate read permission
+Server <-- ServerContext: queried syncables
+Server --> Client: queried syncables
+Client -> ClientContext: add syncables to context
+ClientContext -> ClientResource: create corresponding resource
+
+== initiate change ==
+
+User -> ClientResource: invoke method with side effects
+ClientResource -> Client: update with change
+Client -> ClientChangePlant: get consequences
+Client <-- ClientChangePlant: consequences
+Client -> ClientResource: validate write/associate permission
+Client -> ClientContext: apply consequences
+
+Client -> Server: change
+
+Server -> ServerContext: lock and get related/associated resources
+ServerContext -> ServerContext: resolve requisite associations
+ServerContext -> ServerResource: create corresponding resources
+ServerContext -> ServerResource: validate read permission
+Server -> ServerChangePlant: get consequences
+Server <-- ServerChangePlant: consequences
+Server -> ServerContext: apply consequences
+ServerContext -> ServerResource: validate write/associate permission
+Server -> Server: broadcast consequences with syncables
+
+== apply broadcast consequences ==
+
+rnote over Server: broadcast consequences\nwith up-to-date syncables
+
+Server -> ServerContext: get resources by broadcast syncables
+ServerContext -> ServerContext: validate requisite associations
+ServerContext -> ServerResource: create corresponding resources
+ServerContext -> ServerResource: validate read permission
+Server <-- ServerContext: filtered/transformed consequences
+Server -> Client: realted consequences
+Client -> ClientContext: apply consequences
+
+
+
+@enduml
