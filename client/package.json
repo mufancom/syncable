@@ -24,7 +24,11 @@
   "peerDependencies": {
     "@syncable/core": "^2.0.0"
   },
+  "dependencies": {
+    "villa": "^0.3.1"
+  },
   "devDependencies": {
-    "@syncable/core": "^2.0.0"
+    "@types/socket.io-client": "^1.4.32",
+    "socket.io-client": "^2.1.0"
   }
 }

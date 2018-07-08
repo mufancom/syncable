@@ -72,6 +72,4 @@ Server <-- ServerContext: filtered/transformed consequences
 Server -> Client: realted consequences
 Client -> ClientContext: apply consequences
 
-
-
 @enduml

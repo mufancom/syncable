@@ -2,7 +2,7 @@
 // tslint:disable:variable-name
 
 export interface Dict<T> {
-  [key: string]: T;
+  [key: string]: T | undefined;
 }
 
 export type StringType<T, U = never> = string & __Type<[T, U]>;
@@ -19,4 +19,4 @@ export type ExcludeProperty<T extends object, K> = T extends object
   ? Pick<T, Exclude<keyof T, K>>
   : never;
 
-export type Constructor<T extends object> = new (...args: any[]) => T;
+export type Constructor<T extends object = object> = new (...args: any[]) => T;

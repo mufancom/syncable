@@ -24,7 +24,7 @@
   "peerDependencies": {
     "@syncable/core": "^2.0.0"
   },
-  "devDependencies": {
-    "@syncable/core": "^2.0.0"
+  "dependencies": {
+    "villa": "^0.3.1"
   }
 }
