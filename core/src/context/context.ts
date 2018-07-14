@@ -1,9 +1,12 @@
-import {Permission} from '../permission';
+import {Permission} from '../access-control';
 import {
   AccessControlRuleName,
   AccessControlRuleValidator,
   GetAssociationOptions,
+  Syncable,
   SyncableObject,
+  SyncableRefType,
+  SyncableRef,
 } from '../syncable';
 
 export function AccessControlRule<
@@ -45,5 +48,19 @@ export class Context<User extends SyncableObject = SyncableObject> {
     options?: GetAssociationOptions<T>,
   ): T[] {
     return this.user.getRequisiteAssociations(options);
+  }
+
+  get<T extends SyncableObject>(ref: SyncableRefType<T>): T | undefined {}
+
+  require<T extends SyncableObject>(ref: SyncableRefType<T>): T {
+    let object = this.get(ref);
+
+    if (!object) {
+      throw new Error(
+        `SyncableObject "${JSON.stringify(ref)}" not added to context`,
+      );
+    }
+
+    return object;
   }
 }

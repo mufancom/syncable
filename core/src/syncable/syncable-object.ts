@@ -1,4 +1,7 @@
-import {Context} from '../context';
+import _ = require('lodash');
+
+import {AccessRight} from '../access-control';
+import {AccessControlRule, Context} from '../context';
 import {StringType} from '../lang';
 import {Syncable} from './syncable';
 
@@ -29,7 +32,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     AccessControlRuleEntry<SyncableObject, object>
   >();
 
-  constructor(protected syncable: T) {}
+  constructor(protected syncable: T, protected context: Context) {}
 
   get id(): T['id'] {
     return this.syncable.id;
@@ -42,6 +45,32 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   getRequisiteAssociations<T extends SyncableObject>(
     _options: GetAssociationOptions<T> = {},
   ): T[] {
-    throw new Error('Not implemented');
+    let associations = this.syncable.$associations;
+
+    if (!associations) {
+      return [];
+    }
+
+    let context = this.context;
+
+    return associations
+      .filter(association => association.requisite)
+      .map(association =>
+        context.require<SyncableObject>(association.ref),
+      ) as T[];
+  }
+
+  getAccessRights(): AccessRight[] {}
+
+  getGrantableAccessRights(): AccessRight[] {}
+
+  validateAccessRights(rights: AccessRight[]): void {
+    let grantedRights = this.getAccessRights();
+
+    if (_.difference(rights, grantedRights).length === 0) {
+      return;
+    }
+
+    throw new Error();
   }
 }

@@ -16,6 +16,10 @@
     esutils "^2.0.2"
     js-tokens "^3.0.0"
 
+"@types/deep-diff@^0.0.31":
+  version "0.0.31"
+  resolved "http://registry.npm.taobao.org/@types/deep-diff/download/@types/deep-diff-0.0.31.tgz#0632b274d1db23cb80f0c1d4e4254c3392fd8219"
+
 "@types/jest@^22.2.2":
   version "22.2.2"
   resolved "http://registry.npm.taobao.org/@types/jest/download/@types/jest-22.2.2.tgz#afe5dacbd00d65325f52da0ed3e76e259629ac9d"
@@ -1013,6 +1017,10 @@ decode-uri-component@^0.2.0:
 dedent@^0.7.0:
   version "0.7.0"
   resolved "http://registry.npm.taobao.org/dedent/download/dedent-0.7.0.tgz#2495ddbaf6eb874abb0e1be9df22d2e5a544326c"
+
+deep-diff@^1.0.1:
+  version "1.0.1"
+  resolved "http://registry.npm.taobao.org/deep-diff/download/deep-diff-1.0.1.tgz#ac437a691e88baf4205b83ae1aa095a13c6c10ac"
 
 deep-extend@~0.4.0:
   version "0.4.2"
