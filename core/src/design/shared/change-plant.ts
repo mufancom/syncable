@@ -1,5 +1,5 @@
-import {Change, ChangePlant, ChangePlantBlueprint} from '../change';
-import {Syncable, SyncableRef} from '../syncable';
+import {Change, ChangePlant, ChangePlantBlueprint} from '../../change';
+import {Syncable, SyncableRef} from '../../syncable';
 import {TagSyncable} from './tag';
 
 type AllChange = TagChange;

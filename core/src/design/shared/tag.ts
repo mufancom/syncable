@@ -1,8 +1,8 @@
 import _ = require('lodash');
 
-import {AccessControlRule, Context} from '../context';
-import {StringType} from '../lang';
-import {Syncable, SyncableId, SyncableObject} from '../syncable';
+import {AccessControlRule, Context} from '../../context';
+import {StringType} from '../../lang';
+import {Syncable, SyncableId, SyncableObject} from '../../syncable';
 
 export type TaskId = SyncableId<'task'>;
 

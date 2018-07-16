@@ -2,7 +2,10 @@ import {AccessControlEntry, Permission} from '../access-control';
 import {Dict, StringType} from '../lang';
 import {SyncableObject} from './syncable-object';
 
-export type SyncableId<Type extends string> = StringType<Type, 'id'>;
+export type SyncableId<Type extends string = string> = StringType<
+  Type,
+  'syncable-id'
+>;
 
 export interface SyncableRef<T extends Syncable = Syncable> {
   id: T['id'];
@@ -52,12 +55,12 @@ export interface Syncable<Type extends string = string> {
 // Utilities //
 ///////////////
 
-export type SyncableType<Ref extends SyncableRef> = Ref extends SyncableRef<
-  infer T
->
-  ? T
-  : never;
+export type SyncableType<
+  T extends SyncableRef | SyncableObject
+> = T extends SyncableRef<infer TSyncable>
+  ? TSyncable
+  : T extends SyncableObject<infer TSyncable> ? T : never;
 
 export type SyncableRefType<
-  TSyncableObject extends SyncableObject
-> = TSyncableObject extends SyncableObject<infer T> ? SyncableRef<T> : never;
+  T extends SyncableObject
+> = T extends SyncableObject<infer TSyncable> ? SyncableRef<TSyncable> : never;

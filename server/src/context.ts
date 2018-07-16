@@ -1,50 +1,64 @@
 import {
-  AccessControlRuleSet,
   Context,
-  Permission,
-  Resource,
-  ResourceRef,
-  SyncableRequisiteAssociation,
+  Syncable,
+  SyncableId,
+  SyncableObject,
+  SyncableRef,
+  SyncableRefType,
+  SyncableType,
+  UserSyncableObject,
 } from '@syncable/core';
 
 export abstract class ServerContext<
-  User extends Resource = Resource
+  User extends UserSyncableObject
 > extends Context<User> {
-  constructor(
-    ruleSet: AccessControlRuleSet,
-    protected permissions: Permission[],
-  ) {
-    super(ruleSet);
+  private ensureSyncablePromiseMap = new Map<SyncableId, Promise<Syncable>>();
+
+  constructor(private userRef: SyncableRefType<User>) {
+    super();
   }
 
-  async setUser(ref: ResourceRef<User>): Promise<void> {
-    this.user = await this.resolve(ref);
+  async initialize(): Promise<void> {
+    this.user = await this.resolve(this.userRef);
   }
 
-  async resolve<T extends Resource>(ref: ResourceRef<T>): Promise<T> {
+  async resolve<T extends SyncableObject>(ref: SyncableRefType<T>): Promise<T> {
     let syncable = await this.ensureSyncable(ref);
 
-    let dependencyRefs = (syncable.$associations || [])
-      .filter(
-        (association): association is SyncableRequisiteAssociation =>
-          association.requisite,
-      )
+    let requisiteRefs = (syncable.$associations || [])
+      .filter(association => association.requisite)
       .map(association => association.ref);
 
-    for (let ref of dependencyRefs) {
+    for (let ref of requisiteRefs) {
       await this.resolve(ref);
     }
 
     return this.get(ref)!;
   }
 
-  async ensureSyncable<T extends Resource>(
-    ref: ResourceRef<T>,
-  ): Promise<T['syncable']> {}
+  protected abstract async lock(...refs: SyncableRef[]): Promise<void>;
 
-  abstract async loadSyncable<T extends Resource>(
-    ref: ResourceRef<T>,
-  ): Promise<T['syncable']>;
+  protected abstract async loadSyncable<T extends SyncableObject>(
+    ref: SyncableRefType<T>,
+  ): Promise<SyncableType<T>>;
 
-  abstract async lock(...resources: ResourceRef[]): Promise<void>;
+  protected async ensureSyncable<T extends SyncableObject>(
+    ref: SyncableRefType<T>,
+  ): Promise<SyncableType<T>> {
+    let map = this.ensureSyncablePromiseMap;
+    let promise = map.get(ref.id) as Promise<SyncableType<T>> | undefined;
+
+    if (!promise) {
+      promise = this.loadSyncable(ref).then(syncable => {
+        this.add(syncable);
+        return syncable;
+      });
+
+      map.set(ref.id, promise);
+
+      return promise;
+    }
+
+    return promise;
+  }
 }

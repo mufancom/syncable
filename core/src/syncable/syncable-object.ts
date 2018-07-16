@@ -1,6 +1,6 @@
 import _ = require('lodash');
 
-import {AccessRight} from '../access-control';
+import {AccessRight, Permission} from '../access-control';
 import {AccessControlRule, Context} from '../context';
 import {StringType} from '../lang';
 import {Syncable} from './syncable';
@@ -40,6 +40,10 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
 
   get type(): T['type'] {
     return this.syncable.type;
+  }
+
+  getGrantingPermissions(): Permission[] {
+    return this.syncable.$grants || [];
   }
 
   getRequisiteAssociations<T extends SyncableObject>(

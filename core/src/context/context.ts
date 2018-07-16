@@ -4,9 +4,11 @@ import {
   AccessControlRuleValidator,
   GetAssociationOptions,
   Syncable,
+  SyncableId,
   SyncableObject,
-  SyncableRefType,
   SyncableRef,
+  SyncableRefType,
+  UserSyncableObject,
 } from '../syncable';
 
 export function AccessControlRule<
@@ -31,24 +33,20 @@ export function AccessControlRule<
   };
 }
 
-export class Context<User extends SyncableObject = SyncableObject> {
-  private user: User;
+export abstract class Context<
+  User extends UserSyncableObject = UserSyncableObject
+> {
+  protected user!: User;
 
-  constructor() {}
+  private syncableMap = new Map<SyncableId, Syncable>();
 
-  // get associations(): SyncableObject[] {
-  //   throw new Error('Not implemented');
-  // }
-
-  get grantedPermissions(): Permission[] {
-    throw new Error('Not implemented');
+  get permissions(): Permission[] {
+    return this.user.permissions;
   }
 
-  getRequisiteAssociations<T extends SyncableObject>(
-    options?: GetAssociationOptions<T>,
-  ): T[] {
-    return this.user.getRequisiteAssociations(options);
-  }
+  abstract async resolve<T extends SyncableObject>(
+    ref: SyncableRefType<T>,
+  ): Promise<T>;
 
   get<T extends SyncableObject>(ref: SyncableRefType<T>): T | undefined {}
 
@@ -62,5 +60,15 @@ export class Context<User extends SyncableObject = SyncableObject> {
     }
 
     return object;
+  }
+
+  getRequisiteAssociations<T extends SyncableObject>(
+    options: GetAssociationOptions<T> = {},
+  ): T[] {
+    return this.user.getRequisiteAssociations(options);
+  }
+
+  protected add(syncable: Syncable): void {
+    this.syncableMap.set(syncable.id, syncable);
   }
 }
