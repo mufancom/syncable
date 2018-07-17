@@ -1,20 +1,9 @@
-import {
-  AccessControlRuleSet,
-  Context,
-  Permission,
-  Resource,
-  ResourceRef,
-  SyncableRequisiteAssociation,
-} from '@syncable/core';
+import {Context, SyncableRefType, UserSyncableObject} from '@syncable/core';
 
 export abstract class ClientContext<
-  User extends Resource = Resource
+  User extends UserSyncableObject
 > extends Context<User> {
-  constructor(ruleSet: AccessControlRuleSet) {
-    super(ruleSet);
-  }
-
-  setUser(ref: ResourceRef<User>): void {
-    this.user = this.require(ref);
+  initialize(userRef: SyncableRefType<User>): void {
+    this.user = this.require(userRef);
   }
 }

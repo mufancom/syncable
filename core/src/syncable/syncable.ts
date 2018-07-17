@@ -55,11 +55,17 @@ export interface Syncable<Type extends string = string> {
 // Utilities //
 ///////////////
 
+export type SyncableIdType<T extends SyncableObject> = T extends SyncableObject<
+  infer TSyncable
+>
+  ? TSyncable['id']
+  : never;
+
 export type SyncableType<
   T extends SyncableRef | SyncableObject
 > = T extends SyncableRef<infer TSyncable>
   ? TSyncable
-  : T extends SyncableObject<infer TSyncable> ? T : never;
+  : T extends SyncableObject<infer TSyncable> ? TSyncable : never;
 
 export type SyncableRefType<
   T extends SyncableObject

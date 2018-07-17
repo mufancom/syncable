@@ -6,8 +6,8 @@ import {
   Syncable,
   SyncableId,
   SyncableObject,
-  SyncableRef,
   SyncableRefType,
+  SyncableType,
   UserSyncableObject,
 } from '../syncable';
 
@@ -34,23 +34,52 @@ export function AccessControlRule<
 }
 
 export abstract class Context<
-  User extends UserSyncableObject = UserSyncableObject
+  User extends UserSyncableObject = UserSyncableObject,
+  OtherSyncableObject extends SyncableObject = SyncableObject
 > {
   protected user!: User;
 
-  private syncableMap = new Map<SyncableId, Syncable>();
+  private syncableMap = new Map<
+    SyncableId,
+    SyncableType<User | OtherSyncableObject>
+  >();
+  private syncableObjectMap = new WeakMap<
+    Syncable,
+    User | OtherSyncableObject
+  >();
 
   get permissions(): Permission[] {
     return this.user.permissions;
   }
 
-  abstract async resolve<T extends SyncableObject>(
+  addSyncable(syncable: SyncableType<User | OtherSyncableObject>): void {
+    this.syncableMap.set(syncable.id, syncable);
+  }
+
+  get<T extends User | OtherSyncableObject>(
     ref: SyncableRefType<T>,
-  ): Promise<T>;
+  ): T | undefined {
+    let syncableMap = this.syncableMap;
+    let syncableObjectMap = this.syncableObjectMap;
 
-  get<T extends SyncableObject>(ref: SyncableRefType<T>): T | undefined {}
+    let syncable = syncableMap.get(ref.id);
 
-  require<T extends SyncableObject>(ref: SyncableRefType<T>): T {
+    if (!syncable) {
+      return undefined;
+    }
+
+    let object = syncableObjectMap.get(syncable);
+
+    if (!object) {
+      object = this.create(syncable as SyncableType<T>);
+      // TODO: object should be narrowed to non-null, TypeScript bug?
+      syncableObjectMap.set(syncable, object!);
+    }
+
+    return object as T;
+  }
+
+  require<T extends User | OtherSyncableObject>(ref: SyncableRefType<T>): T {
     let object = this.get(ref);
 
     if (!object) {
@@ -62,13 +91,13 @@ export abstract class Context<
     return object;
   }
 
-  getRequisiteAssociations<T extends SyncableObject>(
+  getRequisiteAssociations<T extends User | OtherSyncableObject>(
     options: GetAssociationOptions<T> = {},
   ): T[] {
-    return this.user.getRequisiteAssociations(options);
+    return this.user.getRequisiteAssociations(options) as T[];
   }
 
-  protected add(syncable: Syncable): void {
-    this.syncableMap.set(syncable.id, syncable);
-  }
+  protected abstract create<T extends User | OtherSyncableObject>(
+    syncable: SyncableType<T>,
+  ): T;
 }

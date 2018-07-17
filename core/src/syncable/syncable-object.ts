@@ -32,7 +32,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     AccessControlRuleEntry<SyncableObject, object>
   >();
 
-  constructor(protected syncable: T, protected context: Context) {}
+  constructor(readonly syncable: T, protected context: Context) {}
 
   get id(): T['id'] {
     return this.syncable.id;
