@@ -1,9 +1,8 @@
 import * as DeepDiff from 'deep-diff';
 import _ = require('lodash');
 
-import {AccessRight} from '../access-control';
 import {Dict, KeyOf} from '../lang';
-import {Syncable, SyncableRef, SyncableType} from '../syncable';
+import {SyncableRef, SyncableType} from '../syncable';
 import {Change} from './change';
 
 export type ChangeToObjectDict<T extends Change> = T extends Change<
@@ -17,13 +16,13 @@ export type ChangeToObjectDict<T extends Change> = T extends Change<
     }
   : never;
 
-export type ChangeToOutputDict<T extends Change> = T extends Change<
+export type ChangeToDiffsDict<T extends Change> = T extends Change<
   string,
   infer RefDict
 >
   ? {
       [K in keyof RefDict]: RefDict[K] extends SyncableRef
-        ? ChangeOutput
+        ? deepDiff.IDiff[]
         : never
     }
   : never;
@@ -37,22 +36,17 @@ export type ChangePlantBlueprint<T extends Change> = {
   [K in T['type']]: ChangePlantProcessor<Extract<T, {type: K}>>
 };
 
-export interface ChangeOutput {
-  types: AccessRight[];
-  diff: deepDiff.IDiff[];
-}
-
 export class ChangePlant<AllChange extends Change> {
   constructor(private blueprint: ChangePlantBlueprint<AllChange>) {}
 
   process<T extends AllChange>(
     {type, options}: T,
     objects: ChangeToObjectDict<T>,
-  ): ChangeToOutputDict<T> {
+  ): ChangeToDiffsDict<T> {
     let blueprint = this.blueprint as Dict<ChangePlantProcessor<AllChange>>;
     let processor = blueprint[type];
 
-    let keys = Object.keys(objects) as KeyOf<typeof objects, string>[];
+    let keys = Object.keys(objects) as KeyOf<ChangeToObjectDict<T>, string>[];
 
     let snapshot = _.cloneDeep(objects);
 
@@ -63,24 +57,19 @@ export class ChangePlant<AllChange extends Change> {
         let current = snapshot[key];
         let next = objects[key];
 
-        let diff = DeepDiff.diff(current, next);
+        let diffs = DeepDiff.diff(current, next);
 
-        let accessTypeSet = new Set<string>();
-
-        for (let change of diff) {
+        for (let change of diffs) {
           if (change.path[0][0] === '$') {
-            throw new Error();
+            throw new Error('');
           }
         }
 
-        dict[key] = {
-          types: ['write'],
-          diff,
-        };
+        (dict as Dict<deepDiff.IDiff[]>)[key] = diffs;
 
         return dict;
       },
-      {} as ChangeToOutputDict<T>,
+      {} as ChangeToDiffsDict<T>,
     );
   }
 }

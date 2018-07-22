@@ -45,10 +45,10 @@ export interface Syncable<Type extends string = string> {
   $acl?: AccessControlEntry[];
 
   /**
-   * A dictionary of extra access control list to be attached by making this
+   * A list of extra access control entries to be attached by making this
    * object association of the target object.
    */
-  $secures?: Dict<AccessControlEntry[] | false | undefined>;
+  $secures?: AccessControlEntry[];
 }
 
 ///////////////

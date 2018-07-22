@@ -1,22 +1,27 @@
 import _ = require('lodash');
 
-import {AccessRight, Permission} from '../access-control';
-import {AccessControlRule, Context} from '../context';
-import {StringType} from '../lang';
+import {
+  ACCESS_RIGHTS,
+  AccessControlEntry,
+  AccessControlEntryName,
+  AccessControlEntryType,
+  AccessRight,
+  Permission,
+  getAccessControlEntryPriority,
+} from '../access-control';
+import {Context} from '../context';
 import {Syncable} from './syncable';
 
-export type AccessControlRuleName = StringType<'access-control', 'rule-name'>;
-
-export type AccessControlRuleValidator<
-  T extends SyncableObject,
+export type AccessControlRuleTester<
+  TContext extends Context,
   Options extends object
-> = (target: T, context: Context, options?: Options) => void;
+> = (target: SyncableObject, context: TContext, options?: Options) => boolean;
 
 export interface AccessControlRuleEntry<
-  T extends SyncableObject,
-  Options extends object
+  TContext extends Context = Context,
+  Options extends object = object
 > {
-  validator: AccessControlRuleValidator<T, Options>;
+  test: AccessControlRuleTester<TContext, Options>;
 }
 
 export interface GetAssociationOptions<T extends SyncableObject> {
@@ -24,12 +29,26 @@ export interface GetAssociationOptions<T extends SyncableObject> {
   type?: T['type'];
 }
 
+export interface GetAccessRightsOptions {
+  grantableOnly?: boolean;
+}
+
+interface AccessRightComparableItem {
+  type: AccessControlEntryType;
+  grantable: boolean;
+  priority: number;
+}
+
+type AccessRightComparableItemsDict = {
+  [key in AccessRight]: AccessRightComparableItem[]
+};
+
 export abstract class SyncableObject<T extends Syncable = Syncable> {
   /** @internal */
   // tslint:disable-next-line:variable-name
   __accessControlRuleMap = new Map<
-    AccessControlRuleName,
-    AccessControlRuleEntry<SyncableObject, object>
+    AccessControlEntryName,
+    AccessControlRuleEntry
   >();
 
   constructor(readonly syncable: T, protected context: Context) {}
@@ -44,6 +63,10 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
 
   getGrantingPermissions(): Permission[] {
     return this.syncable.$grants || [];
+  }
+
+  getSecuringACL(): AccessControlEntry[] {
+    return this.syncable.$secures || [];
   }
 
   getRequisiteAssociations<T extends SyncableObject>(
@@ -64,17 +87,119 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
       ) as T[];
   }
 
-  getAccessRights(): AccessRight[] {}
+  getAccessRights({
+    grantableOnly = false,
+  }: GetAccessRightsOptions = {}): AccessRight[] {
+    let accessRightsDict = this.getAccessRightComparableItemsDict();
 
-  getGrantableAccessRights(): AccessRight[] {}
+    return ACCESS_RIGHTS.filter(right => {
+      let items = accessRightsDict[right];
 
-  validateAccessRights(rights: AccessRight[]): void {
-    let grantedRights = this.getAccessRights();
+      for (let {type, grantable} of items) {
+        if (type !== 'allow') {
+          break;
+        }
+
+        if (!grantableOnly || grantable) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }
+
+  validateAccessRights(
+    rights: AccessRight[],
+    options?: GetAccessRightsOptions,
+  ): void {
+    let grantedRights = this.getAccessRights(options);
 
     if (_.difference(rights, grantedRights).length === 0) {
       return;
     }
 
-    throw new Error();
+    throw new Error(
+      `Granted access rights (${grantedRights.join(
+        ', ',
+      )}) do not match requirements (${rights.join(', ')})`,
+    );
+  }
+
+  private getAccessRightComparableItemsDict(): AccessRightComparableItemsDict {
+    let dict: AccessRightComparableItemsDict = {
+      read: [],
+      write: [],
+      associate: [],
+    };
+
+    let acl = this.syncable.$acl || [];
+
+    for (let entry of acl) {
+      if (!this.testAccessControlEntry(this, entry)) {
+        continue;
+      }
+
+      let {type, grantable, rights} = entry;
+
+      let item: AccessRightComparableItem = {
+        type,
+        grantable,
+        priority: getAccessControlEntryPriority(entry, false),
+      };
+
+      for (let right of rights) {
+        dict[right].push(item);
+      }
+    }
+
+    let associations = this.getRequisiteAssociations();
+
+    for (let association of associations) {
+      let securingACL = association.getSecuringACL();
+
+      for (let entry of securingACL) {
+        if (!association.testAccessControlEntry(this, entry)) {
+          continue;
+        }
+
+        let {type, grantable, rights} = entry;
+
+        let item: AccessRightComparableItem = {
+          type,
+          grantable,
+          priority: getAccessControlEntryPriority(entry, true),
+        };
+
+        for (let right of rights) {
+          dict[right].push(item);
+        }
+      }
+    }
+
+    for (let right of ACCESS_RIGHTS) {
+      dict[right].sort((x, y) => y.priority - x.priority);
+    }
+
+    return dict;
+  }
+
+  private testAccessControlEntry(
+    target: SyncableObject,
+    entry: AccessControlEntry,
+  ): boolean {
+    if (!('name' in entry)) {
+      return true;
+    }
+
+    let {name, options} = entry;
+
+    let rule = this.__accessControlRuleMap.get(name);
+
+    if (!rule) {
+      throw new Error(`Unknown access control rule "${name}"`);
+    }
+
+    return rule.test(target, this.context, options);
   }
 }

@@ -2,7 +2,12 @@ import _ = require('lodash');
 
 import {AccessControlRule, Context} from '../../context';
 import {StringType} from '../../lang';
-import {Syncable, SyncableId, SyncableObject} from '../../syncable';
+import {
+  Syncable,
+  SyncableId,
+  SyncableObject,
+  SyncableType,
+} from '../../syncable';
 
 export type TaskId = SyncableId<'task'>;
 
@@ -48,23 +53,23 @@ export class Tag extends SyncableObject<TagSyncable> {
     return _.isEqual(thisSequence, comparisonSequence);
   }
 
-  @AccessControlRule()
+  @AccessControlRule<MFContext>()
   'require-mutual-association'(
     _target: SyncableObject,
     context: MFContext,
     {acceptDerivation = true}: TagMutualAssociationOptions = {},
-  ): void {
+  ): boolean {
     let tags = context.getRequisiteAssociations<Tag>({
       name: 'tag',
       type: 'tag',
     });
 
-    if (tags.some(tag => tag.is(this, acceptDerivation))) {
-      return;
-    }
-
-    throw new Error();
+    return tags.some(tag => tag.is(this, acceptDerivation));
   }
 }
 
-export class MFContext extends Context {}
+export class MFContext extends Context {
+  protected create<T extends SyncableObject>(syncable: SyncableType<T>): T {
+    throw new Error('Method not implemented.');
+  }
+}

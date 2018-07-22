@@ -1,7 +1,6 @@
-import {Permission} from '../access-control';
+import {AccessControlEntryName, Permission} from '../access-control';
 import {
-  AccessControlRuleName,
-  AccessControlRuleValidator,
+  AccessControlRuleTester,
   GetAssociationOptions,
   Syncable,
   SyncableId,
@@ -12,23 +11,20 @@ import {
 } from '../syncable';
 
 export function AccessControlRule<
-  TargetSyncableObject extends SyncableObject = SyncableObject,
+  TContext extends Context = Context,
   Options extends object = object
 >() {
   return (
     target: SyncableObject,
     name: string,
     descriptor: TypedPropertyDescriptor<
-      AccessControlRuleValidator<TargetSyncableObject, Options>
+      AccessControlRuleTester<TContext, Options>
     >,
   ) => {
-    let validator = descriptor.value! as AccessControlRuleValidator<
-      SyncableObject,
-      object
-    >;
+    let test = descriptor.value! as AccessControlRuleTester<Context, object>;
 
-    target.__accessControlRuleMap.set(name as AccessControlRuleName, {
-      validator,
+    target.__accessControlRuleMap.set(name as AccessControlEntryName, {
+      test,
     });
   };
 }
