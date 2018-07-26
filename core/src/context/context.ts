@@ -1,6 +1,5 @@
-import {AccessControlEntryName, Permission} from '../access-control';
+import {AccessControlEntryRuleName, Permission} from '../access-control';
 import {
-  AccessControlRuleTester,
   GetAssociationOptions,
   Syncable,
   SyncableId,
@@ -10,10 +9,15 @@ import {
   UserSyncableObject,
 } from '../syncable';
 
+export type AccessControlRuleTester<
+  TContext extends Context,
+  Options extends object
+> = (target: SyncableObject, context: TContext, options?: Options) => boolean;
+
 export function AccessControlRule<
   TContext extends Context = Context,
   Options extends object = object
->() {
+>(explicitName?: string) {
   return (
     target: SyncableObject,
     name: string,
@@ -23,9 +27,10 @@ export function AccessControlRule<
   ) => {
     let test = descriptor.value! as AccessControlRuleTester<Context, object>;
 
-    target.__accessControlRuleMap.set(name as AccessControlEntryName, {
-      test,
-    });
+    target.__accessControlRuleMap.set(
+      (explicitName || name) as AccessControlEntryRuleName,
+      {test},
+    );
   };
 }
 
@@ -49,7 +54,7 @@ export abstract class Context<
   }
 
   addSyncable(syncable: SyncableType<User | OtherSyncableObject>): void {
-    this.syncableMap.set(syncable.id, syncable);
+    this.syncableMap.set(syncable.$id, syncable);
   }
 
   get<T extends User | OtherSyncableObject>(

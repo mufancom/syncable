@@ -1,11 +1,14 @@
+import {getRef} from '../@utils/syncable';
 import {AccessControlEntry} from '../access-control';
-import {SyncableRef} from '../syncable';
+import {Association, Syncable, SyncableRef} from '../syncable';
 import {Change} from './change';
+import {ChangePlantBlueprint} from './change-plant';
 
 export type AccessControlChange =
   | AssociateChange
   | UnassociateChange
-  | AddAccessControlEntriesChange;
+  | SetAccessControlEntriesChange
+  | UnsetAccessControlEntriesChange;
 
 ////////////////
 // $associate //
@@ -16,7 +19,15 @@ export interface AssociateChangeRefDict {
   source: SyncableRef;
 }
 
-export type AssociateChange = Change<'$associate', AssociateChangeRefDict>;
+export interface AssociateChangeOptions {
+  requisite: boolean;
+}
+
+export type AssociateChange = Change<
+  '$associate',
+  AssociateChangeRefDict,
+  AssociateChangeOptions
+>;
 
 //////////////////
 // $unassociate //
@@ -33,37 +44,112 @@ export type UnassociateChange = Change<
 >;
 
 /////////////////////////////////
-// $add-access-control-entries //
+// $set-access-control-entries //
 /////////////////////////////////
 
-export interface AddAccessControlEntriesChangeRefDict {
+export interface SetAccessControlEntriesChangeRefDict {
   target: SyncableRef;
 }
 
-export interface AddAccessControlEntriesChangeOptions {
+export interface SetAccessControlEntriesChangeOptions {
   entries: AccessControlEntry[];
 }
 
-export type AddAccessControlEntriesChange = Change<
-  '$add-access-control-entries',
-  AddAccessControlEntriesChangeRefDict,
-  AddAccessControlEntriesChangeOptions
+export type SetAccessControlEntriesChange = Change<
+  '$set-access-control-entries',
+  SetAccessControlEntriesChangeRefDict,
+  SetAccessControlEntriesChangeOptions
 >;
 
 ////////////////////////////////////
-// $remove-access-control-entries //
+// $unset-access-control-entries //
 ////////////////////////////////////
 
-export interface RemoveAccessControlEntriesChangeRefDict {
+export interface UnsetAccessControlEntriesChangeRefDict {
   target: SyncableRef;
 }
 
-export interface RemoveAccessControlEntriesChangeOptions {
-  entries: AccessControlEntry[];
+export interface UnsetAccessControlEntriesChangeOptions {
+  names: string[];
 }
 
-export type RemoveAccessControlEntriesChange = Change<
-  '$remove-access-control-entries',
-  RemoveAccessControlEntriesChangeRefDict,
-  RemoveAccessControlEntriesChangeOptions
+export type UnsetAccessControlEntriesChange = Change<
+  '$unset-access-control-entries',
+  UnsetAccessControlEntriesChangeRefDict,
+  UnsetAccessControlEntriesChangeOptions
 >;
+
+export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
+  AccessControlChange
+> = {
+  $associate({target, source}, {requisite}) {
+    let associations = target.$associations;
+
+    if (!associations) {
+      associations = target.$associations = [];
+    }
+
+    if (
+      associations.find(association =>
+        compareAssociationWithSyncable(association, source),
+      )
+    ) {
+      return;
+    }
+
+    associations.push({
+      ref: getRef(source),
+      requisite,
+    });
+  },
+  $unassociate({target, source}) {
+    let associations = target.$associations;
+
+    if (!associations) {
+      return;
+    }
+
+    let index = associations.findIndex(association =>
+      compareAssociationWithSyncable(association, source),
+    );
+
+    if (index >= 0) {
+      associations.splice(index, 1);
+    }
+  },
+  '$set-access-control-entries'({target}, {entries}) {
+    let acl = target.$acl;
+
+    if (!acl) {
+      acl = target.$acl = [];
+    }
+
+    let entryMap = new Map(
+      acl.map((entry): [string, AccessControlEntry] => [entry.name, entry]),
+    );
+
+    for (let entry of entries) {
+      entryMap.set(entry.name, entry);
+    }
+
+    target.$acl = Array.from(entryMap.values());
+  },
+  '$unset-access-control-entries'({target}, {names}) {
+    let acl = target.$acl;
+
+    if (!acl) {
+      return;
+    }
+
+    let nameSet = new Set(names);
+
+    target.$acl = acl.filter(entry => !nameSet.has(entry.name));
+  },
+};
+
+function compareAssociationWithSyncable(
+  {ref: {type, id}}: Association,
+  {$type, $id}: Syncable,
+): boolean {
+  return type === $type && id === $id;
+}

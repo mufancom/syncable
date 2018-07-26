@@ -3,6 +3,10 @@ import _ = require('lodash');
 
 import {Dict, KeyOf} from '../lang';
 import {SyncableRef, SyncableType} from '../syncable';
+import {
+  AccessControlChange,
+  accessControlChangePlantBlueprint,
+} from './access-control-changes';
 import {Change} from './change';
 
 export type ChangeToObjectDict<T extends Change> = T extends Change<
@@ -36,15 +40,19 @@ export type ChangePlantBlueprint<T extends Change> = {
   [K in T['type']]: ChangePlantProcessor<Extract<T, {type: K}>>
 };
 
-export class ChangePlant<AllChange extends Change> {
-  constructor(private blueprint: ChangePlantBlueprint<AllChange>) {}
+export class ChangePlant<UserDefinedChange extends Change> {
+  constructor(private blueprint: ChangePlantBlueprint<UserDefinedChange>) {}
 
-  process<T extends AllChange>(
+  process<T extends UserDefinedChange | AccessControlChange>(
     {type, options}: T,
     objects: ChangeToObjectDict<T>,
   ): ChangeToDiffsDict<T> {
-    let blueprint = this.blueprint as Dict<ChangePlantProcessor<AllChange>>;
-    let processor = blueprint[type];
+    let processor = ((accessControlChangePlantBlueprint as Dict<
+      ChangePlantProcessor<AccessControlChange> | undefined
+    >)[type] ||
+      (this.blueprint as Dict<
+        ChangePlantProcessor<UserDefinedChange> | undefined
+      >)[type]) as ChangePlantProcessor<T>;
 
     let keys = Object.keys(objects) as KeyOf<ChangeToObjectDict<T>, string>[];
 
@@ -59,9 +67,13 @@ export class ChangePlant<AllChange extends Change> {
 
         let diffs = DeepDiff.diff(current, next);
 
-        for (let change of diffs) {
-          if (change.path[0][0] === '$') {
-            throw new Error('');
+        for (let diff of diffs) {
+          let propertyName = diff.path[0];
+
+          if (/^\$/.test(propertyName) && /^[^$]/.test(type)) {
+            throw new Error(
+              `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
+            );
           }
         }
 

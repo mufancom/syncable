@@ -6,22 +6,17 @@ export const ACCESS_RIGHTS: AccessRight[] = ['read', 'write', 'associate'];
 
 export type AccessControlEntryType = 'allow' | 'deny';
 
-export type AccessControlEntry =
-  | BasicAccessControlEntry
-  | CustomAccessControlEntry;
+export type AccessControlEntryRuleName = StringType<
+  'access-control-entry-rule-name'
+>;
 
-export interface BasicAccessControlEntry {
+export interface AccessControlEntry<Options extends object = object> {
+  name: string;
+  rule: AccessControlEntryRuleName;
   type: AccessControlEntryType;
   explicit: boolean;
   grantable: boolean;
   rights: AccessRight[];
-}
-
-export type AccessControlEntryName = StringType<'access-control-entry-name'>;
-
-export interface CustomAccessControlEntry<Options extends object = object>
-  extends BasicAccessControlEntry {
-  name: AccessControlEntryName;
   options?: Options;
 }
 

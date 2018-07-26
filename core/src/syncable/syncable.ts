@@ -8,20 +8,20 @@ export type SyncableId<Type extends string = string> = StringType<
 >;
 
 export interface SyncableRef<T extends Syncable = Syncable> {
-  id: T['id'];
-  type: T['type'];
+  id: T['$id'];
+  type: T['$type'];
 }
 
 export interface SyncableAssociation<T extends Syncable = Syncable> {
   ref: SyncableRef<T>;
   name?: string;
-  requisite: true;
+  requisite: boolean;
 }
 
 export interface Syncable<Type extends string = string> {
-  id: SyncableId<Type>;
-  type: Type;
-  timestamp: number;
+  $id: SyncableId<Type>;
+  $type: Type;
+  $timestamp: number;
 
   /**
    * Object associations of this object.
@@ -58,7 +58,7 @@ export interface Syncable<Type extends string = string> {
 export type SyncableIdType<T extends SyncableObject> = T extends SyncableObject<
   infer TSyncable
 >
-  ? TSyncable['id']
+  ? TSyncable['$id']
   : never;
 
 export type SyncableType<

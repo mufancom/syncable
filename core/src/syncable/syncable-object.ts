@@ -3,19 +3,14 @@ import _ = require('lodash');
 import {
   ACCESS_RIGHTS,
   AccessControlEntry,
-  AccessControlEntryName,
+  AccessControlEntryRuleName,
   AccessControlEntryType,
   AccessRight,
   Permission,
   getAccessControlEntryPriority,
 } from '../access-control';
-import {Context} from '../context';
+import {AccessControlRule, AccessControlRuleTester, Context} from '../context';
 import {Syncable} from './syncable';
-
-export type AccessControlRuleTester<
-  TContext extends Context,
-  Options extends object
-> = (target: SyncableObject, context: TContext, options?: Options) => boolean;
 
 export interface AccessControlRuleEntry<
   TContext extends Context = Context,
@@ -47,18 +42,18 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   /** @internal */
   // tslint:disable-next-line:variable-name
   __accessControlRuleMap = new Map<
-    AccessControlEntryName,
+    AccessControlEntryRuleName,
     AccessControlRuleEntry
   >();
 
   constructor(readonly syncable: T, protected context: Context) {}
 
-  get id(): T['id'] {
-    return this.syncable.id;
+  get id(): T['$id'] {
+    return this.syncable.$id;
   }
 
-  get type(): T['type'] {
-    return this.syncable.type;
+  get type(): T['$type'] {
+    return this.syncable.$type;
   }
 
   getGrantingPermissions(): Permission[] {
@@ -126,6 +121,11 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     );
   }
 
+  @AccessControlRule('basic')
+  protected testBasic(_target: SyncableObject, _context: Context): boolean {
+    return true;
+  }
+
   private getAccessRightComparableItemsDict(): AccessRightComparableItemsDict {
     let dict: AccessRightComparableItemsDict = {
       read: [],
@@ -188,16 +188,12 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     target: SyncableObject,
     entry: AccessControlEntry,
   ): boolean {
-    if (!('name' in entry)) {
-      return true;
-    }
+    let {rule, options} = entry;
 
-    let {name, options} = entry;
-
-    let rule = this.__accessControlRuleMap.get(name);
+    let rule = this.__accessControlRuleMap.get(rule);
 
     if (!rule) {
-      throw new Error(`Unknown access control rule "${name}"`);
+      throw new Error(`Unknown access control rule "${rule}"`);
     }
 
     return rule.test(target, this.context, options);
