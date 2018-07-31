@@ -1,7 +1,7 @@
 import {Dict, StringType} from '../lang';
 import {SyncableRef} from '../syncable';
 
-export type ChangeUID = StringType<'change-uid'>;
+export type ChangePacketUID = StringType<'change-uid'>;
 
 export interface Change<
   Type extends string = string,
@@ -14,3 +14,7 @@ export interface Change<
 }
 
 export type GeneralChange = Change<string, Dict<SyncableRef>, Dict<any>>;
+
+export interface ChangePacket extends GeneralChange {
+  uid: ChangePacketUID;
+}

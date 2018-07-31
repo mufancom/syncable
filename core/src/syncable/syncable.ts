@@ -1,5 +1,7 @@
+import uuid = require('uuid');
+
 import {AccessControlEntry, Permission} from '../access-control';
-import {StringType} from '../lang';
+import {ExcludeProperty, StringType} from '../lang';
 import {SyncableObject} from './syncable-object';
 
 export type SyncableId<Type extends string = string> = StringType<
@@ -67,3 +69,18 @@ export type SyncableObjectType<T extends SyncableRef> = T extends SyncableRef<
 >
   ? TSyncableObject
   : never;
+
+export function createSyncable<T extends Syncable>(
+  $type: T['$type'],
+  data: ExcludeProperty<T, keyof Syncable>,
+): T {
+  let $id = uuid() as Syncable['$id'];
+  let $timestamp = 0;
+
+  return {
+    $id,
+    $type,
+    $timestamp,
+    ...(data as object),
+  } as T;
+}

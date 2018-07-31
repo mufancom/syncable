@@ -2,11 +2,12 @@ import {
   Change,
   ChangePlant,
   ChangePlantBlueprint,
+  Syncable,
   SyncableRef,
 } from '@syncable/core';
-import {TagSyncable} from './syncables';
+import {Tag, TagSyncable} from './syncables';
 
-type AllChange = TagChange;
+type SupportedChange = TagChange | CreateTagChange;
 
 interface TagChangeOptions {
   foo: boolean;
@@ -14,12 +15,19 @@ interface TagChangeOptions {
 
 interface TagChangeRefDict {
   target: SyncableRef;
-  tag: SyncableRef<TagSyncable>;
+  tag: SyncableRef<Tag>;
 }
 
 interface TagChange extends Change<'tag', TagChangeRefDict, TagChangeOptions> {}
 
-const blueprint: ChangePlantBlueprint<AllChange> = {};
+interface CreateTagChange extends Change<'create-tag'> {}
+
+const blueprint: ChangePlantBlueprint<SupportedChange> = {
+  tag() {},
+  'create-tag'() {
+    return {};
+  },
+};
 
 const changePlant = new ChangePlant(blueprint);
 

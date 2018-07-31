@@ -26,11 +26,13 @@
   },
   "dependencies": {
     "lodash": "^4.17.10",
+    "socket.io-client": "^2.1.1",
+    "uuid": "^3.3.2",
     "villa": "^0.3.1"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.115",
     "@types/socket.io-client": "^1.4.32",
-    "socket.io-client": "^2.1.0"
+    "@types/uuid": "^3.4.3"
   }
 }

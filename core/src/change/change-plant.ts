@@ -3,7 +3,7 @@ import _ = require('lodash');
 
 import {AccessRight} from '../access-control';
 import {Dict, KeyOf} from '../lang';
-import {SyncableRef} from '../syncable';
+import {Syncable, SyncableRef} from '../syncable';
 import {
   AccessControlChange,
   accessControlChangePlantBlueprint,
@@ -56,10 +56,21 @@ export type ChangeToOutputDict<T extends Change> = T extends Change<
     }
   : never;
 
+export interface ChangePlantProcessingResult {
+  rights?: AccessRight[];
+  creations?: Syncable[];
+  removals?: SyncableRef[];
+}
+
+export interface ChangePlantProcessingResultEntry
+  extends ChangePlantProcessingResult {
+  ref: SyncableRef;
+}
+
 export type ChangePlantProcessor<T extends Change = Change> = (
   objects: ChangeToSyncableDict<T>,
   options: T['options'],
-) => AccessRight[] | void;
+) => ChangePlantProcessingResult | void;
 
 export type ChangePlantBlueprint<T extends Change> = {
   [K in T['type']]: ChangePlantProcessor<Extract<T, {type: K}>>
@@ -86,7 +97,9 @@ export class ChangePlant<TChange extends Change = Change> {
 
     let clonedSyncableDict = _.cloneDeep(syncableDict);
 
-    processor(clonedSyncableDict, options);
+    let result = processor(clonedSyncableDict, options) as
+      | ChangePlantProcessingResult
+      | undefined;
 
     return keys.reduce(
       (dict, key) => {
@@ -105,7 +118,7 @@ export class ChangePlant<TChange extends Change = Change> {
           }
         }
 
-        (dict as Dict<deepDiff.IDiff[]>)[key] = diffs;
+        (dict as Dict<ChangeOutput>)[key] = {rights, diffs};
 
         return dict;
       },

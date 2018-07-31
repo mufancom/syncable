@@ -1,8 +1,8 @@
-import {SyncableRef} from '../syncable';
-import {ChangeUID} from './change';
+import {Syncable, SyncableRef} from '../syncable';
+import {ChangePacketUID} from './change';
 
 export interface ConsequentSeries {
-  uid: ChangeUID;
+  uid: ChangePacketUID;
   consequences: Consequence[];
 }
 
@@ -13,7 +13,7 @@ export type Consequence =
 
 export interface ConsequentCreation {
   type: 'creation';
-  snapshot: object;
+  syncable: Syncable;
 }
 
 export interface ConsequentRemoval {
@@ -24,5 +24,5 @@ export interface ConsequentRemoval {
 export interface ConsequentUpdate {
   type: 'update';
   ref: SyncableRef;
-  diff: deepDiff.IDiff;
+  diffs: deepDiff.IDiff[];
 }

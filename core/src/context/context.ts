@@ -1,6 +1,6 @@
+import * as DeepDiff from 'deep-diff';
+
 import {Permission} from '../access-control';
-import {RefDictToObjectDict} from '../change';
-import {Dict} from '../lang';
 import {
   GetAssociationOptions,
   Syncable,
@@ -32,7 +32,44 @@ export abstract class Context<
   }
 
   addSyncable(syncable: Syncable): void {
-    this.syncableMap.set(syncable.$id, syncable);
+    let map = this.syncableMap;
+    let id = syncable.$id;
+
+    if (map.has(id)) {
+      throw new Error(`Syncable with ID "${id}" already exists in context`);
+    }
+
+    map.set(id, syncable);
+  }
+
+  /**
+   * Update a syncable stored in context, please notice that it won't change
+   * the reference of the originally stored syncable. Instead, differences will
+   * be applied to it.
+   */
+  updateSyncable(snapshot: Syncable): void {
+    let id = snapshot.$id;
+
+    let syncable = this.syncableMap.get(id);
+
+    if (!syncable) {
+      throw new Error(`Syncable with ID "${id}" does not exists in context`);
+    }
+
+    DeepDiff.applyDiff(syncable, snapshot, undefined!);
+  }
+
+  removeSyncable({id}: SyncableRef): void {
+    let map = this.syncableMap;
+
+    if (!map.has(id)) {
+      throw new Error(`Syncable with ID "${id}" does not exists in context`);
+    }
+
+    map.delete(id);
+
+    // As `this.syncableObjectMap` is a weak map, it should be okay not to delete
+    // correspondent object.
   }
 
   getSyncable<T extends SyncableObject>({
