@@ -1,18 +1,19 @@
 import {AccessControlEntry, Permission} from '../access-control';
-import {Dict, StringType} from '../lang';
+import {StringType} from '../lang';
 import {SyncableObject} from './syncable-object';
 
 export type SyncableId<Type extends string = string> = StringType<
-  Type,
-  'syncable-id'
+  [Type, 'syncable-id']
 >;
 
-export interface SyncableRef<T extends Syncable = Syncable> {
-  id: T['$id'];
-  type: T['$type'];
+export interface SyncableRef<T extends SyncableObject = SyncableObject> {
+  id: T['id'];
+  type: T['type'];
 }
 
-export interface SyncableAssociation<T extends Syncable = Syncable> {
+export interface SyncableAssociation<
+  T extends SyncableObject = SyncableObject
+> {
   ref: SyncableRef<T>;
   name?: string;
   requisite: boolean;
@@ -61,12 +62,8 @@ export type SyncableIdType<T extends SyncableObject> = T extends SyncableObject<
   ? TSyncable['$id']
   : never;
 
-export type SyncableType<
-  T extends SyncableRef | SyncableObject
-> = T extends SyncableRef<infer TSyncable>
-  ? TSyncable
-  : T extends SyncableObject<infer TSyncable> ? TSyncable : never;
-
-export type SyncableRefType<
-  T extends SyncableObject
-> = T extends SyncableObject<infer TSyncable> ? SyncableRef<TSyncable> : never;
+export type SyncableObjectType<T extends SyncableRef> = T extends SyncableRef<
+  infer TSyncableObject
+>
+  ? TSyncableObject
+  : never;

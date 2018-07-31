@@ -1,24 +1,15 @@
-import _ = require('lodash');
-
-import {AccessControlRule, Context} from '../../context';
-import {StringType} from '../../lang';
 import {
+  AccessControlRule,
+  Context,
+  StringType,
   Syncable,
   SyncableId,
   SyncableObject,
-  SyncableType,
-} from '../../syncable';
-
-export type TaskId = SyncableId<'task'>;
-
-export interface TaskSyncable extends Syncable<'task'> {
-  owner: any;
-}
-
-export class Task extends SyncableObject<TaskSyncable> {}
+} from '@syncable/core';
+import _ = require('lodash');
 
 export type TagId = SyncableId<'tag'>;
-export type TagName = StringType<'tag', 'name'>;
+export type TagName = StringType<'tag-name'>;
 
 export interface TagMutualAssociationOptions {
   acceptDerivation?: boolean;
@@ -53,10 +44,10 @@ export class Tag extends SyncableObject<TagSyncable> {
     return _.isEqual(thisSequence, comparisonSequence);
   }
 
-  @AccessControlRule<MFContext>()
-  'require-mutual-association'(
+  @AccessControlRule()
+  protected 'require-mutual-association'(
     _target: SyncableObject,
-    context: MFContext,
+    context: Context,
     {acceptDerivation = true}: TagMutualAssociationOptions = {},
   ): boolean {
     let tags = context.getRequisiteAssociations<Tag>({
@@ -65,11 +56,5 @@ export class Tag extends SyncableObject<TagSyncable> {
     });
 
     return tags.some(tag => tag.is(this, acceptDerivation));
-  }
-}
-
-export class MFContext extends Context {
-  protected create<T extends SyncableObject>(syncable: SyncableType<T>): T {
-    throw new Error('Method not implemented.');
   }
 }

@@ -1,0 +1,14 @@
+{
+  "name": "syncable-examples-design",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@syncable/client": "^2.0.0",
+    "@syncable/core": "^2.0.0",
+    "@syncable/server": "^2.0.0",
+    "lodash": "^4.17.10"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.115"
+  }
+}

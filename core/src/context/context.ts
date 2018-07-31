@@ -1,104 +1,90 @@
-import {AccessControlEntryRuleName, Permission} from '../access-control';
+import {Permission} from '../access-control';
+import {RefDictToObjectDict} from '../change';
+import {Dict} from '../lang';
 import {
   GetAssociationOptions,
   Syncable,
   SyncableId,
   SyncableObject,
-  SyncableRefType,
-  SyncableType,
+  SyncableRef,
   UserSyncableObject,
 } from '../syncable';
+import {SyncableObjectFactory} from './syncable-object-factor';
 
-export type AccessControlRuleTester<
-  TContext extends Context,
-  Options extends object
-> = (target: SyncableObject, context: TContext, options?: Options) => boolean;
-
-export function AccessControlRule<
-  TContext extends Context = Context,
-  Options extends object = object
->(explicitName?: string) {
-  return (
-    target: SyncableObject,
-    name: string,
-    descriptor: TypedPropertyDescriptor<
-      AccessControlRuleTester<TContext, Options>
-    >,
-  ) => {
-    let test = descriptor.value! as AccessControlRuleTester<Context, object>;
-
-    target.__accessControlRuleMap.set(
-      (explicitName || name) as AccessControlEntryRuleName,
-      {test},
-    );
-  };
-}
+export type AccessControlRuleTester = (
+  target: SyncableObject,
+  context: Context,
+  options?: object,
+) => boolean;
 
 export abstract class Context<
-  User extends UserSyncableObject = UserSyncableObject,
-  OtherSyncableObject extends SyncableObject = SyncableObject
+  TUser extends UserSyncableObject = UserSyncableObject
 > {
-  protected user!: User;
+  protected user!: TUser;
 
-  private syncableMap = new Map<
-    SyncableId,
-    SyncableType<User | OtherSyncableObject>
-  >();
-  private syncableObjectMap = new WeakMap<
-    Syncable,
-    User | OtherSyncableObject
-  >();
+  private syncableMap = new Map<SyncableId, Syncable>();
+  private syncableObjectMap = new WeakMap<Syncable, SyncableObject>();
+
+  constructor(protected syncableObjectFactory: SyncableObjectFactory) {}
 
   get permissions(): Permission[] {
     return this.user.permissions;
   }
 
-  addSyncable(syncable: SyncableType<User | OtherSyncableObject>): void {
+  addSyncable(syncable: Syncable): void {
     this.syncableMap.set(syncable.$id, syncable);
   }
 
-  get<T extends User | OtherSyncableObject>(
-    ref: SyncableRefType<T>,
-  ): T | undefined {
-    let syncableMap = this.syncableMap;
-    let syncableObjectMap = this.syncableObjectMap;
+  getSyncable<T extends SyncableObject>({
+    id,
+  }: SyncableRef<T>): T['syncable'] | undefined {
+    return this.syncableMap.get(id);
+  }
 
-    let syncable = syncableMap.get(ref.id);
+  requireSyncable<T extends SyncableObject>(
+    ref: SyncableRef<T>,
+  ): T['syncable'] {
+    let syncable = this.getSyncable(ref);
+
+    if (!syncable) {
+      throw new Error(`Syncable "${JSON.stringify(ref)}" not added to context`);
+    }
+
+    return syncable;
+  }
+
+  get<T extends SyncableObject>(ref: SyncableRef<T>): T | undefined {
+    let syncable = this.getSyncable(ref);
 
     if (!syncable) {
       return undefined;
     }
 
-    let object = syncableObjectMap.get(syncable);
+    let syncableObjectMap = this.syncableObjectMap;
+
+    let object = syncableObjectMap.get(syncable) as T | undefined;
 
     if (!object) {
-      object = this.create(syncable as SyncableType<T>);
-      // TODO: object should be narrowed to non-null, TypeScript bug?
-      syncableObjectMap.set(syncable, object!);
-    }
-
-    return object as T;
-  }
-
-  require<T extends User | OtherSyncableObject>(ref: SyncableRefType<T>): T {
-    let object = this.get(ref);
-
-    if (!object) {
-      throw new Error(
-        `SyncableObject "${JSON.stringify(ref)}" not added to context`,
-      );
+      object = this.syncableObjectFactory.create<T>(syncable, this);
+      syncableObjectMap.set(syncable, object);
     }
 
     return object;
   }
 
-  getRequisiteAssociations<T extends User | OtherSyncableObject>(
-    options: GetAssociationOptions<T> = {},
-  ): T[] {
-    return this.user.getRequisiteAssociations(options) as T[];
+  require<T extends SyncableObject>(ref: SyncableRef<T>): T {
+    let object = this.get(ref);
+
+    if (!object) {
+      throw new Error(`Syncable "${JSON.stringify(ref)}" not added to context`);
+    }
+
+    return object;
   }
 
-  protected abstract create<T extends User | OtherSyncableObject>(
-    syncable: SyncableType<T>,
-  ): T;
+  getRequisiteAssociations(
+    options: GetAssociationOptions = {},
+  ): SyncableObject[] {
+    return this.user.getRequisiteAssociations(options);
+  }
 }

@@ -1,69 +1,97 @@
 import * as DeepDiff from 'deep-diff';
 import _ = require('lodash');
 
+import {AccessRight} from '../access-control';
 import {Dict, KeyOf} from '../lang';
-import {SyncableRef, SyncableType} from '../syncable';
+import {SyncableRef} from '../syncable';
 import {
   AccessControlChange,
   accessControlChangePlantBlueprint,
 } from './access-control-changes';
 import {Change} from './change';
 
-export type ChangeToObjectDict<T extends Change> = T extends Change<
-  string,
-  infer RefDict
->
+export type RefDictToObjectDict<T extends object> = T extends object
   ? {
-      [K in keyof RefDict]: RefDict[K] extends SyncableRef
-        ? SyncableType<RefDict[K]>
+      [K in keyof T]: T[K] extends SyncableRef<infer TSyncableObject>
+        ? TSyncableObject
         : never
     }
   : never;
 
-export type ChangeToDiffsDict<T extends Change> = T extends Change<
+export type ChangeToObjectDict<T extends Change> = T extends Change<
+  string,
+  infer TRefDict
+>
+  ? RefDictToObjectDict<TRefDict>
+  : never;
+
+export type RefDictToSyncableDict<T extends object> = T extends object
+  ? {
+      [K in keyof T]: T[K] extends SyncableRef<infer TSyncableObject>
+        ? TSyncableObject['syncable']
+        : never
+    }
+  : never;
+
+export type ChangeToSyncableDict<T extends Change> = T extends Change<
+  string,
+  infer TRefDict
+>
+  ? RefDictToSyncableDict<TRefDict>
+  : never;
+
+export interface ChangeOutput {
+  diffs: deepDiff.IDiff[] | undefined;
+  rights: AccessRight[] | undefined;
+}
+
+export type ChangeToOutputDict<T extends Change> = T extends Change<
   string,
   infer RefDict
 >
   ? {
       [K in keyof RefDict]: RefDict[K] extends SyncableRef
-        ? deepDiff.IDiff[]
+        ? ChangeOutput
         : never
     }
   : never;
 
 export type ChangePlantProcessor<T extends Change = Change> = (
-  objects: ChangeToObjectDict<T>,
+  objects: ChangeToSyncableDict<T>,
   options: T['options'],
-) => any;
+) => AccessRight[] | void;
 
 export type ChangePlantBlueprint<T extends Change> = {
   [K in T['type']]: ChangePlantProcessor<Extract<T, {type: K}>>
 };
 
-export class ChangePlant<UserDefinedChange extends Change> {
-  constructor(private blueprint: ChangePlantBlueprint<UserDefinedChange>) {}
+export class ChangePlant<TChange extends Change = Change> {
+  constructor(private blueprint: ChangePlantBlueprint<TChange>) {}
 
-  process<T extends UserDefinedChange | AccessControlChange>(
+  process<T extends TChange | AccessControlChange>(
     {type, options}: T,
-    objects: ChangeToObjectDict<T>,
-  ): ChangeToDiffsDict<T> {
+    syncableDict: ChangeToSyncableDict<T>,
+  ): ChangeToOutputDict<T> {
     let processor = ((accessControlChangePlantBlueprint as Dict<
       ChangePlantProcessor<AccessControlChange> | undefined
     >)[type] ||
-      (this.blueprint as Dict<
-        ChangePlantProcessor<UserDefinedChange> | undefined
-      >)[type]) as ChangePlantProcessor<T>;
+      (this.blueprint as Dict<ChangePlantProcessor<TChange> | undefined>)[
+        type
+      ]) as ChangePlantProcessor<T>;
 
-    let keys = Object.keys(objects) as KeyOf<ChangeToObjectDict<T>, string>[];
+    let keys = Object.keys(syncableDict) as KeyOf<
+      ChangeToSyncableDict<T>,
+      string
+    >[];
 
-    let snapshot = _.cloneDeep(objects);
+    let clonedSyncableDict = _.cloneDeep(syncableDict);
 
-    processor(objects, options);
+    processor(clonedSyncableDict, options);
 
     return keys.reduce(
       (dict, key) => {
-        let current = snapshot[key];
-        let next = objects[key];
+        let current = syncableDict[key];
+        let next = clonedSyncableDict[key];
 
         let diffs = DeepDiff.diff(current, next);
 
@@ -81,7 +109,7 @@ export class ChangePlant<UserDefinedChange extends Change> {
 
         return dict;
       },
-      {} as ChangeToDiffsDict<T>,
+      {} as ChangeToOutputDict<T>,
     );
   }
 }

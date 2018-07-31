@@ -28,6 +28,10 @@
   version "4.14.110"
   resolved "http://registry.npm.taobao.org/@types/lodash/download/@types/lodash-4.14.110.tgz#fb07498f84152947f30ea09d89207ca07123461e"
 
+"@types/lodash@^4.14.115":
+  version "4.14.115"
+  resolved "http://registry.npm.taobao.org/@types/lodash/download/@types/lodash-4.14.115.tgz#54d171b2ce12c058742443b5f6754760f701b8f9"
+
 "@types/socket.io-client@^1.4.32":
   version "1.4.32"
   resolved "http://registry.npm.taobao.org/@types/socket.io-client/download/@types/socket.io-client-1.4.32.tgz#988a65a0386c274b1c22a55377fab6a30789ac14"
@@ -2872,10 +2876,6 @@ mixin-deep@^1.2.0:
   dependencies:
     minimist "0.0.8"
 
-mobx@^5.0.3:
-  version "5.0.3"
-  resolved "http://registry.npm.taobao.org/mobx/download/mobx-5.0.3.tgz#53b97f2a0f9b0dd7774c96249f81bf2d513d8e1c"
-
 mock-require@^2.0.2:
   version "2.0.2"
   resolved "http://registry.npm.taobao.org/mock-require/download/mock-require-2.0.2.tgz#1eaa71aad23013773d127dc7e91a3fbb4837d60d"
@@ -4174,9 +4174,9 @@ typedarray@^0.0.6:
   version "0.0.6"
   resolved "http://registry.npm.taobao.org/typedarray/download/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
 
-typescript@^3.0.0-rc:
-  version "3.0.0-rc"
-  resolved "http://registry.npm.taobao.org/typescript/download/typescript-3.0.0-rc.tgz#13553808426d393d3f92c054f4fa6f24589549c1"
+typescript@^3.0.1-insiders.20180726:
+  version "3.0.1-insiders.20180726"
+  resolved "http://registry.npm.taobao.org/typescript/download/typescript-3.0.1-insiders.20180726.tgz#3f921f23c8768b6fb665ee8a6895b5fca14b0c5f"
 
 uglify-js@^2.6:
   version "2.8.29"

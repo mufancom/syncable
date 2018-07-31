@@ -1,6 +1,6 @@
 import {getRef} from '../@utils/syncable';
 import {AccessControlEntry} from '../access-control';
-import {Association, Syncable, SyncableRef} from '../syncable';
+import {Syncable, SyncableAssociation, SyncableRef} from '../syncable';
 import {Change} from './change';
 import {ChangePlantBlueprint} from './change-plant';
 
@@ -94,19 +94,21 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
         compareAssociationWithSyncable(association, source),
       )
     ) {
-      return;
+      return [];
     }
 
     associations.push({
       ref: getRef(source),
       requisite,
     });
+
+    return ['associate'];
   },
   $unassociate({target, source}) {
     let associations = target.$associations;
 
     if (!associations) {
-      return;
+      return [];
     }
 
     let index = associations.findIndex(association =>
@@ -116,6 +118,8 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
     if (index >= 0) {
       associations.splice(index, 1);
     }
+
+    return ['associate'];
   },
   '$set-access-control-entries'({target}, {entries}) {
     let acl = target.$acl;
@@ -148,7 +152,7 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
 };
 
 function compareAssociationWithSyncable(
-  {ref: {type, id}}: Association,
+  {ref: {type, id}}: SyncableAssociation,
   {$type, $id}: Syncable,
 ): boolean {
   return type === $type && id === $id;

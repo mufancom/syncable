@@ -1,5 +1,5 @@
+import {SyncableRef} from '../syncable';
 import {ChangeUID} from './change';
-import {ResourceRef} from './resource';
 
 export interface ConsequentSeries {
   uid: ChangeUID;
@@ -18,11 +18,11 @@ export interface ConsequentCreation {
 
 export interface ConsequentRemoval {
   type: 'removal';
-  ref: ResourceRef;
+  ref: SyncableRef;
 }
 
 export interface ConsequentUpdate {
   type: 'update';
-  ref: ResourceRef;
+  ref: SyncableRef;
   diff: deepDiff.IDiff;
 }

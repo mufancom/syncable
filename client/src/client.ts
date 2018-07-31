@@ -1,13 +1,20 @@
 import {
+  AccessControlChange,
+  AccessRight,
+  AssociateChange,
   Change,
+  ChangePlant,
   ConsequentSeries,
-  ResourceRef,
+  Dict,
+  GeneralChange,
   Syncable,
-  ViewQuery,
+  SyncableObject,
+  SyncableRef,
+  UserSyncableObject,
 } from '@syncable/core';
+import _ = require('lodash');
 
-import {ClientChangePlant} from './change-plant';
-import {ClientContext} from './context';
+import {ClientContext} from './client-context';
 
 export interface SnapshotsData {
   snapshots: Syncable[];
@@ -25,25 +32,91 @@ export interface TestSocket extends SocketIOClient.Socket {
   emit(event: 'request', request: Request): this;
 }
 
-export class Client<
-  Context extends ClientContext,
-  ChangePlant extends ClientChangePlant
-> {
+export class Client<TUser extends UserSyncableObject, TChange extends Change> {
   viewQuery: ViewQuery | undefined;
 
-  constructor(readonly context: Context, readonly changePlant: ChangePlant) {}
+  constructor(context: ClientContext<TUser>, changePlant: ChangePlant<TChange>);
+  constructor(
+    private context: ClientContext,
+    private changePlant: ChangePlant<GeneralChange>,
+  ) {}
 
-  protected onSnapshots(syncables: Syncable[], userRef?: ResourceRef): void {
+  associate(
+    {ref: target}: SyncableObject,
+    {ref: source}: SyncableObject,
+  ): void {
+    this.pushChange({
+      type: '$associate',
+      refs: {target, source},
+      options: {requisite: true},
+    });
+  }
+
+  unassociate(
+    {ref: target}: SyncableObject,
+    {ref: source}: SyncableObject,
+  ): void {
+    this.pushChange({
+      type: '$unassociate',
+      refs: {target, source},
+      options: {requisite: true},
+    });
+  }
+
+  private pushChange(change: GeneralChange): void {
+    let context = this.context;
+
+    let refDict = change.refs;
+
+    let syncableDict = _.mapValues(refDict, ref =>
+      context.requireSyncable(ref),
+    );
+
+    let outputDict = this.changePlant.process(change, syncableDict);
+
+    let requiringRightsDict = _.mapValues(
+      outputDict,
+      ({rights, diffs}): AccessRight[] => {
+        // TODO: is 'read' right necessary?
+        return _.uniq([
+          ...(rights || []),
+          ...(diffs ? (['write'] as AccessRight[]) : []),
+        ]);
+      },
+    );
+
+    for (let [name, rights] of Object.entries(requiringRightsDict)) {
+      let ref = refDict[name];
+      let object = context.require(ref);
+
+      object.validateAccessRights(rights);
+    }
+
+    for (let [name, syncable] of Object.entries(syncableDict)) {
+      let {diffs} = outputDict[name];
+
+      if (!diffs) {
+        continue;
+      }
+
+      for (let diff of diffs) {
+        DeepDiff.applyChange(syncable, {}, diff);
+      }
+    }
+  }
+
+  private onSnapshots(
+    syncables: Syncable[],
+    userRef?: SyncableRef<TUser>,
+  ): void {
     for (let syncable of syncables) {
-      this.context.addSyncableToCache(syncable);
+      this.context.addSyncable(syncable);
     }
 
     if (userRef) {
-      this.context.setUser(userRef);
+      this.context.initialize(userRef);
     }
   }
 
-  protected onChange(change: Change): void {
-    this.changePlant.apply(change);
-  }
+  private onChange(change: Change): void {}
 }

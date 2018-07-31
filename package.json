@@ -8,18 +8,18 @@
     "@types/jest": "^22.2.2",
     "jest": "^22.4.3",
     "lerna": "^2.9.0",
-    "mobx": "^5.0.3",
     "prettier": "^1.11.1",
     "tslint": "^5.9.1",
     "tslint-language-service": "^0.9.9",
-    "typescript": "^3.0.0-rc",
+    "typescript": "^3.0.1-insiders.20180726",
     "vts": "^5.8.6"
   },
   "workspaces": {
     "packages": [
       "core",
       "server",
-      "client"
+      "client",
+      "examples/design"
     ]
   }
 }

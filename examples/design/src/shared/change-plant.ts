@@ -1,6 +1,10 @@
-import {Change, ChangePlant, ChangePlantBlueprint} from '../../change';
-import {Syncable, SyncableRef} from '../../syncable';
-import {TagSyncable} from './tag';
+import {
+  Change,
+  ChangePlant,
+  ChangePlantBlueprint,
+  SyncableRef,
+} from '@syncable/core';
+import {TagSyncable} from './syncables';
 
 type AllChange = TagChange;
 
@@ -15,9 +19,7 @@ interface TagChangeRefDict {
 
 interface TagChange extends Change<'tag', TagChangeRefDict, TagChangeOptions> {}
 
-const blueprint: ChangePlantBlueprint<AllChange> = {
-  tag({target, tag}, options): void {},
-};
+const blueprint: ChangePlantBlueprint<AllChange> = {};
 
 const changePlant = new ChangePlant(blueprint);
 
