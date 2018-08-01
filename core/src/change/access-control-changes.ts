@@ -94,7 +94,7 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
         compareAssociationWithSyncable(association, source),
       )
     ) {
-      return [];
+      return undefined;
     }
 
     associations.push({
@@ -102,13 +102,19 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
       requisite,
     });
 
-    return ['associate'];
+    return {
+      updates: {
+        source: {
+          requisiteAccessRights: ['associate'],
+        },
+      },
+    };
   },
   $unassociate({target, source}) {
     let associations = target.$associations;
 
     if (!associations) {
-      return [];
+      return undefined;
     }
 
     let index = associations.findIndex(association =>
@@ -119,7 +125,13 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
       associations.splice(index, 1);
     }
 
-    return ['associate'];
+    return {
+      updates: {
+        source: {
+          requisiteAccessRights: ['associate'],
+        },
+      },
+    };
   },
   '$set-access-control-entries'({target}, {entries}) {
     let acl = target.$acl;

@@ -4,8 +4,9 @@ import {
   ChangePlantBlueprint,
   Syncable,
   SyncableRef,
+  createSyncable,
 } from '@syncable/core';
-import {Tag, TagSyncable} from './syncables';
+import {Tag, TagName, TagSyncable} from './syncables';
 
 type SupportedChange = TagChange | CreateTagChange;
 
@@ -23,9 +24,18 @@ interface TagChange extends Change<'tag', TagChangeRefDict, TagChangeOptions> {}
 interface CreateTagChange extends Change<'create-tag'> {}
 
 const blueprint: ChangePlantBlueprint<SupportedChange> = {
-  tag() {},
-  'create-tag'() {
+  tag() {
     return {};
+  },
+  'create-tag'() {
+    return {
+      creations: [
+        createSyncable<TagSyncable>('tag', {
+          name: 'foo' as TagName,
+          derivations: [],
+        }),
+      ],
+    };
   },
 };
 

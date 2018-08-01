@@ -1,14 +1,9 @@
 import {
-  AccessControlChange,
-  AccessRight,
-  AssociateChange,
   Change,
   ChangePacket,
   ChangePacketUID,
   ChangePlant,
   Consequence,
-  ConsequentSeries,
-  Dict,
   GeneralChange,
   Syncable,
   SyncableId,
@@ -27,8 +22,6 @@ export interface SnapshotsData {
 }
 
 export class Client<TUser extends UserSyncableObject, TChange extends Change> {
-  viewQuery: ViewQuery | undefined;
-
   private socket: ClientSocket<TUser>;
 
   private pendingChangePackets: ChangePacket[] = [];
@@ -172,36 +165,40 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
       context.requireSyncable(ref),
     );
 
-    let outputDict = this.changePlant.process(packet, syncableDict);
-
-    let requiringRightsDict = _.mapValues(
-      outputDict,
-      ({rights, diffs}): AccessRight[] => {
-        // TODO: is 'read' right necessary?
-        return _.uniq([
-          ...(rights || []),
-          ...(diffs ? (['write'] as AccessRight[]) : []),
-        ]);
-      },
+    let {updates: updateDict, creations, removals} = this.changePlant.process(
+      packet,
+      syncableDict,
     );
 
-    for (let [name, rights] of Object.entries(requiringRightsDict)) {
+    let updateEntries = Object.entries(updateDict);
+
+    for (let [name, {requisiteAccessRights}] of updateEntries) {
       let ref = refDict[name];
       let object = context.require(ref);
 
-      object.validateAccessRights(rights);
+      object.validateAccessRights(requisiteAccessRights);
     }
 
-    for (let [name, syncable] of Object.entries(syncableDict)) {
-      let {diffs} = outputDict[name];
+    for (let ref of removals) {
+      let object = context.require(ref);
 
-      if (!diffs) {
-        continue;
-      }
+      object.validateAccessRights(['delete']);
+    }
+
+    for (let [name, {diffs}] of updateEntries) {
+      let syncable = syncableDict[name];
 
       for (let diff of diffs) {
         DeepDiff.applyChange(syncable, undefined!, diff);
       }
+    }
+
+    for (let ref of removals) {
+      context.removeSyncable(ref);
+    }
+
+    for (let syncable of creations) {
+      context.addSyncable(syncable);
     }
   }
 
