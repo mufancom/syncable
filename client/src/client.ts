@@ -8,6 +8,7 @@ import {
   Syncable,
   SyncableId,
   SyncableObject,
+  SyncableObjectFactory,
   SyncableRef,
   UserSyncableObject,
 } from '@syncable/core';
@@ -22,16 +23,22 @@ export interface SnapshotsData {
 }
 
 export class Client<TUser extends UserSyncableObject, TChange extends Change> {
+  private context: ClientContext<TUser>;
   private socket: ClientSocket<TUser>;
 
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, Syncable>();
 
-  constructor(context: ClientContext<TUser>, changePlant: ChangePlant<TChange>);
   constructor(
-    private context: ClientContext,
+    factory: SyncableObjectFactory,
+    changePlant: ChangePlant<TChange>,
+  );
+  constructor(
+    factory: SyncableObjectFactory,
     private changePlant: ChangePlant<GeneralChange>,
   ) {
+    this.context = new ClientContext(factory);
+
     this.socket = createClientSocket<TUser>()
       .on('snapshot', ({syncables, userRef}) => {
         this.onSnapshot(syncables, userRef);

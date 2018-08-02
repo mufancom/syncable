@@ -25,6 +25,10 @@
     "@syncable/core": "^2.0.0"
   },
   "dependencies": {
+    "socket.io": "^2.1.1",
     "villa": "^0.3.1"
+  },
+  "devDependencies": {
+    "@types/socket.io": "^1.4.36"
   }
 }

@@ -8,7 +8,7 @@ import {
 } from '@syncable/core';
 import {Tag, TagName, TagSyncable} from './syncables';
 
-type SupportedChange = TagChange | CreateTagChange;
+export type MFChange = TagChange | CreateTagChange;
 
 interface TagChangeOptions {
   foo: boolean;
@@ -23,7 +23,7 @@ interface TagChange extends Change<'tag', TagChangeRefDict, TagChangeOptions> {}
 
 interface CreateTagChange extends Change<'create-tag'> {}
 
-const blueprint: ChangePlantBlueprint<SupportedChange> = {
+const blueprint: ChangePlantBlueprint<MFChange> = {
   tag() {
     return {};
   },

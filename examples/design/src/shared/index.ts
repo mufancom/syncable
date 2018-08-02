@@ -1,3 +1,3 @@
 export * from './syncables';
 export * from './change-plant';
-export * from './syncable-object-factory';
+export * from './mf-syncable-object-factory';
