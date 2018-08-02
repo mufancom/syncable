@@ -44,7 +44,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     AccessControlRuleEntry
   >();
 
-  constructor(readonly syncable: T, protected context: Context) {}
+  constructor(readonly syncable: T, protected context?: Context) {}
 
   get id(): T['$id'] {
     return this.syncable.$id;
@@ -71,17 +71,17 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     return this.syncable.$secures || [];
   }
 
-  getRequisiteAssociations({
-    name,
-    type,
-  }: GetAssociationOptions = {}): SyncableObject[] {
+  getRequisiteAssociations(
+    {name, type}: GetAssociationOptions = {},
+    context?: Context,
+  ): SyncableObject[] {
     let associations = this.syncable.$associations;
 
     if (!associations) {
       return [];
     }
 
-    let context = this.context;
+    context = this.requireContext(context);
 
     return associations
       .filter(
@@ -90,7 +90,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
           (!name || association.name === name) &&
           (!type || association.ref.type === type),
       )
-      .map(association => context.require(association.ref));
+      .map(association => context!.require(association.ref));
   }
 
   getAccessRights({
@@ -199,6 +199,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   private testAccessControlEntry(
     target: SyncableObject,
     entry: AccessControlEntry,
+    context?: Context,
   ): boolean {
     let {rule: ruleName, options} = entry;
 
@@ -208,6 +209,16 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
       throw new Error(`Unknown access control rule "${ruleName}"`);
     }
 
-    return rule.test(target, this.context, options);
+    return rule.test(target, this.requireContext(context), options);
+  }
+
+  private requireContext(context = this.context): Context {
+    if (!context) {
+      throw new Error(
+        'Context is neither available from parameter nor the instance',
+      );
+    }
+
+    return context;
   }
 }
