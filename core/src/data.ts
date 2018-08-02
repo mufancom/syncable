@@ -1,6 +1,6 @@
-import {Syncable, SyncableRef} from './syncable';
+import {Syncable, SyncableRef, UserSyncableObject} from './syncable';
 
-export interface SnapshotEventData {
+export interface SnapshotEventData<TUser extends UserSyncableObject> {
   syncables: Syncable[];
-  userRef: SyncableRef;
+  userRef: SyncableRef<TUser>;
 }

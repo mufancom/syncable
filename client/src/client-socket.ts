@@ -2,10 +2,14 @@ import {
   ChangePacket,
   ConsequentSeries,
   SnapshotEventData,
+  Syncable,
+  SyncableRef,
+  UserSyncableObject,
 } from '@syncable/core';
 import io = require('socket.io-client');
 
-export interface ClientSocket extends SocketIOClient.Socket {
+export interface ClientSocket<TUser extends UserSyncableObject>
+  extends SocketIOClient.Socket {
   on(event: 'reconnect', listener: (attempt: number) => void): this;
 
   on(
@@ -13,13 +17,18 @@ export interface ClientSocket extends SocketIOClient.Socket {
     listener: (series: ConsequentSeries) => void,
   ): this;
 
-  on(event: 'snapshot', listener: (snapshot: SnapshotEventData) => void): this;
+  on(
+    event: 'snapshot',
+    listener: (snapshot: SnapshotEventData<TUser>) => void,
+  ): this;
 
   emit(event: 'change', packet: ChangePacket): this;
 
   emit(event: 'request', request: Request): this;
 }
 
-export function createClientSocket(): ClientSocket {
-  return io('/', {transports: ['websocket']}) as ClientSocket;
+export function createClientSocket<
+  TUser extends UserSyncableObject
+>(): ClientSocket<TUser> {
+  return io('/', {transports: ['websocket']}) as ClientSocket<TUser>;
 }

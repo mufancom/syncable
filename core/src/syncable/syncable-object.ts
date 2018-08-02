@@ -141,6 +141,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     let dict: AccessRightComparableItemsDict = {
       read: [],
       write: [],
+      delete: [],
       associate: [],
     };
 

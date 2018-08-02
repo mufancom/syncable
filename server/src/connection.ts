@@ -4,7 +4,6 @@ import {
   ChangePacket,
   ChangePlant,
   ConsequentSeries,
-  ContextQuery,
   GeneralChange,
   SnapshotEventData,
   UserSyncableObject,
@@ -12,10 +11,13 @@ import {
 import {ServerContext} from './server-context';
 
 export interface ConnectionSocket extends SocketIO.Socket {
-  on(event: 'query', listener: (query: ContextQuery) => void): this;
+  on(event: 'query', listener: (query: any) => void): this;
   on(event: 'change', listener: (packet: ChangePacket) => void): this;
 
-  emit(event: 'snapshot', snapshot: SnapshotEventData): boolean;
+  emit(
+    event: 'snapshot',
+    snapshot: SnapshotEventData<UserSyncableObject>,
+  ): boolean;
   emit(event: 'consequent-series', series: ConsequentSeries): boolean;
 }
 
@@ -43,12 +45,12 @@ export class Connection {
     });
   }
 
-  private onQuery(query: ContextQuery): void {
+  private onQuery(query: any): void {
     this.updateQuery(query).catch(error => {
       this.socket.disconnect();
       console.error(error);
     });
   }
 
-  private async updateQuery(query: ContextQuery): Promise<void> {}
+  private async updateQuery(query: any): Promise<void> {}
 }
