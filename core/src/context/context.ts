@@ -18,9 +18,12 @@ export type AccessControlRuleTester = (
 ) => boolean;
 
 export abstract class Context<
-  TUser extends UserSyncableObject = UserSyncableObject
+  TUser extends UserSyncableObject = UserSyncableObject,
+  TQuery = any
 > {
   protected user!: TUser;
+
+  private query: TQuery | undefined;
 
   private syncableMap = new Map<SyncableId, Syncable>();
   private syncableObjectMap = new WeakMap<Syncable, SyncableObject>();
@@ -29,6 +32,10 @@ export abstract class Context<
 
   get permissions(): Permission[] {
     return this.user.permissions;
+  }
+
+  async updateQuery(query: TQuery): Promise<void> {
+    this.query = query;
   }
 
   addSyncable(syncable: Syncable): void {
@@ -124,4 +131,6 @@ export abstract class Context<
   ): SyncableObject[] {
     return this.user.getRequisiteAssociations(options);
   }
+
+  protected abstract loadByQuery(query: TQuery): Promise<Syncable[]>;
 }
