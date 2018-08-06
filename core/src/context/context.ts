@@ -131,6 +131,4 @@ export abstract class Context<
   ): SyncableObject[] {
     return this.user.getRequisiteAssociations(options);
   }
-
-  protected abstract loadByQuery(query: TQuery): Promise<Syncable[]>;
 }

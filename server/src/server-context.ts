@@ -7,8 +7,13 @@ import {
   UserSyncableObject,
 } from '@syncable/core';
 
+export type ServerContextQueryFilter = (syncable: Syncable) => boolean;
+
+export type ServerContextLockHandler = () => Promise<void>;
+
 export abstract class ServerContext<
-  TUser extends UserSyncableObject
+  TUser extends UserSyncableObject,
+  TQuery = any
 > extends Context<TUser> {
   private ensureSyncablePromiseMap = new Map<SyncableId, Promise<Syncable>>();
 
@@ -63,7 +68,12 @@ export abstract class ServerContext<
     return this.get(ref)!;
   }
 
-  protected abstract async lock(...refs: SyncableRef[]): Promise<void>;
+  protected abstract async lock(
+    refs: SyncableRef[],
+    handler: ServerContextLockHandler,
+  ): Promise<void>;
+
+  protected abstract getQueryFilter(query: TQuery): Promise<Syncable[]>;
 
   protected abstract async loadSyncable<T extends SyncableObject>(
     ref: SyncableRef<T>,
