@@ -1,52 +1,58 @@
-import {
-  Syncable,
-  SyncableId,
-  SyncableObject,
-  SyncableRef,
-} from '@syncable/core';
-import {ServerContext, ServerContextLockHandler} from '@syncable/server';
+import {ServerContext, ServerContextQueryFilter} from '@syncable/server';
 
-import {User} from '../shared';
+import {MFContextQuery, User} from '../shared';
 
-export class MFServerContext extends ServerContext<User> {
-  private lockingPromiseMap = new Map<SyncableId, Promise<void>>();
+export interface MFGroupQuery {
+  organization: string;
+}
 
-  protected async lock(
-    refs: SyncableRef[],
-    handler: ServerContextLockHandler,
-  ): Promise<void> {
-    let map = this.lockingPromiseMap;
+export class MFServerContext extends ServerContext<
+  User,
+  MFContextQuery,
+  MFGroupQuery
+> {
+  // private lockingPromiseMap = new Map<SyncableId, Promise<void>>();
 
-    let ids = refs.map(ref => ref.id);
+  // protected async lock(
+  //   refs: SyncableRef[],
+  //   handler: ServerContextLockHandler,
+  // ): Promise<void> {
+  //   let map = this.lockingPromiseMap;
 
-    let lockingPromiseSet = new Set<Promise<void>>();
+  //   let ids = refs.map(ref => ref.id);
 
-    let resolver!: () => void;
-    let rejector!: (error: any) => void;
+  //   let lockingPromiseSet = new Set<Promise<void>>();
 
-    let promise = new Promise<void>((resolve, reject) => {
-      resolver = resolve;
-      rejector = reject;
-    }).catch(console.error);
+  //   let resolver!: () => void;
+  //   let rejector!: (error: any) => void;
 
-    for (let id of ids) {
-      let lockingPromise = map.get(id);
+  //   let promise = new Promise<void>((resolve, reject) => {
+  //     resolver = resolve;
+  //     rejector = reject;
+  //   }).catch(console.error);
 
-      if (lockingPromise) {
-        lockingPromiseSet.add(lockingPromise);
-      }
+  //   for (let id of ids) {
+  //     let lockingPromise = map.get(id);
 
-      map.set(id, promise);
-    }
+  //     if (lockingPromise) {
+  //       lockingPromiseSet.add(lockingPromise);
+  //     }
 
-    return Promise.all(lockingPromiseSet)
-      .then(handler)
-      .then(resolver, rejector);
+  //     map.set(id, promise);
+  //   }
+
+  //   return Promise.all(lockingPromiseSet)
+  //     .then(handler)
+  //     .then(resolver, rejector);
+  // }
+
+  protected getContextQueryFilter(
+    _query: MFContextQuery,
+  ): ServerContextQueryFilter {
+    return () => true;
   }
 
-  protected loadSyncable<T extends SyncableObject>(
-    ref: SyncableRef<T>,
-  ): Promise<T['syncable']> {}
-
-  protected getQueryFilter(query: any): Promise<Syncable[]> {}
+  protected ensureSyncableGroup(_query: MFGroupQuery): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
 }

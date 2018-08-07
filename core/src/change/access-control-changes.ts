@@ -1,6 +1,6 @@
-import {getRef} from '../@utils/syncable';
 import {AccessControlEntry} from '../access-control';
 import {Syncable, SyncableAssociation, SyncableRef} from '../syncable';
+import {getSyncableRef} from '../utils';
 import {Change} from './change';
 import {ChangePlantBlueprint} from './change-plant';
 
@@ -98,7 +98,7 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
     }
 
     associations.push({
-      ref: getRef(source),
+      ref: getSyncableRef(source),
       requisite,
     });
 

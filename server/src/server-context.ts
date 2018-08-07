@@ -5,22 +5,30 @@ import {
   SyncableObject,
   SyncableRef,
   UserSyncableObject,
+  getSyncableRef,
 } from '@syncable/core';
 
-export type ServerContextQueryFilter = (syncable: Syncable) => boolean;
+export type ServerContextQueryFilter = (object: SyncableObject) => boolean;
 
 export type ServerContextLockHandler = () => Promise<void>;
 
 export abstract class ServerContext<
   TUser extends UserSyncableObject,
-  TQuery = any
-> extends Context<TUser> {
-  private ensureSyncablePromiseMap = new Map<SyncableId, Promise<Syncable>>();
-
+  TContextQuery,
+  TGroupQuery
+> extends Context<TUser, TContextQuery> {
+  private groupQueryPromise: Promise<void> | undefined;
   private snapshotIdSet = new Set<SyncableId>();
 
-  async initialize(userRef: SyncableRef<TUser>): Promise<Syncable[]> {
-    let user = await this.resolve(userRef);
+  async initialize(
+    userRef: SyncableRef<TUser>,
+    contextQuery: TContextQuery,
+    groupQuery: TGroupQuery,
+  ): Promise<Syncable[]> {
+    await (this.groupQueryPromise ||
+      (this.groupQueryPromise = this.ensureSyncableGroup(groupQuery)));
+
+    let user = await this.get(userRef);
 
     if (!(user instanceof UserSyncableObject)) {
       throw new TypeError(
@@ -30,12 +38,15 @@ export abstract class ServerContext<
 
     this.user = user;
 
-    return this.snapshot();
+    return this.snapshot(contextQuery);
   }
 
-  async snapshot(): Promise<Syncable[]> {
+  async snapshot(query: TContextQuery): Promise<Syncable[]> {
+    let cache = this.cache;
     let snapshotIdSet = this.snapshotIdSet;
-    let syncables = await Promise.all(this.ensureSyncablePromiseMap.values());
+
+    let syncables = cache.syncables;
+    let filter = this.getContextQueryFilter(query);
 
     let result: Syncable[] = [];
 
@@ -43,6 +54,13 @@ export abstract class ServerContext<
       let id = syncable.$id;
 
       if (snapshotIdSet.has(id)) {
+        continue;
+      }
+
+      let ref = getSyncableRef(syncable);
+      let object = this.require(ref);
+
+      if (!filter(object) || !object.testAccessRights(['read'])) {
         continue;
       }
 
@@ -54,46 +72,11 @@ export abstract class ServerContext<
     return result;
   }
 
-  async resolve<T extends SyncableObject>(ref: SyncableRef<T>): Promise<T> {
-    let syncable = await this.ensureSyncable(ref);
+  protected abstract getContextQueryFilter(
+    query: TContextQuery,
+  ): ServerContextQueryFilter;
 
-    let requisiteRefs = (syncable.$associations || [])
-      .filter(association => association.requisite)
-      .map(association => association.ref);
-
-    for (let ref of requisiteRefs) {
-      await this.resolve(ref);
-    }
-
-    return this.get(ref)!;
-  }
-
-  protected abstract async lock(
-    refs: SyncableRef[],
-    handler: ServerContextLockHandler,
+  protected abstract async ensureSyncableGroup(
+    query: TGroupQuery,
   ): Promise<void>;
-
-  protected abstract getQueryFilter(query: TQuery): Promise<Syncable[]>;
-
-  protected abstract async loadSyncable<T extends SyncableObject>(
-    ref: SyncableRef<T>,
-  ): Promise<T['syncable']>;
-
-  protected async ensureSyncable(ref: SyncableRef): Promise<Syncable> {
-    let map = this.ensureSyncablePromiseMap;
-    let promise = map.get(ref.id);
-
-    if (!promise) {
-      promise = this.loadSyncable(ref).then(syncable => {
-        this.addSyncable(syncable);
-        return syncable;
-      });
-
-      map.set(ref.id, promise);
-
-      return promise;
-    }
-
-    return promise;
-  }
 }

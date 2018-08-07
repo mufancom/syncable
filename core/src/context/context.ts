@@ -1,14 +1,12 @@
-import * as DeepDiff from 'deep-diff';
-
 import {Permission} from '../access-control';
 import {
   GetAssociationOptions,
   Syncable,
-  SyncableId,
   SyncableObject,
   SyncableRef,
   UserSyncableObject,
 } from '../syncable';
+import {ContextCache} from './context-cache';
 import {SyncableObjectFactory} from './syncable-object-factor';
 
 export type AccessControlRuleTester = (
@@ -23,12 +21,12 @@ export abstract class Context<
 > {
   protected user!: TUser;
 
-  private query: TQuery | undefined;
+  protected query: TQuery | undefined;
 
-  private syncableMap = new Map<SyncableId, Syncable>();
-  private syncableObjectMap = new WeakMap<Syncable, SyncableObject>();
-
-  constructor(protected syncableObjectFactory: SyncableObjectFactory) {}
+  constructor(
+    protected cache: ContextCache,
+    protected factory: SyncableObjectFactory,
+  ) {}
 
   get permissions(): Permission[] {
     return this.user.permissions;
@@ -39,14 +37,7 @@ export abstract class Context<
   }
 
   addSyncable(syncable: Syncable): void {
-    let map = this.syncableMap;
-    let id = syncable.$id;
-
-    if (map.has(id)) {
-      throw new Error(`Syncable with ID "${id}" already exists in context`);
-    }
-
-    map.set(id, syncable);
+    this.cache.addSyncable(syncable);
   }
 
   /**
@@ -55,34 +46,17 @@ export abstract class Context<
    * be applied to it.
    */
   updateSyncable(snapshot: Syncable): void {
-    let id = snapshot.$id;
-
-    let syncable = this.syncableMap.get(id);
-
-    if (!syncable) {
-      throw new Error(`Syncable with ID "${id}" does not exists in context`);
-    }
-
-    DeepDiff.applyDiff(syncable, snapshot, undefined!);
+    this.cache.updateSyncable(snapshot);
   }
 
-  removeSyncable({id}: SyncableRef): void {
-    let map = this.syncableMap;
-
-    if (!map.has(id)) {
-      throw new Error(`Syncable with ID "${id}" does not exists in context`);
-    }
-
-    map.delete(id);
-
-    // As `this.syncableObjectMap` is a weak map, it should be okay not to delete
-    // correspondent object.
+  removeSyncable(ref: SyncableRef): void {
+    this.cache.removeSyncable(ref);
   }
 
-  getSyncable<T extends SyncableObject>({
-    id,
-  }: SyncableRef<T>): T['syncable'] | undefined {
-    return this.syncableMap.get(id);
+  getSyncable<T extends SyncableObject>(
+    ref: SyncableRef<T>,
+  ): T['syncable'] | undefined {
+    return this.cache.getSyncable(ref);
   }
 
   requireSyncable<T extends SyncableObject>(
@@ -98,19 +72,19 @@ export abstract class Context<
   }
 
   get<T extends SyncableObject>(ref: SyncableRef<T>): T | undefined {
-    let syncable = this.getSyncable(ref);
+    let cache = this.cache;
 
-    if (!syncable) {
-      return undefined;
-    }
-
-    let syncableObjectMap = this.syncableObjectMap;
-
-    let object = syncableObjectMap.get(syncable) as T | undefined;
+    let object = cache.getSyncableObject(ref) as T | undefined;
 
     if (!object) {
-      object = this.syncableObjectFactory.create<T>(syncable, this);
-      syncableObjectMap.set(syncable, object);
+      let syncable = cache.getSyncable(ref);
+
+      if (!syncable) {
+        return undefined;
+      }
+
+      object = this.factory.create<T>(syncable, this);
+      cache.setSyncableObject(ref, object);
     }
 
     return object;

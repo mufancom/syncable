@@ -115,6 +115,15 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     });
   }
 
+  testAccessRights(
+    rights: AccessRight[],
+    options?: GetAccessRightsOptions,
+  ): boolean {
+    let grantedRights = this.getAccessRights(options);
+
+    return _.difference(rights, grantedRights).length === 0;
+  }
+
   validateAccessRights(
     rights: AccessRight[],
     options?: GetAccessRightsOptions,

@@ -1,6 +1,6 @@
 import {SyncableObject, SyncableRef} from '../syncable';
 
-export function getRef<T extends SyncableObject>({
+export function getSyncableRef<T extends SyncableObject>({
   $id,
   $type,
 }: T['syncable']): SyncableRef<T> {
