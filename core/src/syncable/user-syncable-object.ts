@@ -1,4 +1,5 @@
 import {Permission} from '../access-control';
+
 import {Syncable} from './syncable';
 import {SyncableObject} from './syncable-object';
 

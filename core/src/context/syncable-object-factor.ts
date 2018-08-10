@@ -1,4 +1,5 @@
 import {Syncable, SyncableObject} from '../syncable';
+
 import {Context} from './context';
 
 export abstract class SyncableObjectFactory {

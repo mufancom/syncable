@@ -16,8 +16,8 @@ import {
 import _ = require('lodash');
 import uuid = require('uuid');
 
+import {ClientSocket, createClientSocket} from './@client-socket';
 import {ClientContext} from './client-context';
-import {ClientSocket, createClientSocket} from './client-socket';
 
 export interface SnapshotsData {
   snapshots: Syncable[];

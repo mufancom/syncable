@@ -10,8 +10,10 @@ import {
   getAccessControlEntryPriority,
 } from '../access-control';
 import {AccessControlRuleTester, Context} from '../context';
+
 import {AccessControlRule} from './access-control-rule-decorator';
 import {Syncable, SyncableRef} from './syncable';
+import {SyncableManager} from './syncable-manager';
 
 export interface AccessControlRuleEntry {
   test: AccessControlRuleTester;
@@ -44,7 +46,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     AccessControlRuleEntry
   >;
 
-  constructor(readonly syncable: T, protected context?: Context) {}
+  constructor(readonly syncable: T, protected manager: SyncableManager) {}
 
   get id(): T['_id'] {
     return this.syncable._id;
@@ -71,17 +73,17 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     return this.syncable._secures || [];
   }
 
-  getRequisiteAssociations<T extends SyncableObject>(
-    {name, type}: GetAssociationOptions<T> = {},
-    context?: Context,
-  ): T[] {
+  getRequisiteAssociations<T extends SyncableObject>({
+    name,
+    type,
+  }: GetAssociationOptions<T> = {}): T[] {
     let associations = this.syncable._associations;
 
     if (!associations) {
       return [];
     }
 
-    context = this.requireContext(context);
+    let manager = this.manager;
 
     return associations
       .filter(
@@ -90,7 +92,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
           (!name || association.name === name) &&
           (!type || association.ref.type === type),
       )
-      .map(association => context!.require(association.ref) as T);
+      .map(association => manager.requireSyncableObject(association.ref) as T);
   }
 
   getAccessRights({
@@ -218,16 +220,8 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
       throw new Error(`Unknown access control rule "${ruleName}"`);
     }
 
-    return rule.test(target, this.requireContext(context), options);
-  }
+    context = this.manager.requireContext(context);
 
-  private requireContext(context = this.context): Context {
-    if (!context) {
-      throw new Error(
-        'Context is neither available from parameter nor the instance',
-      );
-    }
-
-    return context;
+    return rule.test(target, context, options);
   }
 }

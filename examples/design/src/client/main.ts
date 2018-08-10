@@ -1,7 +1,6 @@
-import 'source-map-support/register';
-
 import {Client} from '@syncable/client';
 import {ChangePlant} from '@syncable/core';
+import 'source-map-support/register';
 
 import {
   MFChange,

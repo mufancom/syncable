@@ -1,5 +1,5 @@
 {
-  "extends": "vts/tslint-prettier",
+  "extends": "@magicspace/configs/tslint-prettier",
   "rules": {
     "no-console": [true, "log"]
   }

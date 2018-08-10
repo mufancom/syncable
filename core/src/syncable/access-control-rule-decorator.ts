@@ -1,13 +1,18 @@
 import {AccessControlEntryRuleName} from '../access-control';
 import {AccessControlRuleTester} from '../context';
+
 import {SyncableObject} from './syncable-object';
 
-export function AccessControlRule(explicitName?: string) {
-  return (
-    target: SyncableObject,
-    name: string,
-    descriptor: TypedPropertyDescriptor<AccessControlRuleTester>,
-  ) => {
+export type AccessControlRuleDecorator = (
+  target: SyncableObject,
+  name: string,
+  descriptor: TypedPropertyDescriptor<AccessControlRuleTester>,
+) => void;
+
+export function AccessControlRule(
+  explicitName?: string,
+): AccessControlRuleDecorator {
+  return (target, name, descriptor) => {
     let test = descriptor.value!;
 
     let ruleMap =

@@ -2,6 +2,7 @@ import uuid = require('uuid');
 
 import {AccessControlEntry, Permission} from '../access-control';
 import {ExcludeProperty, StringType} from '../lang';
+
 import {SyncableObject} from './syncable-object';
 
 export type SyncableId<Type extends string = string> = StringType<

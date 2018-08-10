@@ -1,24 +1,44 @@
 {
   "tasks": {
+    "lint-core": {
+      "executable": "tslint",
+      "args": ["-p", "core"],
+      "problemMatcher": "$typescript:tslint"
+    },
+    "lint-server": {
+      "executable": "tslint",
+      "args": ["-p", "server"],
+      "problemMatcher": "$typescript:tslint"
+    },
+    "lint-client": {
+      "executable": "tslint",
+      "args": ["-p", "client"],
+      "problemMatcher": "$typescript:tslint"
+    },
+    "lint-example-design": {
+      "executable": "tslint",
+      "args": ["-p", "examples/design"],
+      "problemMatcher": "$typescript:tslint"
+    },
     "build-core": {
       "executable": "tsc",
       "args": ["-p", "core", "-w"],
-      "problemMatcher": "$tsc-watch"
+      "problemMatcher": "$typescript:tsc-watch"
     },
     "build-server": {
       "executable": "tsc",
       "args": ["-p", "server", "-w"],
-      "problemMatcher": "$tsc-watch"
+      "problemMatcher": "$typescript:tsc-watch"
     },
     "build-client": {
       "executable": "tsc",
       "args": ["-p", "client", "-w"],
-      "problemMatcher": "$tsc-watch"
+      "problemMatcher": "$typescript:tsc-watch"
     },
     "build-example-design": {
       "executable": "tsc",
       "args": ["-p", "examples/design", "-w"],
-      "problemMatcher": "$tsc-watch"
+      "problemMatcher": "$typescript:tsc-watch"
     },
     "start-example-design-server": {
       "executable": "node",

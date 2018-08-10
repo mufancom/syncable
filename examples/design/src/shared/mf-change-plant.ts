@@ -6,6 +6,7 @@ import {
   SyncableRef,
   createSyncable,
 } from '@syncable/core';
+
 import {Tag, TagName, TagSyncable} from './syncables';
 
 export type MFChange = TagChange | CreateTagChange;

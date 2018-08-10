@@ -1,4 +1,5 @@
 import {Syncable, SyncableRef} from '../syncable';
+
 import {ChangePacketUID} from './change';
 
 export interface ConsequentSeries {

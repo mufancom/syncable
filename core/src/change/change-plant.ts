@@ -4,6 +4,7 @@ import _ = require('lodash');
 import {AccessRight} from '../access-control';
 import {Dict} from '../lang';
 import {Syncable, SyncableRef} from '../syncable';
+
 import {
   AccessControlChange,
   accessControlChangePlantBlueprint,

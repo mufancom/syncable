@@ -4,6 +4,7 @@ import {ChangePlant, ContextCache} from '@syncable/core';
 import {Server} from '@syncable/server';
 
 import {MFChange, MFSyncableObjectFactory, User} from '../shared';
+
 import {MFServerContext} from './mf-server-context';
 
 export class MFServer extends Server<User, MFChange> {

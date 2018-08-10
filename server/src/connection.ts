@@ -6,9 +6,11 @@ import {
   ConsequentSeries,
   GeneralChange,
   SnapshotEventData,
+  SyncableId,
   SyncableRef,
   UserSyncableObject,
 } from '@syncable/core';
+
 import {ServerContext} from './server-context';
 
 export interface ConnectionSocket extends SocketIO.Socket {
@@ -33,7 +35,7 @@ export class Connection {
     let request = socket.request as IncomingMessage;
     let userRef: SyncableRef<UserSyncableObject> = {
       type: 'user',
-      id: '5b6c39265f5489de6093a392',
+      id: '5b6c39265f5489de6093a392' as SyncableId<'user'>,
     };
 
     socket.on('change', packet => {}).on('query', query => {});

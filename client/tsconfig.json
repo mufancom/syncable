@@ -1,5 +1,5 @@
 {
-  "extends": "../node_modules/vts/tsconfig-browser.json",
+  "extends": "../node_modules/@magicspace/configs/tsconfig-browser.json",
   "compilerOptions": {
     "declaration": true,
 

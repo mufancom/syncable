@@ -1,7 +1,7 @@
+import {ContextCache} from '@syncable/core';
 import {ServerContext, ServerContextQueryFilter} from '@syncable/server';
 import {MongoClient} from 'mongodb';
 
-import {ContextCache} from '@syncable/core';
 import {MFContextQuery, MFSyncableObjectFactory, User} from '../shared';
 
 export interface MFGroupQuery {
