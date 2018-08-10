@@ -17,9 +17,9 @@ export interface AccessControlRuleEntry {
   test: AccessControlRuleTester;
 }
 
-export interface GetAssociationOptions {
+export interface GetAssociationOptions<T extends SyncableObject> {
   name?: string;
-  type?: string;
+  type?: T['type'];
 }
 
 export interface GetAccessRightsOptions {
@@ -39,23 +39,23 @@ type AccessRightComparableItemsDict = {
 export abstract class SyncableObject<T extends Syncable = Syncable> {
   /** @internal */
   // tslint:disable-next-line:variable-name
-  __accessControlRuleMap = new Map<
+  __accessControlRuleMap!: Map<
     AccessControlEntryRuleName,
     AccessControlRuleEntry
-  >();
+  >;
 
   constructor(readonly syncable: T, protected context?: Context) {}
 
-  get id(): T['$id'] {
-    return this.syncable.$id;
+  get id(): T['_id'] {
+    return this.syncable._id;
   }
 
-  get type(): T['$type'] {
-    return this.syncable.$type;
+  get type(): T['_type'] {
+    return this.syncable._type;
   }
 
   get ref(): SyncableRef<this> {
-    let {$id: id, $type: type} = this.syncable;
+    let {_id: id, _type: type} = this.syncable;
 
     return {
       id,
@@ -64,18 +64,18 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   }
 
   getGrantingPermissions(): Permission[] {
-    return this.syncable.$grants || [];
+    return this.syncable._grants || [];
   }
 
   getSecuringACL(): AccessControlEntry[] {
-    return this.syncable.$secures || [];
+    return this.syncable._secures || [];
   }
 
-  getRequisiteAssociations(
-    {name, type}: GetAssociationOptions = {},
+  getRequisiteAssociations<T extends SyncableObject>(
+    {name, type}: GetAssociationOptions<T> = {},
     context?: Context,
-  ): SyncableObject[] {
-    let associations = this.syncable.$associations;
+  ): T[] {
+    let associations = this.syncable._associations;
 
     if (!associations) {
       return [];
@@ -90,7 +90,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
           (!name || association.name === name) &&
           (!type || association.ref.type === type),
       )
-      .map(association => context!.require(association.ref));
+      .map(association => context!.require(association.ref) as T);
   }
 
   getAccessRights({
@@ -154,7 +154,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
       associate: [],
     };
 
-    let acl = this.syncable.$acl || [];
+    let acl = this.syncable._acl || [];
 
     for (let entry of acl) {
       if (!this.testAccessControlEntry(this, entry)) {

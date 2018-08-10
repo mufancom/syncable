@@ -7,7 +7,7 @@ export class UserSyncableObject<
 > extends SyncableObject<T> {
   get permissions(): Permission[] {
     let associations = this.getRequisiteAssociations();
-    let permissions = this.syncable.$permissions || [];
+    let permissions = this.syncable._permissions || [];
 
     return associations
       .map(association => association.getGrantingPermissions())

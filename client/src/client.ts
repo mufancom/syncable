@@ -4,6 +4,7 @@ import {
   ChangePacketUID,
   ChangePlant,
   Consequence,
+  ContextCache,
   GeneralChange,
   Syncable,
   SyncableId,
@@ -26,20 +27,26 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
   private context: ClientContext<TUser>;
   private socket: ClientSocket<TUser>;
 
+  private cache = new ContextCache();
+
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, Syncable>();
 
   constructor(
+    uri: string,
     factory: SyncableObjectFactory,
     changePlant: ChangePlant<TChange>,
   );
   constructor(
+    uri: string,
     factory: SyncableObjectFactory,
     private changePlant: ChangePlant<GeneralChange>,
   ) {
-    this.context = new ClientContext(factory);
+    console.log('create context');
 
-    this.socket = createClientSocket<TUser>()
+    this.context = new ClientContext(this.cache, factory);
+
+    this.socket = createClientSocket<TUser>(uri)
       .on('snapshot', ({syncables, userRef}) => {
         this.onSnapshot(syncables, userRef);
       })
@@ -115,7 +122,7 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
 
     let snapshot = _.cloneDeep(syncable);
 
-    this.syncableSnapshotMap.set(syncable.$id, snapshot);
+    this.syncableSnapshotMap.set(syncable._id, snapshot);
   }
 
   private onConsequentRemoval(ref: SyncableRef): void {

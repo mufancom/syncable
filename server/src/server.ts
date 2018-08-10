@@ -1,3 +1,5 @@
+import {Server as HTTPServer} from 'http';
+
 import {Change, ChangePlant, UserSyncableObject} from '@syncable/core';
 import io = require('socket.io');
 
@@ -8,11 +10,16 @@ export abstract class Server<
   TUser extends UserSyncableObject,
   TChange extends Change
 > {
-  private server = io();
+  private server: io.Server;
   private connectionSet = new Set<Connection>();
 
-  constructor(protected changePlant: ChangePlant<TChange>) {
-    this.server.on('connection', socket => {
+  constructor(
+    httpServer: HTTPServer,
+    protected changePlant: ChangePlant<TChange>,
+  ) {
+    let server = (this.server = io(httpServer));
+
+    server.on('connection', socket => {
       let context = this.createContext();
 
       let connection = new Connection(
@@ -22,6 +29,8 @@ export abstract class Server<
       );
 
       this.connectionSet.add(connection);
+
+      connection.initialize().catch(console.error);
     });
   }
 

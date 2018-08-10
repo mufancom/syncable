@@ -13,9 +13,9 @@ export type ServerContextQueryFilter = (object: SyncableObject) => boolean;
 export type ServerContextLockHandler = () => Promise<void>;
 
 export abstract class ServerContext<
-  TUser extends UserSyncableObject,
-  TContextQuery,
-  TGroupQuery
+  TUser extends UserSyncableObject = UserSyncableObject,
+  TContextQuery = any,
+  TGroupQuery = any
 > extends Context<TUser, TContextQuery> {
   private groupQueryPromise: Promise<void> | undefined;
   private snapshotIdSet = new Set<SyncableId>();
@@ -28,7 +28,7 @@ export abstract class ServerContext<
     await (this.groupQueryPromise ||
       (this.groupQueryPromise = this.ensureSyncableGroup(groupQuery)));
 
-    let user = await this.get(userRef);
+    let user = await this.require(userRef);
 
     if (!(user instanceof UserSyncableObject)) {
       throw new TypeError(
@@ -51,7 +51,7 @@ export abstract class ServerContext<
     let result: Syncable[] = [];
 
     for (let syncable of syncables) {
-      let id = syncable.$id;
+      let id = syncable._id;
 
       if (snapshotIdSet.has(id)) {
         continue;

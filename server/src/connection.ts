@@ -6,6 +6,7 @@ import {
   ConsequentSeries,
   GeneralChange,
   SnapshotEventData,
+  SyncableRef,
   UserSyncableObject,
 } from '@syncable/core';
 import {ServerContext} from './server-context';
@@ -14,17 +15,14 @@ export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'query', listener: (query: any) => void): this;
   on(event: 'change', listener: (packet: ChangePacket) => void): this;
 
-  emit(
-    event: 'snapshot',
-    snapshot: SnapshotEventData<UserSyncableObject>,
-  ): boolean;
+  emit(event: 'snapshot', snapshot: SnapshotEventData): boolean;
   emit(event: 'consequent-series', series: ConsequentSeries): boolean;
 }
 
 export class Connection {
   constructor(
     private socket: ConnectionSocket,
-    private context: ServerContext<UserSyncableObject>,
+    private context: ServerContext,
     private changePlant: ChangePlant<GeneralChange>,
   ) {}
 
@@ -33,11 +31,14 @@ export class Connection {
     let context = this.context;
 
     let request = socket.request as IncomingMessage;
-    let userRef = undefined!;
+    let userRef: SyncableRef<UserSyncableObject> = {
+      type: 'user',
+      id: '5b6c39265f5489de6093a392',
+    };
 
     socket.on('change', packet => {}).on('query', query => {});
 
-    let syncables = await context.initialize(userRef);
+    let syncables = await context.initialize(userRef, {}, {});
 
     socket.emit('snapshot', {
       userRef,

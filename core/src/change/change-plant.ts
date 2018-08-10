@@ -120,7 +120,7 @@ export class ChangePlant<TChange extends Change = Change> {
         for (let diff of diffs) {
           let propertyName = diff.path[0];
 
-          if (/^\$/.test(propertyName) && /^[^$]/.test(type)) {
+          if (/^_/.test(propertyName) && /^[^$]/.test(type)) {
             throw new Error(
               `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
             );

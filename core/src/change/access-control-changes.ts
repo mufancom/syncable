@@ -83,10 +83,10 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
   AccessControlChange
 > = {
   $associate({target, source}, {requisite}) {
-    let associations = target.$associations;
+    let associations = target._associations;
 
     if (!associations) {
-      associations = target.$associations = [];
+      associations = target._associations = [];
     }
 
     if (
@@ -111,7 +111,7 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
     };
   },
   $unassociate({target, source}) {
-    let associations = target.$associations;
+    let associations = target._associations;
 
     if (!associations) {
       return undefined;
@@ -134,10 +134,10 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
     };
   },
   '$set-access-control-entries'({target}, {entries}) {
-    let acl = target.$acl;
+    let acl = target._acl;
 
     if (!acl) {
-      acl = target.$acl = [];
+      acl = target._acl = [];
     }
 
     let entryMap = new Map(
@@ -148,10 +148,10 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
       entryMap.set(entry.name, entry);
     }
 
-    target.$acl = Array.from(entryMap.values());
+    target._acl = Array.from(entryMap.values());
   },
   '$unset-access-control-entries'({target}, {names}) {
-    let acl = target.$acl;
+    let acl = target._acl;
 
     if (!acl) {
       return;
@@ -159,13 +159,13 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
 
     let nameSet = new Set(names);
 
-    target.$acl = acl.filter(entry => !nameSet.has(entry.name));
+    target._acl = acl.filter(entry => !nameSet.has(entry.name));
   },
 };
 
 function compareAssociationWithSyncable(
   {ref: {type, id}}: SyncableAssociation,
-  {$type, $id}: Syncable,
+  {_type, _id}: Syncable,
 ): boolean {
-  return type === $type && id === $id;
+  return type === _type && id === _id;
 }

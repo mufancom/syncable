@@ -1,0 +1,36 @@
+{
+  "tasks": {
+    "build-core": {
+      "executable": "tsc",
+      "args": ["-p", "core", "-w"],
+      "problemMatcher": "$tsc-watch"
+    },
+    "build-server": {
+      "executable": "tsc",
+      "args": ["-p", "server", "-w"],
+      "problemMatcher": "$tsc-watch"
+    },
+    "build-client": {
+      "executable": "tsc",
+      "args": ["-p", "client", "-w"],
+      "problemMatcher": "$tsc-watch"
+    },
+    "build-example-design": {
+      "executable": "tsc",
+      "args": ["-p", "examples/design", "-w"],
+      "problemMatcher": "$tsc-watch"
+    },
+    "start-example-design-server": {
+      "executable": "node",
+      "args": ["bld/server/main.js"],
+      "cwd": "examples/design",
+      "watch": ["bld/server/**"]
+    },
+    "start-example-design-client": {
+      "executable": "node",
+      "args": ["bld/client/main.js"],
+      "cwd": "examples/design",
+      "watch": ["bld/client/**"]
+    }
+  }
+}

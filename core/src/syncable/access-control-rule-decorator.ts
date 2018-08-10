@@ -10,9 +10,10 @@ export function AccessControlRule(explicitName?: string) {
   ) => {
     let test = descriptor.value!;
 
-    target.__accessControlRuleMap.set(
-      (explicitName || name) as AccessControlEntryRuleName,
-      {test},
-    );
+    let ruleMap =
+      target.__accessControlRuleMap ||
+      (target.__accessControlRuleMap = new Map());
+
+    ruleMap.set((explicitName || name) as AccessControlEntryRuleName, {test});
   };
 }

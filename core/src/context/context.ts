@@ -83,7 +83,7 @@ export abstract class Context<
         return undefined;
       }
 
-      object = this.factory.create<T>(syncable, this);
+      object = this.factory.create(syncable, this) as T;
       cache.setSyncableObject(ref, object);
     }
 
@@ -100,9 +100,9 @@ export abstract class Context<
     return object;
   }
 
-  getRequisiteAssociations(
-    options: GetAssociationOptions = {},
-  ): SyncableObject[] {
-    return this.user.getRequisiteAssociations(options);
+  getRequisiteAssociations<T extends SyncableObject>(
+    options: GetAssociationOptions<T> = {},
+  ): T[] {
+    return this.user.getRequisiteAssociations<T>(options);
   }
 }

@@ -22,36 +22,36 @@ export interface SyncableAssociation<
 }
 
 export interface Syncable<Type extends string = string> {
-  $id: SyncableId<Type>;
-  $type: Type;
-  $timestamp: number;
+  _id: SyncableId<Type>;
+  _type: Type;
+  _timestamp: number;
 
   /**
    * Object associations of this object.
    */
-  $associations?: SyncableAssociation[];
+  _associations?: SyncableAssociation[];
 
   /**
    * Permissions of this object, only applied if this object is a user that
    * will be attached to a context.
    */
-  $permissions?: Permission[];
+  _permissions?: Permission[];
 
   /**
    * Permissions that this object can grants a user.
    */
-  $grants?: Permission[];
+  _grants?: Permission[];
 
   /**
    * Specific access control list of this object.
    */
-  $acl?: AccessControlEntry[];
+  _acl?: AccessControlEntry[];
 
   /**
    * A list of extra access control entries to be attached by making this
    * object association of the target object.
    */
-  $secures?: AccessControlEntry[];
+  _secures?: AccessControlEntry[];
 }
 
 ///////////////
@@ -61,7 +61,7 @@ export interface Syncable<Type extends string = string> {
 export type SyncableIdType<T extends SyncableObject> = T extends SyncableObject<
   infer TSyncable
 >
-  ? TSyncable['$id']
+  ? TSyncable['_id']
   : never;
 
 export type SyncableObjectType<T extends SyncableRef> = T extends SyncableRef<
@@ -71,16 +71,16 @@ export type SyncableObjectType<T extends SyncableRef> = T extends SyncableRef<
   : never;
 
 export function createSyncable<T extends Syncable>(
-  $type: T['$type'],
+  type: T['_type'],
   data: ExcludeProperty<T, keyof Syncable>,
 ): T {
-  let $id = uuid() as Syncable['$id'];
-  let $timestamp = 0;
+  let id = uuid() as Syncable['_id'];
+  let timestamp = 0;
 
   return {
-    $id,
-    $type,
-    $timestamp,
+    _id: id,
+    _type: type,
+    _timestamp: timestamp,
     ...(data as object),
   } as T;
 }

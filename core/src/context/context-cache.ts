@@ -20,7 +20,7 @@ export class ContextCache {
 
   addSyncable(syncable: Syncable): void {
     let map = this.syncableMap;
-    let id = syncable.$id;
+    let id = syncable._id;
 
     if (map.has(id)) {
       throw new Error(`Syncable with ID "${id}" already exists in context`);
@@ -30,7 +30,7 @@ export class ContextCache {
   }
 
   updateSyncable(snapshot: Syncable): void {
-    let id = snapshot.$id;
+    let id = snapshot._id;
 
     let syncable = this.syncableMap.get(id);
 

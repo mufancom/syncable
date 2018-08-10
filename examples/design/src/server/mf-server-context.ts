@@ -1,16 +1,28 @@
 import {ServerContext, ServerContextQueryFilter} from '@syncable/server';
+import {MongoClient} from 'mongodb';
 
-import {MFContextQuery, User} from '../shared';
+import {ContextCache} from '@syncable/core';
+import {MFContextQuery, MFSyncableObjectFactory, User} from '../shared';
 
 export interface MFGroupQuery {
   organization: string;
 }
+
+export interface MFServerContextOptions {}
 
 export class MFServerContext extends ServerContext<
   User,
   MFContextQuery,
   MFGroupQuery
 > {
+  private dbClientPromise = MongoClient.connect('mongodb://localhost:27017', {
+    useNewUrlParser: true,
+  });
+
+  constructor(cache: ContextCache, factory: MFSyncableObjectFactory) {
+    super(cache, factory);
+  }
+
   // private lockingPromiseMap = new Map<SyncableId, Promise<void>>();
 
   // protected async lock(
@@ -52,7 +64,17 @@ export class MFServerContext extends ServerContext<
     return () => true;
   }
 
-  protected ensureSyncableGroup(_query: MFGroupQuery): Promise<void> {
-    throw new Error('Method not implemented.');
+  protected async ensureSyncableGroup(_query: MFGroupQuery): Promise<void> {
+    let dbClient = await this.dbClientPromise;
+
+    let syncables = await dbClient
+      .db('syncable-design')
+      .collection('syncables')
+      .find({})
+      .toArray();
+
+    for (let syncable of syncables) {
+      this.addSyncable(syncable);
+    }
   }
 }

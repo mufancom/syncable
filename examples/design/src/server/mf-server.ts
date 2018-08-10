@@ -1,21 +1,24 @@
-import {ChangePlant, ContextCache, SyncableObjectFactory} from '@syncable/core';
-import {Server, ServerContext} from '@syncable/server';
+import {Server as HTTPServer} from 'http';
 
-import {MFChange} from '../shared/change-plant';
-import {User} from '../shared/syncables';
+import {ChangePlant, ContextCache} from '@syncable/core';
+import {Server} from '@syncable/server';
+
+import {MFChange, MFSyncableObjectFactory, User} from '../shared';
 import {MFServerContext} from './mf-server-context';
 
 export class MFServer extends Server<User, MFChange> {
   private cache = new ContextCache();
 
   constructor(
-    private factory: SyncableObjectFactory,
+    httpServer: HTTPServer,
+    private factory: MFSyncableObjectFactory,
     changePlant: ChangePlant<MFChange>,
   ) {
-    super(changePlant);
+    super(httpServer, changePlant);
   }
 
-  protected createContext(): ServerContext<User> {
+  protected createContext(): MFServerContext {
+    console.log('create context');
     return new MFServerContext(this.cache, this.factory);
   }
 }

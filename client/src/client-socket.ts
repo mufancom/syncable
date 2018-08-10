@@ -2,8 +2,6 @@ import {
   ChangePacket,
   ConsequentSeries,
   SnapshotEventData,
-  Syncable,
-  SyncableRef,
   UserSyncableObject,
 } from '@syncable/core';
 import io = require('socket.io-client');
@@ -27,8 +25,8 @@ export interface ClientSocket<TUser extends UserSyncableObject>
   emit(event: 'request', request: Request): this;
 }
 
-export function createClientSocket<
-  TUser extends UserSyncableObject
->(): ClientSocket<TUser> {
-  return io('/', {transports: ['websocket']}) as ClientSocket<TUser>;
+export function createClientSocket<TUser extends UserSyncableObject>(
+  uri: string,
+): ClientSocket<TUser> {
+  return io(uri, {transports: ['websocket']}) as ClientSocket<TUser>;
 }
