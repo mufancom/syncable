@@ -1,7 +1,6 @@
 import {
   AccessControlRule,
   Context,
-  StringType,
   Syncable,
   SyncableId,
   SyncableObject,
@@ -9,23 +8,22 @@ import {
 import _ = require('lodash');
 
 export type TagId = SyncableId<'tag'>;
-export type TagName = StringType<'tag-name'>;
 
 export interface TagMutualAssociationOptions {
   acceptDerivation?: boolean;
 }
 
 export interface TagSyncable extends Syncable<'tag'> {
-  name: TagName;
-  derivations: TagName[];
+  name: string;
+  derivations: string[];
 }
 
 export class Tag extends SyncableObject<TagSyncable> {
-  get name(): TagName {
+  get name(): string {
     return this.syncable.name;
   }
 
-  get derivations(): TagName[] {
+  get derivations(): string[] {
     return this.syncable.derivations;
   }
 

@@ -24,7 +24,8 @@ export interface SnapshotsData {
 }
 
 export class Client<TUser extends UserSyncableObject, TChange extends Change> {
-  private context: Context<TUser>;
+  context: Context<TUser>;
+
   private manager: SyncableManager;
   private socket: ClientSocket<TUser>;
 

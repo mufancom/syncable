@@ -1,7 +1,7 @@
+import {createSyncable, getSyncableRef} from '@syncable/core';
 import {MongoClient} from 'mongodb';
-import uuid from 'uuid';
 
-import {UserId, UserSyncable} from '../shared';
+import {TagSyncable, UserId, UserSyncable} from '../shared';
 
 (async () => {
   let client = await MongoClient.connect('mongodb://localhost:27017', {
@@ -13,18 +13,27 @@ import {UserId, UserSyncable} from '../shared';
 
   await syncablesCollection.drop();
 
-  let user: UserSyncable = {
-    _id: uuid() as UserId,
-    _type: 'user',
-    _timestamp: 0,
+  let userSyncable = createSyncable<UserSyncable>('user', {
     name: 'vilicvane',
-  };
+  });
 
-  let syncables = [user];
+  let adminTagSyncable = createSyncable<TagSyncable>('tag', {
+    name: 'admin',
+    derivations: [],
+  });
+
+  let irrelevantTagSyncable = createSyncable<TagSyncable>('tag', {
+    name: 'irrelevant',
+    derivations: [],
+  });
+
+  userSyncable._associations = [
+    {name: 'tag', requisite: true, ref: getSyncableRef(adminTagSyncable)},
+  ];
+
+  let syncables = [userSyncable, adminTagSyncable, irrelevantTagSyncable];
 
   await syncablesCollection.insertMany(syncables);
-
-  console.log(await syncablesCollection.find({}).toArray());
 })().then(
   () => process.exit(),
   error => {

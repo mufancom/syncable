@@ -1,3 +1,5 @@
+import {observable} from 'mobx';
+
 import {Permission} from '../access-control';
 import {
   GetAssociationOptions,
@@ -12,7 +14,7 @@ export type AccessControlRuleTester = (
 ) => boolean;
 
 export class Context<TUser extends UserSyncableObject = UserSyncableObject> {
-  private user!: TUser;
+  @observable user!: TUser;
 
   constructor(user?: TUser) {
     if (user) {

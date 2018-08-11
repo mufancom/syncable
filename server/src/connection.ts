@@ -28,16 +28,11 @@ export class Connection {
 
   constructor(private socket: ConnectionSocket, private server: Server) {}
 
-  async initialize(): Promise<void> {
+  async initialize(userRef: SyncableRef<UserSyncableObject>): Promise<void> {
     let socket = this.socket;
     let manager = this.server.manager;
 
     let request = socket.request as IncomingMessage;
-
-    let userRef: SyncableRef<UserSyncableObject> = {
-      type: 'user',
-      id: '5b6c39265f5489de6093a392' as SyncableId<'user'>,
-    };
 
     socket.on('change', packet => {}).on('query', query => {
       this.onQuery(query);

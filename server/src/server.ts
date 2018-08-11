@@ -8,12 +8,19 @@ import {
   Syncable,
   SyncableManager,
   SyncableObject,
+  SyncableRef,
+  UserSyncableObject,
 } from '@syncable/core';
 import io = require('socket.io');
 
 import {Connection, ConnectionSocket} from './connection';
 
 export type ViewQueryFilter = (object: SyncableObject) => boolean;
+
+export interface ConnectionSession {
+  group: string;
+  userRef: SyncableRef<UserSyncableObject>;
+}
 
 export abstract class Server<
   TChange extends Change = GeneralChange,
@@ -37,7 +44,9 @@ export abstract class Server<
 
   abstract getViewQueryFilter(query: TViewQuery): ViewQueryFilter;
 
-  protected abstract getGroupName(socket: ConnectionSocket): string;
+  protected abstract resolveSession(
+    socket: ConnectionSocket,
+  ): Promise<ConnectionSession>;
 
   protected abstract loadSyncables(group: string): Promise<Syncable[]>;
 
@@ -48,7 +57,7 @@ export abstract class Server<
   }
 
   private async initializeConnection(socket: ConnectionSocket): Promise<void> {
-    let group = this.getGroupName(socket);
+    let {group, userRef} = await this.resolveSession(socket);
 
     let groupLoadingPromiseMap = this.groupLoadingPromiseMap;
 
@@ -65,7 +74,7 @@ export abstract class Server<
 
     this.connectionSet.add(connection);
 
-    connection.initialize().catch(console.error);
+    connection.initialize(userRef).catch(console.error);
   }
 
   private async loadAndAddSyncables(group: string): Promise<void> {
