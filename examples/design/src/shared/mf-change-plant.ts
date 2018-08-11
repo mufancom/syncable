@@ -39,12 +39,3 @@ const blueprint: ChangePlantBlueprint<MFChange> = {
     };
   },
 };
-
-const changePlant = new ChangePlant(blueprint);
-
-let change!: TagChange;
-
-changePlant.process(change, {
-  target: {} as Syncable,
-  tag: {} as TagSyncable,
-});

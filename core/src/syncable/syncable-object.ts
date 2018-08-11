@@ -95,13 +95,18 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
       .map(association => manager.requireSyncableObject(association.ref) as T);
   }
 
-  getAccessRights({
-    grantableOnly = false,
-  }: GetAccessRightsOptions = {}): AccessRight[] {
-    let accessRightsDict = this.getAccessRightComparableItemsDict();
+  getAccessRights(
+    {grantableOnly = false}: GetAccessRightsOptions = {},
+    context?: Context,
+  ): AccessRight[] {
+    let accessRightsDict = this.getAccessRightComparableItemsDict(context);
+
+    if (!accessRightsDict) {
+      return [...ACCESS_RIGHTS];
+    }
 
     return ACCESS_RIGHTS.filter(right => {
-      let items = accessRightsDict[right];
+      let items = accessRightsDict![right];
 
       for (let {type, grantable} of items) {
         if (type !== 'allow') {
@@ -120,8 +125,9 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   testAccessRights(
     rights: AccessRight[],
     options?: GetAccessRightsOptions,
+    context?: Context,
   ): boolean {
-    let grantedRights = this.getAccessRights(options);
+    let grantedRights = this.getAccessRights(options, context);
 
     return _.difference(rights, grantedRights).length === 0;
   }
@@ -129,8 +135,9 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   validateAccessRights(
     rights: AccessRight[],
     options?: GetAccessRightsOptions,
+    context?: Context,
   ): void {
-    let grantedRights = this.getAccessRights(options);
+    let grantedRights = this.getAccessRights(options, context);
 
     if (_.difference(rights, grantedRights).length === 0) {
       return;
@@ -148,7 +155,9 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     return true;
   }
 
-  private getAccessRightComparableItemsDict(): AccessRightComparableItemsDict {
+  private getAccessRightComparableItemsDict(
+    context: Context | undefined,
+  ): AccessRightComparableItemsDict | undefined {
     let dict: AccessRightComparableItemsDict = {
       read: [],
       write: [],
@@ -158,8 +167,10 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
 
     let acl = this.syncable._acl || [];
 
+    let hasNonEmptyACL = !!acl.length;
+
     for (let entry of acl) {
-      if (!this.testAccessControlEntry(this, entry)) {
+      if (!this.testAccessControlEntry(this, entry, context)) {
         continue;
       }
 
@@ -181,8 +192,10 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     for (let association of associations) {
       let securingACL = association.getSecuringACL();
 
+      hasNonEmptyACL = hasNonEmptyACL || !!securingACL.length;
+
       for (let entry of securingACL) {
-        if (!association.testAccessControlEntry(this, entry)) {
+        if (!association.testAccessControlEntry(this, entry, context)) {
           continue;
         }
 
@@ -200,6 +213,10 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
       }
     }
 
+    if (!hasNonEmptyACL) {
+      return undefined;
+    }
+
     for (let right of ACCESS_RIGHTS) {
       dict[right].sort((x, y) => y.priority - x.priority);
     }
@@ -210,7 +227,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   private testAccessControlEntry(
     target: SyncableObject,
     entry: AccessControlEntry,
-    context?: Context,
+    context: Context | undefined,
   ): boolean {
     let {rule: ruleName, options} = entry;
 

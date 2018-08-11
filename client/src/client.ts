@@ -4,10 +4,11 @@ import {
   ChangePacketUID,
   ChangePlant,
   Consequence,
-  ContextCache,
+  Context,
   GeneralChange,
   Syncable,
   SyncableId,
+  SyncableManager,
   SyncableObject,
   SyncableObjectFactory,
   SyncableRef,
@@ -17,17 +18,15 @@ import _ = require('lodash');
 import uuid = require('uuid');
 
 import {ClientSocket, createClientSocket} from './@client-socket';
-import {ClientContext} from './client-context';
 
 export interface SnapshotsData {
   snapshots: Syncable[];
 }
 
 export class Client<TUser extends UserSyncableObject, TChange extends Change> {
-  private context: ClientContext<TUser>;
+  private context: Context<TUser>;
+  private manager: SyncableManager;
   private socket: ClientSocket<TUser>;
-
-  private cache = new ContextCache();
 
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, Syncable>();
@@ -44,7 +43,8 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
   ) {
     console.log('create context');
 
-    this.context = new ClientContext(this.cache, factory);
+    this.context = new Context();
+    this.manager = new SyncableManager(factory, this.context);
 
     this.socket = createClientSocket<TUser>(uri)
       .on('snapshot', ({syncables, userRef}) => {
@@ -83,12 +83,15 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     syncables: Syncable[],
     userRef?: SyncableRef<TUser>,
   ): void {
+    console.log(syncables, userRef);
+
     for (let syncable of syncables) {
-      this.context.addSyncable(syncable);
+      this.manager.addSyncable(syncable);
     }
 
     if (userRef) {
-      this.context.initialize(userRef);
+      let user = this.manager.requireSyncableObject(userRef);
+      this.context.initialize(user);
     }
   }
 
@@ -118,7 +121,7 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
   }
 
   private onConsequentCreation(syncable: Syncable): void {
-    this.context.addSyncable(syncable);
+    this.manager.addSyncable(syncable);
 
     let snapshot = _.cloneDeep(syncable);
 
@@ -126,7 +129,7 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
   }
 
   private onConsequentRemoval(ref: SyncableRef): void {
-    this.context.removeSyncable(ref);
+    this.manager.removeSyncable(ref);
     this.syncableSnapshotMap.delete(ref.id);
   }
 
@@ -137,7 +140,7 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
       DeepDiff.applyChange(snapshot, undefined!, diff);
     }
 
-    this.context.updateSyncable(snapshot);
+    this.manager.updateSyncable(snapshot);
   }
 
   private shiftChangePacket(uid: ChangePacketUID): void {
@@ -171,12 +174,12 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
   }
 
   private applyChangePacket(packet: ChangePacket): void {
-    let context = this.context;
+    let manager = this.manager;
 
     let refDict = packet.refs;
 
     let syncableDict = _.mapValues(refDict, ref =>
-      context.requireSyncable(ref),
+      manager.requireSyncable(ref),
     );
 
     let {updates: updateDict, creations, removals} = this.changePlant.process(
@@ -188,13 +191,13 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
 
     for (let [name, {requisiteAccessRights}] of updateEntries) {
       let ref = refDict[name];
-      let object = context.require(ref);
+      let object = manager.requireSyncableObject(ref);
 
       object.validateAccessRights(requisiteAccessRights);
     }
 
     for (let ref of removals) {
-      let object = context.require(ref);
+      let object = manager.requireSyncableObject(ref);
 
       object.validateAccessRights(['delete']);
     }
@@ -208,11 +211,11 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     }
 
     for (let ref of removals) {
-      context.removeSyncable(ref);
+      manager.removeSyncable(ref);
     }
 
     for (let syncable of creations) {
-      context.addSyncable(syncable);
+      manager.addSyncable(syncable);
     }
   }
 

@@ -2,19 +2,20 @@ import {IncomingMessage} from 'http';
 
 import {
   ChangePacket,
-  ChangePlant,
   ConsequentSeries,
-  GeneralChange,
+  Context,
   SnapshotEventData,
+  Syncable,
   SyncableId,
   SyncableRef,
   UserSyncableObject,
+  getSyncableRef,
 } from '@syncable/core';
 
-import {ServerContext} from './server-context';
+import {Server, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
-  on(event: 'query', listener: (query: any) => void): this;
+  on(event: 'query', listener: (query: unknown) => void): this;
   on(event: 'change', listener: (packet: ChangePacket) => void): this;
 
   emit(event: 'snapshot', snapshot: SnapshotEventData): boolean;
@@ -22,25 +23,31 @@ export interface ConnectionSocket extends SocketIO.Socket {
 }
 
 export class Connection {
-  constructor(
-    private socket: ConnectionSocket,
-    private context: ServerContext,
-    private changePlant: ChangePlant<GeneralChange>,
-  ) {}
+  private context!: Context;
+  private snapshotIdSet = new Set<SyncableId>();
+
+  constructor(private socket: ConnectionSocket, private server: Server) {}
 
   async initialize(): Promise<void> {
     let socket = this.socket;
-    let context = this.context;
+    let manager = this.server.manager;
 
     let request = socket.request as IncomingMessage;
+
     let userRef: SyncableRef<UserSyncableObject> = {
       type: 'user',
       id: '5b6c39265f5489de6093a392' as SyncableId<'user'>,
     };
 
-    socket.on('change', packet => {}).on('query', query => {});
+    socket.on('change', packet => {}).on('query', query => {
+      this.onQuery(query);
+    });
 
-    let syncables = await context.initialize(userRef, {}, {});
+    let user = manager.requireSyncableObject(userRef);
+
+    this.context = new Context(user);
+
+    let syncables = this.snapshot([userRef]);
 
     socket.emit('snapshot', {
       userRef,
@@ -48,12 +55,78 @@ export class Connection {
     });
   }
 
-  private onQuery(query: any): void {
-    this.updateQuery(query).catch(error => {
-      this.socket.disconnect();
-      console.error(error);
-    });
+  snapshot(refs?: SyncableRef[]): Syncable[] {
+    let manager = this.server.manager;
+    let context = this.context;
+
+    let filter = this.filter;
+    let snapshotIdSet = this.snapshotIdSet;
+
+    let entranceRequisite: boolean;
+    let entranceSyncables: Syncable[];
+
+    if (refs) {
+      entranceRequisite = true;
+      entranceSyncables = refs.map(ref => manager.requireSyncable(ref));
+    } else {
+      entranceRequisite = false;
+      entranceSyncables = manager.syncables;
+    }
+
+    let result: Syncable[] = [];
+
+    for (let syncable of entranceSyncables) {
+      ensureAssociationsAndSnapshot(syncable, entranceRequisite);
+    }
+
+    return result;
+
+    function ensureAssociationsAndSnapshot(
+      syncable: Syncable,
+      requisite: boolean,
+    ): void {
+      let {_id: id, _associations: associations} = syncable;
+
+      if (snapshotIdSet.has(id)) {
+        return;
+      }
+
+      let ref = getSyncableRef(syncable);
+      let object = manager.requireSyncableObject(ref);
+
+      console.log(
+        !requisite && filter && !filter(object),
+        !object.testAccessRights(['read'], {}, context),
+      );
+
+      if (
+        (!requisite && filter && !filter(object)) ||
+        !object.testAccessRights(['read'], {}, context)
+      ) {
+        return;
+      }
+
+      if (associations) {
+        for (let {requisite, ref} of associations) {
+          if (snapshotIdSet.has(ref.id)) {
+            continue;
+          }
+
+          let associatedSyncable = manager.requireSyncable(ref);
+
+          ensureAssociationsAndSnapshot(associatedSyncable, requisite);
+        }
+      }
+
+      snapshotIdSet.add(id);
+
+      result.push(syncable);
+    }
   }
 
-  private async updateQuery(query: any): Promise<void> {}
+  private filter: ViewQueryFilter = () => false;
+
+  private onQuery(query: unknown): void {
+    this.filter = this.server.getViewQueryFilter(query);
+  }
 }

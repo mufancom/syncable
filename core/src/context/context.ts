@@ -11,20 +11,25 @@ export type AccessControlRuleTester = (
   options?: object,
 ) => boolean;
 
-export abstract class Context<
-  TUser extends UserSyncableObject = UserSyncableObject,
-  TQuery = any
-> {
-  protected user!: TUser;
+export class Context<TUser extends UserSyncableObject = UserSyncableObject> {
+  private user!: TUser;
 
-  protected query: TQuery | undefined;
+  constructor(user?: TUser) {
+    if (user) {
+      this.user = user;
+    }
+  }
 
   get permissions(): Permission[] {
     return this.user.permissions;
   }
 
-  async updateQuery(query: TQuery): Promise<void> {
-    this.query = query;
+  initialize(user: TUser): void {
+    if (this.user) {
+      throw new Error('User already set');
+    }
+
+    this.user = user;
   }
 
   getRequisiteAssociations<T extends SyncableObject>(

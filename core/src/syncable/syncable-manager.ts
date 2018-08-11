@@ -80,9 +80,7 @@ export class SyncableManager {
     syncableObjectMap.delete(id);
   }
 
-  requireSyncableObject<T extends SyncableObject>(
-    ref: SyncableRef<T>,
-  ): T | undefined {
+  requireSyncableObject<T extends SyncableObject>(ref: SyncableRef<T>): T {
     let map = this.syncableObjectMap;
 
     let object = map.get(ref.id) as T | undefined;
@@ -93,7 +91,7 @@ export class SyncableManager {
 
     let syncable = this.requireSyncable(ref);
 
-    object = this.factory.create(syncable, this.context) as T;
+    object = this.factory.create(syncable, this) as T;
 
     map.set(ref.id, object);
 

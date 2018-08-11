@@ -1,38 +1,80 @@
+import {EventEmitter} from 'events';
 import {Server as HTTPServer} from 'http';
 
-import {Change, ChangePlant, UserSyncableObject} from '@syncable/core';
+import {
+  Change,
+  ChangePlant,
+  GeneralChange,
+  Syncable,
+  SyncableManager,
+  SyncableObject,
+} from '@syncable/core';
 import io = require('socket.io');
 
 import {Connection, ConnectionSocket} from './connection';
-import {ServerContext} from './server-context';
+
+export type ViewQueryFilter = (object: SyncableObject) => boolean;
 
 export abstract class Server<
-  TUser extends UserSyncableObject,
-  TChange extends Change
-> {
+  TChange extends Change = GeneralChange,
+  TViewQuery extends unknown = unknown
+> extends EventEmitter {
   private server: io.Server;
   private connectionSet = new Set<Connection>();
+  private groupLoadingPromiseMap = new Map<string, Promise<void>>();
 
   constructor(
     httpServer: HTTPServer,
+    readonly manager: SyncableManager,
     protected changePlant: ChangePlant<TChange>,
   ) {
-    let server = (this.server = io(httpServer));
+    super();
 
-    server.on('connection', socket => {
-      let context = this.createContext();
+    this.server = io(httpServer);
 
-      let connection = new Connection(
-        socket as ConnectionSocket,
-        context,
-        changePlant,
-      );
+    this.initialize().catch(error => this.emit('error', error));
+  }
 
-      this.connectionSet.add(connection);
+  abstract getViewQueryFilter(query: TViewQuery): ViewQueryFilter;
 
-      connection.initialize().catch(console.error);
+  protected abstract getGroupName(socket: ConnectionSocket): string;
+
+  protected abstract loadSyncables(group: string): Promise<Syncable[]>;
+
+  private async initialize(): Promise<void> {
+    this.server.on('connection', (socket: ConnectionSocket) => {
+      this.initializeConnection(socket).catch(console.error);
     });
   }
 
-  protected abstract createContext(): ServerContext<TUser>;
+  private async initializeConnection(socket: ConnectionSocket): Promise<void> {
+    let group = this.getGroupName(socket);
+
+    let groupLoadingPromiseMap = this.groupLoadingPromiseMap;
+
+    let groupLoadingPromise = groupLoadingPromiseMap.get(group);
+
+    if (!groupLoadingPromise) {
+      groupLoadingPromise = this.loadAndAddSyncables(group);
+      groupLoadingPromiseMap.set(group, groupLoadingPromise);
+    }
+
+    await groupLoadingPromise;
+
+    let connection = new Connection(socket, this);
+
+    this.connectionSet.add(connection);
+
+    connection.initialize().catch(console.error);
+  }
+
+  private async loadAndAddSyncables(group: string): Promise<void> {
+    let syncables = await this.loadSyncables(group);
+
+    let manager = this.manager;
+
+    for (let syncable of syncables) {
+      manager.addSyncable(syncable);
+    }
+  }
 }

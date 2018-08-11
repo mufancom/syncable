@@ -1,10 +1,5 @@
-import {Syncable, SyncableObject} from '../syncable';
-
-import {Context} from './context';
+import {Syncable, SyncableManager, SyncableObject} from '../syncable';
 
 export abstract class SyncableObjectFactory {
-  abstract create(
-    syncable: Syncable,
-    context: Context | undefined,
-  ): SyncableObject;
+  abstract create(syncable: Syncable, manager: SyncableManager): SyncableObject;
 }
