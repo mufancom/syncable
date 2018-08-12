@@ -7,6 +7,7 @@ import {
   SnapshotEventData,
   Syncable,
   SyncableId,
+  SyncableManager,
   SyncableRef,
   UserSyncableObject,
   getSyncableRef,
@@ -26,11 +27,15 @@ export class Connection {
   private context!: Context;
   private snapshotIdSet = new Set<SyncableId>();
 
-  constructor(private socket: ConnectionSocket, private server: Server) {}
+  constructor(
+    private socket: ConnectionSocket,
+    private server: Server,
+    private manager: SyncableManager,
+  ) {}
 
   async initialize(userRef: SyncableRef<UserSyncableObject>): Promise<void> {
     let socket = this.socket;
-    let manager = this.server.manager;
+    let manager = this.manager;
 
     let request = socket.request as IncomingMessage;
 
@@ -51,7 +56,7 @@ export class Connection {
   }
 
   snapshot(refs?: SyncableRef[]): Syncable[] {
-    let manager = this.server.manager;
+    let manager = this.manager;
     let context = this.context;
 
     let filter = this.filter;
@@ -88,11 +93,6 @@ export class Connection {
 
       let ref = getSyncableRef(syncable);
       let object = manager.requireSyncableObject(ref);
-
-      console.log(
-        !requisite && filter && !filter(object),
-        !object.testAccessRights(['read'], {}, context),
-      );
 
       if (
         (!requisite && filter && !filter(object)) ||

@@ -8,6 +8,7 @@ import {
   Syncable,
   SyncableManager,
   SyncableObject,
+  SyncableObjectFactory,
   SyncableRef,
   UserSyncableObject,
 } from '@syncable/core';
@@ -22,17 +23,22 @@ export interface ConnectionSession {
   userRef: SyncableRef<UserSyncableObject>;
 }
 
+interface GroupInfo {
+  manager: SyncableManager;
+  loadingPromise: Promise<void>;
+}
+
 export abstract class Server<
   TChange extends Change = GeneralChange,
   TViewQuery extends unknown = unknown
 > extends EventEmitter {
   private server: io.Server;
   private connectionSet = new Set<Connection>();
-  private groupLoadingPromiseMap = new Map<string, Promise<void>>();
+  private groupInfoMap = new Map<string, GroupInfo>();
 
   constructor(
     httpServer: HTTPServer,
-    readonly manager: SyncableManager,
+    protected factory: SyncableObjectFactory,
     protected changePlant: ChangePlant<TChange>,
   ) {
     super();
@@ -59,28 +65,36 @@ export abstract class Server<
   private async initializeConnection(socket: ConnectionSocket): Promise<void> {
     let {group, userRef} = await this.resolveSession(socket);
 
-    let groupLoadingPromiseMap = this.groupLoadingPromiseMap;
+    let groupInfoMap = this.groupInfoMap;
 
-    let groupLoadingPromise = groupLoadingPromiseMap.get(group);
+    let groupInfo = groupInfoMap.get(group);
 
-    if (!groupLoadingPromise) {
-      groupLoadingPromise = this.loadAndAddSyncables(group);
-      groupLoadingPromiseMap.set(group, groupLoadingPromise);
+    if (!groupInfo) {
+      let manager = new SyncableManager(this.factory);
+      let loadingPromise = this.loadAndAddSyncables(group, manager);
+
+      groupInfo = {
+        manager,
+        loadingPromise,
+      };
+
+      groupInfoMap.set(group, groupInfo);
     }
 
-    await groupLoadingPromise;
+    await groupInfo.loadingPromise;
 
-    let connection = new Connection(socket, this);
+    let connection = new Connection(socket, this, groupInfo.manager);
 
     this.connectionSet.add(connection);
 
     connection.initialize(userRef).catch(console.error);
   }
 
-  private async loadAndAddSyncables(group: string): Promise<void> {
+  private async loadAndAddSyncables(
+    group: string,
+    manager: SyncableManager,
+  ): Promise<void> {
     let syncables = await this.loadSyncables(group);
-
-    let manager = this.manager;
 
     for (let syncable of syncables) {
       manager.addSyncable(syncable);

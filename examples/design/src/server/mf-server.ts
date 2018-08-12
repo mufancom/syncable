@@ -14,7 +14,13 @@ import {
 } from '@syncable/server';
 import {MongoClient} from 'mongodb';
 
-import {MFChange, MFViewQuery, User, UserSyncable} from '../shared';
+import {
+  MFChange,
+  MFSyncableObjectFactory,
+  MFViewQuery,
+  User,
+  UserSyncable,
+} from '../shared';
 
 export class MFServer extends Server<MFChange, MFViewQuery> {
   private dbClientPromise = MongoClient.connect('mongodb://localhost:27017', {
@@ -23,10 +29,10 @@ export class MFServer extends Server<MFChange, MFViewQuery> {
 
   constructor(
     httpServer: HTTPServer,
-    manager: SyncableManager,
+    factory: MFSyncableObjectFactory,
     changePlant: ChangePlant<MFChange>,
   ) {
-    super(httpServer, manager, changePlant);
+    super(httpServer, factory, changePlant);
   }
 
   getViewQueryFilter(query: MFViewQuery): ViewQueryFilter {
