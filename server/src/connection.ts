@@ -16,7 +16,7 @@ import {
 import {Server, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
-  on(event: 'query', listener: (query: unknown) => void): this;
+  on(event: 'view-query', listener: (query: unknown) => void): this;
   on(event: 'change', listener: (packet: ChangePacket) => void): this;
 
   emit(event: 'snapshot', snapshot: SnapshotEventData): boolean;
@@ -33,21 +33,26 @@ export class Connection {
     private manager: SyncableManager,
   ) {}
 
-  async initialize(userRef: SyncableRef<UserSyncableObject>): Promise<void> {
+  async initialize(
+    userRef: SyncableRef<UserSyncableObject>,
+    viewQuery: unknown,
+  ): Promise<void> {
     let socket = this.socket;
     let manager = this.manager;
 
     let request = socket.request as IncomingMessage;
 
-    socket.on('change', packet => {}).on('query', query => {
-      this.onQuery(query);
+    socket.on('change', packet => {}).on('view-query', query => {
+      this.updateViewQuery(query);
     });
 
     let user = manager.requireSyncableObject(userRef);
 
     this.context = new Context(user);
 
-    let syncables = this.snapshot([userRef]);
+    this.updateViewQuery(viewQuery);
+
+    let syncables = this.snapshot(userRef);
 
     socket.emit('snapshot', {
       userRef,
@@ -55,28 +60,22 @@ export class Connection {
     });
   }
 
-  snapshot(refs?: SyncableRef[]): Syncable[] {
+  snapshot(userRef?: SyncableRef<UserSyncableObject>): Syncable[] {
     let manager = this.manager;
     let context = this.context;
 
     let filter = this.filter;
     let snapshotIdSet = this.snapshotIdSet;
 
-    let entranceRequisite: boolean;
-    let entranceSyncables: Syncable[];
-
-    if (refs) {
-      entranceRequisite = true;
-      entranceSyncables = refs.map(ref => manager.requireSyncable(ref));
-    } else {
-      entranceRequisite = false;
-      entranceSyncables = manager.syncables;
-    }
-
     let result: Syncable[] = [];
 
-    for (let syncable of entranceSyncables) {
-      ensureAssociationsAndSnapshot(syncable, entranceRequisite);
+    if (userRef) {
+      let userSyncable = manager.requireSyncable(userRef);
+      ensureAssociationsAndSnapshot(userSyncable, true);
+    }
+
+    for (let syncable of manager.syncables) {
+      ensureAssociationsAndSnapshot(syncable, false);
     }
 
     return result;
@@ -121,7 +120,7 @@ export class Connection {
 
   private filter: ViewQueryFilter = () => false;
 
-  private onQuery(query: unknown): void {
+  private updateViewQuery(query: unknown): void {
     this.filter = this.server.getViewQueryFilter(query);
   }
 }

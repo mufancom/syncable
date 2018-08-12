@@ -18,9 +18,10 @@ import {Connection, ConnectionSocket} from './connection';
 
 export type ViewQueryFilter = (object: SyncableObject) => boolean;
 
-export interface ConnectionSession {
+export interface ConnectionSession<TViewQuery> {
   group: string;
   userRef: SyncableRef<UserSyncableObject>;
+  viewQuery: TViewQuery | undefined;
 }
 
 interface GroupInfo {
@@ -52,7 +53,7 @@ export abstract class Server<
 
   protected abstract resolveSession(
     socket: ConnectionSocket,
-  ): Promise<ConnectionSession>;
+  ): Promise<ConnectionSession<TViewQuery>>;
 
   protected abstract loadSyncables(group: string): Promise<Syncable[]>;
 
@@ -63,7 +64,7 @@ export abstract class Server<
   }
 
   private async initializeConnection(socket: ConnectionSocket): Promise<void> {
-    let {group, userRef} = await this.resolveSession(socket);
+    let {group, userRef, viewQuery} = await this.resolveSession(socket);
 
     let groupInfoMap = this.groupInfoMap;
 
@@ -87,7 +88,7 @@ export abstract class Server<
 
     this.connectionSet.add(connection);
 
-    connection.initialize(userRef).catch(console.error);
+    connection.initialize(userRef, viewQuery).catch(console.error);
   }
 
   private async loadAndAddSyncables(

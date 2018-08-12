@@ -41,7 +41,7 @@ export class MFServer extends Server<MFChange, MFViewQuery> {
 
   protected async resolveSession(
     socket: ConnectionSocket,
-  ): Promise<ConnectionSession> {
+  ): Promise<ConnectionSession<MFViewQuery>> {
     let dbClient = await this.dbClientPromise;
 
     let userSyncable = (await dbClient
@@ -52,6 +52,7 @@ export class MFServer extends Server<MFChange, MFViewQuery> {
     return {
       group: 'test',
       userRef: getSyncableRef(userSyncable),
+      viewQuery: {view: 'home'},
     };
   }
 
