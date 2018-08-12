@@ -1,4 +1,5 @@
 import {
+  AccessControlChange,
   Change,
   ChangePacket,
   ChangePacketUID,
@@ -42,8 +43,6 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     factory: SyncableObjectFactory,
     private changePlant: ChangePlant<GeneralChange>,
   ) {
-    console.log('create context');
-
     this.context = new Context();
     this.manager = new SyncableManager(factory, this.context);
 
@@ -78,14 +77,23 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     });
   }
 
+  addChange(change: TChange | AccessControlChange): void {
+    let packet: ChangePacket = {
+      uid: uuid() as ChangePacketUID,
+      ...(change as GeneralChange),
+    };
+
+    this.applyChangePacket(packet);
+
+    this.pushChangePacket(packet);
+  }
+
   private onConnection(): void {}
 
   private onSnapshot(
     syncables: Syncable[],
     userRef?: SyncableRef<TUser>,
   ): void {
-    console.log(syncables, userRef);
-
     for (let syncable of syncables) {
       this.manager.addSyncable(syncable);
     }
@@ -163,52 +171,23 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     );
   }
 
-  private addChange(change: GeneralChange): void {
-    let packet: ChangePacket = {
-      uid: uuid() as ChangePacketUID,
-      ...change,
-    };
-
-    this.applyChangePacket(packet);
-
-    this.pushChangePacket(packet);
-  }
-
   private applyChangePacket(packet: ChangePacket): void {
     let manager = this.manager;
 
     let refDict = packet.refs;
 
-    let syncableDict = _.mapValues(refDict, ref =>
-      manager.requireSyncable(ref),
+    let syncableObjectDict = _.mapValues(refDict, ref =>
+      manager.requireSyncableObject(ref),
     );
 
     let {updates: updateDict, creations, removals} = this.changePlant.process(
       packet,
-      syncableDict,
+      syncableObjectDict,
+      this.context,
     );
 
-    let updateEntries = Object.entries(updateDict);
-
-    for (let [name, {requisiteAccessRights}] of updateEntries) {
-      let ref = refDict[name];
-      let object = manager.requireSyncableObject(ref);
-
-      object.validateAccessRights(requisiteAccessRights);
-    }
-
-    for (let ref of removals) {
-      let object = manager.requireSyncableObject(ref);
-
-      object.validateAccessRights(['delete']);
-    }
-
-    for (let [name, {diffs}] of updateEntries) {
-      let syncable = syncableDict[name];
-
-      for (let diff of diffs) {
-        DeepDiff.applyChange(syncable, undefined!, diff);
-      }
+    for (let {snapshot} of Object.values(updateDict)) {
+      manager.updateSyncable(snapshot);
     }
 
     for (let ref of removals) {

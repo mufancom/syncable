@@ -96,8 +96,8 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   }
 
   getAccessRights(
+    context: Context,
     {grantableOnly = false}: GetAccessRightsOptions = {},
-    context?: Context,
   ): AccessRight[] {
     let accessRightsDict = this.getAccessRightComparableItemsDict(context);
 
@@ -124,20 +124,20 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
 
   testAccessRights(
     rights: AccessRight[],
+    context: Context,
     options?: GetAccessRightsOptions,
-    context?: Context,
   ): boolean {
-    let grantedRights = this.getAccessRights(options, context);
+    let grantedRights = this.getAccessRights(context, options);
 
     return _.difference(rights, grantedRights).length === 0;
   }
 
   validateAccessRights(
     rights: AccessRight[],
+    context: Context,
     options?: GetAccessRightsOptions,
-    context?: Context,
   ): void {
-    let grantedRights = this.getAccessRights(options, context);
+    let grantedRights = this.getAccessRights(context, options);
 
     if (_.difference(rights, grantedRights).length === 0) {
       return;
@@ -156,7 +156,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   }
 
   private getAccessRightComparableItemsDict(
-    context: Context | undefined,
+    context: Context,
   ): AccessRightComparableItemsDict | undefined {
     let dict: AccessRightComparableItemsDict = {
       read: [],
@@ -227,7 +227,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   private testAccessControlEntry(
     target: SyncableObject,
     entry: AccessControlEntry,
-    context: Context | undefined,
+    context: Context,
   ): boolean {
     let {rule: ruleName, options} = entry;
 
@@ -236,8 +236,6 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     if (!rule) {
       throw new Error(`Unknown access control rule "${ruleName}"`);
     }
-
-    context = this.manager.requireContext(context);
 
     return rule.test(target, context, options);
   }

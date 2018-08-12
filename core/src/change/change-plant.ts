@@ -1,9 +1,9 @@
 import * as DeepDiff from 'deep-diff';
 import _ = require('lodash');
 
-import {AccessRight} from '../access-control';
+import {Context} from '../context';
 import {Dict} from '../lang';
-import {Syncable, SyncableRef} from '../syncable';
+import {Syncable, SyncableObject, SyncableRef} from '../syncable';
 
 import {
   AccessControlChange,
@@ -11,7 +11,7 @@ import {
 } from './access-control-changes';
 import {Change, GeneralChange} from './change';
 
-export type RefDictToObjectDict<T extends object> = T extends object
+export type RefDictToSyncableObjectDict<T extends object> = T extends object
   ? {
       [K in keyof T]: T[K] extends SyncableRef<infer TSyncableObject>
         ? TSyncableObject
@@ -19,11 +19,11 @@ export type RefDictToObjectDict<T extends object> = T extends object
     }
   : never;
 
-export type ChangeToObjectDict<T extends Change> = T extends Change<
+export type ChangeToSyncableObjectDict<T extends Change> = T extends Change<
   string,
   infer TRefDict
 >
-  ? RefDictToObjectDict<TRefDict>
+  ? RefDictToSyncableObjectDict<TRefDict>
   : never;
 
 export type RefDictToSyncableDict<T extends object> = T extends object
@@ -48,21 +48,14 @@ export type ChangeToTypeDict<
   ? Record<keyof TRefDict, TType>
   : never;
 
-export interface ChangePlantProcessorOutputUpdateEntry {
-  requisiteAccessRights?: AccessRight[];
-}
-
-export interface ChangePlantProcessorOutput<TChange extends Change> {
-  updates?: Partial<
-    ChangeToTypeDict<TChange, ChangePlantProcessorOutputUpdateEntry>
-  >;
+export interface ChangePlantProcessorOutput {
   creations?: Syncable[];
-  removals?: SyncableRef[];
+  removals?: string[];
 }
 
 export interface ChangePlantProcessingResultUpdateItem {
   diffs: deepDiff.IDiff[];
-  requisiteAccessRights: AccessRight[];
+  snapshot: Syncable;
 }
 
 export interface ChangePlantProcessingResult {
@@ -71,10 +64,15 @@ export interface ChangePlantProcessingResult {
   removals: SyncableRef[];
 }
 
+export interface ChangePlantProcessorOptions<TChange extends Change> {
+  objects: ChangeToSyncableObjectDict<TChange>;
+  context: Context;
+}
+
 export type ChangePlantProcessor<TChange extends Change = Change> = (
-  objects: ChangeToSyncableDict<TChange>,
-  options: TChange['options'],
-) => ChangePlantProcessorOutput<TChange> | void;
+  syncables: ChangeToSyncableDict<TChange>,
+  options: ChangePlantProcessorOptions<TChange> & TChange['options'],
+) => ChangePlantProcessorOutput | void;
 
 export type ChangePlantBlueprint<T extends Change> = {
   [K in T['type']]: ChangePlantProcessor<Extract<T, {type: K}>>
@@ -85,7 +83,8 @@ export class ChangePlant<TChange extends Change = Change> {
 
   process(
     {type, options}: Change,
-    syncableDict: Dict<Syncable>,
+    syncableObjectDict: Dict<SyncableObject>,
+    context: Context,
   ): ChangePlantProcessingResult {
     let processor = ((accessControlChangePlantBlueprint as Dict<
       ChangePlantProcessor<AccessControlChange> | undefined
@@ -94,59 +93,68 @@ export class ChangePlant<TChange extends Change = Change> {
         type
       ]) as ChangePlantProcessor<GeneralChange>;
 
-    let keys = Object.keys(syncableDict);
+    let keys = Object.keys(syncableObjectDict);
 
-    let clonedSyncableDict = _.cloneDeep(syncableDict);
+    let syncableDict = _.mapValues(syncableObjectDict, 'syncable');
+    let clonedSyncableDict = _.mapValues(syncableDict, syncable =>
+      _.cloneDeep(syncable),
+    );
 
-    let result = processor(clonedSyncableDict, options);
+    let result = processor(clonedSyncableDict, {
+      objects: syncableObjectDict,
+      context,
+      ...options,
+    });
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};
     let creations: Syncable[] | undefined;
     let removals: SyncableRef[] | undefined;
 
     if (result) {
-      let processorUpdateDict = result.updates || {};
-      let requireWriteRight = false;
-
       for (let key of keys) {
-        let current = syncableDict[key];
-        let next = clonedSyncableDict[key];
+        let latestSyncable = syncableDict[key];
+        let updatedSyncableClone = clonedSyncableDict[key];
 
-        let diffs = DeepDiff.diff(current, next);
+        let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone);
 
         if (!diffs.length) {
           continue;
         }
 
+        let requireWriteRight = false;
+
         for (let diff of diffs) {
           let propertyName = diff.path[0];
 
-          if (/^_/.test(propertyName) && /^[^$]/.test(type)) {
-            throw new Error(
-              `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
-            );
+          if (/^[^$]/.test(type)) {
+            if (/^_/.test(propertyName)) {
+              throw new Error(
+                `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
+              );
+            }
+          } else {
+            requireWriteRight = true;
           }
-
-          requireWriteRight = true;
         }
 
-        let updateEntry = processorUpdateDict && processorUpdateDict[key];
+        if (requireWriteRight) {
+          syncableObjectDict[key].validateAccessRights(['write'], context);
+        }
 
-        let requisiteAccessRights = Array.from(
-          new Set([
-            ...(requireWriteRight ? (['write'] as AccessRight[]) : undefined),
-            ...(updateEntry && updateEntry.requisiteAccessRights),
-          ]),
-        );
-
-        updateDict[key] = {
-          diffs,
-          requisiteAccessRights,
-        };
+        updateDict[key] = {diffs, snapshot: updatedSyncableClone};
       }
 
       creations = result.creations;
-      removals = result.removals;
+
+      removals =
+        result.removals &&
+        result.removals.map(key => {
+          let object = syncableObjectDict[key];
+
+          object.validateAccessRights(['delete'], context);
+
+          return object.ref;
+        });
     }
 
     return {

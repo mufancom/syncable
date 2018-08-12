@@ -1,15 +1,25 @@
 // tslint:disable:class-name
 // tslint:disable:variable-name
 
+export type Primitive = undefined | null | boolean | string | number;
+
 export interface Dict<T> {
   [key: string]: T;
 }
 
-export type StringType<T> = string & __Type<T>;
-
 export declare class __Type<T> {
   private __type: T;
 }
+
+export type StringType<T> = string & __Type<T>;
+
+export type __DeepReadonly<T> = {readonly [P in keyof T]: DeepReadonly<T[P]>};
+
+export type DeepReadonly<T> = T extends Primitive
+  ? T
+  : T extends (infer U)[]
+    ? ReadonlyArray<__DeepReadonly<U>>
+    : __DeepReadonly<T>;
 
 //////////////////
 // Type Utility //

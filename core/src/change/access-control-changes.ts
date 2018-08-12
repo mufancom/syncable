@@ -83,7 +83,12 @@ export type UnsetAccessControlEntriesChange = Change<
 export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
   AccessControlChange
 > = {
-  $associate({target, source}, {requisite}) {
+  $associate(
+    {target, source},
+    {requisite, objects: {source: sourceObject}, context},
+  ) {
+    sourceObject.validateAccessRights(['associate'], context);
+
     let associations = target._associations;
 
     if (!associations) {
@@ -95,27 +100,21 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
         compareAssociationWithSyncable(association, source),
       )
     ) {
-      return undefined;
+      return;
     }
 
     associations.push({
       ref: getSyncableRef(source),
       requisite,
     });
-
-    return {
-      updates: {
-        source: {
-          requisiteAccessRights: ['associate'],
-        },
-      },
-    };
   },
-  $unassociate({target, source}) {
+  $unassociate({target, source}, {objects: {source: sourceObject}, context}) {
+    sourceObject.validateAccessRights(['associate'], context);
+
     let associations = target._associations;
 
     if (!associations) {
-      return undefined;
+      return;
     }
 
     let index = associations.findIndex(association =>
@@ -125,14 +124,6 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
     if (index >= 0) {
       associations.splice(index, 1);
     }
-
-    return {
-      updates: {
-        source: {
-          requisiteAccessRights: ['associate'],
-        },
-      },
-    };
   },
   '$set-access-control-entries'({target}, {entries}) {
     let acl = target._acl;

@@ -95,7 +95,7 @@ export class Connection {
 
       if (
         (!requisite && filter && !filter(object)) ||
-        !object.testAccessRights(['read'], {}, context)
+        !object.testAccessRights(['read'], context, {})
       ) {
         return;
       }
