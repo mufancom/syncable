@@ -12,7 +12,7 @@ import {
   SyncableRef,
   UserSyncableObject,
 } from '@syncable/core';
-import io = require('socket.io');
+import io from 'socket.io';
 
 import {Connection, ConnectionSocket} from './connection';
 

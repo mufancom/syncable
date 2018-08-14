@@ -4,7 +4,7 @@ import {
   SnapshotEventData,
   UserSyncableObject,
 } from '@syncable/core';
-import io = require('socket.io-client');
+import io from 'socket.io-client';
 
 export interface ClientSocket<TUser extends UserSyncableObject>
   extends SocketIOClient.Socket {

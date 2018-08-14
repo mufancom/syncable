@@ -5,7 +5,7 @@ import {
   SyncableId,
   SyncableObject,
 } from '@syncable/core';
-import _ = require('lodash');
+import _ from 'lodash';
 
 export type TagId = SyncableId<'tag'>;
 

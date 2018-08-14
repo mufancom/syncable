@@ -1,5 +1,5 @@
 import * as DeepDiff from 'deep-diff';
-import _ = require('lodash');
+import _ from 'lodash';
 
 import {Context} from '../context';
 import {Dict} from '../lang';

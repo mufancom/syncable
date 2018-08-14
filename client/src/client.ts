@@ -16,8 +16,8 @@ import {
   UserSyncableObject,
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
-import _ = require('lodash');
-import uuid = require('uuid');
+import _ from 'lodash';
+import uuid from 'uuid';
 
 import {ClientSocket, createClientSocket} from './@client-socket';
 
@@ -66,7 +66,7 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     {ref: source}: SyncableObject,
     {secures = false, requisite = secures}: ClientAssociateOptions,
   ): void {
-    this.addChange({
+    this.update({
       type: '$associate',
       refs: {target, source},
       options: {requisite, secures},
@@ -77,21 +77,20 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     {ref: target}: SyncableObject,
     {ref: source}: SyncableObject,
   ): void {
-    this.addChange({
+    this.update({
       type: '$unassociate',
       refs: {target, source},
-      options: {requisite: true},
+      options: {},
     });
   }
 
-  addChange(change: TChange | AccessControlChange): void {
+  update(change: TChange | AccessControlChange): void {
     let packet: ChangePacket = {
       uid: uuid() as ChangePacketUID,
       ...(change as GeneralChange),
     };
 
     this.applyChangePacket(packet);
-
     this.pushChangePacket(packet);
   }
 

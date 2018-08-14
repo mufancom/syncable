@@ -1,4 +1,4 @@
-import uuid = require('uuid');
+import uuid from 'uuid';
 
 import {AccessControlEntry, Permission} from '../access-control';
 import {ExcludeProperty, StringType} from '../lang';
