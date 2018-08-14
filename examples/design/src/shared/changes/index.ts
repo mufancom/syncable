@@ -1,4 +1,7 @@
-import {tagChangePlantBlueprint} from './tag';
-export * from './tag';
+import {MFTagChange, tagChangePlantBlueprint} from './tag';
+
+export type MFChange = MFTagChange;
 
 export const mfChangePlantBlueprint = {...tagChangePlantBlueprint};
+
+export * from './tag';

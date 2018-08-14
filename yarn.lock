@@ -16,16 +16,16 @@
     esutils "^2.0.2"
     js-tokens "^3.0.0"
 
-"@magicspace/configs@^0.1.4":
-  version "0.1.4"
-  resolved "http://registry.npm.taobao.org/@magicspace/configs/download/@magicspace/configs-0.1.4.tgz#9a0654d5039a6864cbca79857f14aad68d3c4a06"
+"@magicspace/configs@^0.1.11":
+  version "0.1.11"
+  resolved "http://registry.npm.taobao.org/@magicspace/configs/download/@magicspace/configs-0.1.11.tgz#7a8f636c460f8f64c9ea1aacc3b4052a374863b5"
   dependencies:
-    "@magicspace/tslint-rules" "^0.1.1"
+    "@magicspace/tslint-rules" "^0.1.7"
     tslint-config-prettier "^1.10.0"
 
-"@magicspace/tslint-rules@^0.1.1":
-  version "0.1.1"
-  resolved "http://registry.npm.taobao.org/@magicspace/tslint-rules/download/@magicspace/tslint-rules-0.1.1.tgz#815826666d92b2222427a9df15863513271d9f8c"
+"@magicspace/tslint-rules@^0.1.7":
+  version "0.1.7"
+  resolved "http://registry.npm.taobao.org/@magicspace/tslint-rules/download/@magicspace/tslint-rules-0.1.7.tgz#600adc9801c9da8fe5dd7481c6bc633ecab06055"
   dependencies:
     lodash "^4.17.10"
     resolve "^1.8.1"

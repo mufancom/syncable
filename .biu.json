@@ -3,22 +3,26 @@
     "lint-core": {
       "executable": "tslint",
       "args": ["-p", "core"],
-      "problemMatcher": "$typescript:tslint"
+      "problemMatcher": "$typescript:tslint",
+      "autoClose": true
     },
     "lint-server": {
       "executable": "tslint",
       "args": ["-p", "server"],
-      "problemMatcher": "$typescript:tslint"
+      "problemMatcher": "$typescript:tslint",
+      "autoClose": true
     },
     "lint-client": {
       "executable": "tslint",
       "args": ["-p", "client"],
-      "problemMatcher": "$typescript:tslint"
+      "problemMatcher": "$typescript:tslint",
+      "autoClose": true
     },
     "lint-example-design": {
       "executable": "tslint",
       "args": ["-p", "examples/design"],
-      "problemMatcher": "$typescript:tslint"
+      "problemMatcher": "$typescript:tslint",
+      "autoClose": true
     },
     "build-core": {
       "executable": "tsc",

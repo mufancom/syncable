@@ -19,7 +19,8 @@ export interface SyncableAssociation<
 > {
   ref: SyncableRef<T>;
   name?: string;
-  requisite: boolean;
+  requisite?: boolean;
+  secures?: boolean;
 }
 
 export interface Syncable<Type extends string = string> {

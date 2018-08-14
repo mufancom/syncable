@@ -1,13 +1,8 @@
 import {StringType} from '../lang';
 
-export type AccessRight = 'read' | 'write' | 'delete' | 'associate';
+export type AccessRight = 'read' | 'write' | 'full';
 
-export const ACCESS_RIGHTS: AccessRight[] = [
-  'read',
-  'write',
-  'delete',
-  'associate',
-];
+export const ACCESS_RIGHTS: AccessRight[] = ['read', 'write', 'full'];
 
 export type AccessControlEntryType = 'allow' | 'deny';
 

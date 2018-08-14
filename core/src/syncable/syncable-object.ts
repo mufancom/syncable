@@ -22,6 +22,7 @@ export interface AccessControlRuleEntry {
 export interface GetAssociationOptions<T extends SyncableObject> {
   name?: string;
   type?: T['type'];
+  securesOnly?: boolean;
 }
 
 export interface GetAccessRightsOptions {
@@ -76,6 +77,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   getRequisiteAssociations<T extends SyncableObject>({
     name,
     type,
+    securesOnly = false,
   }: GetAssociationOptions<T> = {}): T[] {
     let associations = this.syncable._associations;
 
@@ -90,7 +92,8 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
         association =>
           association.requisite &&
           (!name || association.name === name) &&
-          (!type || association.ref.type === type),
+          (!type || association.ref.type === type) &&
+          (!securesOnly || association.secures),
       )
       .map(association => manager.requireSyncableObject(association.ref) as T);
   }
@@ -161,8 +164,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     let dict: AccessRightComparableItemsDict = {
       read: [],
       write: [],
-      delete: [],
-      associate: [],
+      full: [],
     };
 
     let acl = this.syncable._acl || [];

@@ -15,6 +15,7 @@ import {
   SyncableRef,
   UserSyncableObject,
 } from '@syncable/core';
+import * as DeepDiff from 'deep-diff';
 import _ = require('lodash');
 import uuid = require('uuid');
 
@@ -22,6 +23,11 @@ import {ClientSocket, createClientSocket} from './@client-socket';
 
 export interface SnapshotsData {
   snapshots: Syncable[];
+}
+
+export interface ClientAssociateOptions {
+  requisite?: boolean;
+  secures?: boolean;
 }
 
 export class Client<TUser extends UserSyncableObject, TChange extends Change> {
@@ -58,11 +64,12 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
   associate(
     {ref: target}: SyncableObject,
     {ref: source}: SyncableObject,
+    {secures = false, requisite = secures}: ClientAssociateOptions,
   ): void {
     this.addChange({
       type: '$associate',
       refs: {target, source},
-      options: {requisite: true},
+      options: {requisite, secures},
     });
   }
 

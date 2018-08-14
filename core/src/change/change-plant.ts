@@ -151,7 +151,7 @@ export class ChangePlant<TChange extends Change = Change> {
         result.removals.map(key => {
           let object = syncableObjectDict[key];
 
-          object.validateAccessRights(['delete'], context);
+          object.validateAccessRights(['full'], context);
 
           return object.ref;
         });

@@ -22,6 +22,7 @@ export interface AssociateChangeRefDict {
 
 export interface AssociateChangeOptions {
   requisite: boolean;
+  secures: boolean;
 }
 
 export type AssociateChange = Change<
@@ -85,10 +86,8 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
 > = {
   $associate(
     {target, source},
-    {requisite, objects: {source: sourceObject}, context},
+    {requisite, secures, objects: {target: targetObject}, context},
   ) {
-    sourceObject.validateAccessRights(['associate'], context);
-
     let associations = target._associations;
 
     if (!associations) {
@@ -103,14 +102,15 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
       return;
     }
 
+    targetObject.validateAccessRights([secures ? 'full' : 'write'], context);
+
     associations.push({
       ref: getSyncableRef(source),
-      requisite,
+      requisite: requisite || undefined,
+      secures: secures || undefined,
     });
   },
-  $unassociate({target, source}, {objects: {source: sourceObject}, context}) {
-    sourceObject.validateAccessRights(['associate'], context);
-
+  $unassociate({target, source}, {objects: {target: targetObject}, context}) {
     let associations = target._associations;
 
     if (!associations) {
@@ -122,10 +122,19 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
     );
 
     if (index >= 0) {
+      let {secures} = associations[index];
+
+      targetObject.validateAccessRights([secures ? 'full' : 'write'], context);
+
       associations.splice(index, 1);
     }
   },
-  '$set-access-control-entries'({target}, {entries}) {
+  '$set-access-control-entries'(
+    {target},
+    {objects: {target: targetObject}, context, entries},
+  ) {
+    targetObject.validateAccessRights(['full'], context);
+
     let acl = target._acl;
 
     if (!acl) {
@@ -142,7 +151,12 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
 
     target._acl = Array.from(entryMap.values());
   },
-  '$unset-access-control-entries'({target}, {names}) {
+  '$unset-access-control-entries'(
+    {target},
+    {objects: {target: targetObject}, context, names},
+  ) {
+    targetObject.validateAccessRights(['full'], context);
+
     let acl = target._acl;
 
     if (!acl) {

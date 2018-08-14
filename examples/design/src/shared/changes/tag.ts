@@ -21,17 +21,22 @@ export interface TagChangeRefDict {
 export interface TagChange
   extends Change<'tag', TagChangeRefDict, TagChangeOptions> {}
 
-export interface CreateTagChange extends Change<'create-tag'> {}
+export interface CreateTagChangeOptions {
+  name: string;
+}
+
+export interface CreateTagChange
+  extends Change<'create-tag', {}, CreateTagChangeOptions> {}
 
 export const tagChangePlantBlueprint: ChangePlantBlueprint<MFTagChange> = {
   tag() {
     return {};
   },
-  'create-tag'() {
+  'create-tag'({}, {name}) {
     return {
       creations: [
         createSyncable<TagSyncable>('tag', {
-          name: 'foo',
+          name,
           derivations: [],
         }),
       ],
