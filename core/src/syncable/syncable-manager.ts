@@ -1,4 +1,5 @@
 import * as DeepDiff from 'deep-diff';
+import {observable} from 'mobx';
 
 import {Context, SyncableObjectFactory} from '../context';
 
@@ -48,7 +49,7 @@ export class SyncableManager {
       throw new Error(`Syncable with ID "${id}" already exists in context`);
     }
 
-    map.set(id, syncable);
+    map.set(id, observable(syncable));
   }
 
   /**

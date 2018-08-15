@@ -39,8 +39,8 @@ export abstract class Server<
 
   constructor(
     httpServer: HTTPServer,
-    protected factory: SyncableObjectFactory,
-    protected changePlant: ChangePlant<TChange>,
+    readonly factory: SyncableObjectFactory,
+    readonly changePlant: ChangePlant<TChange>,
   ) {
     super();
 

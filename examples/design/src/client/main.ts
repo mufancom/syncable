@@ -26,6 +26,17 @@ autorun(() => {
   let user = client.context.user;
 
   if (user) {
-    console.log('user tags', user.tags[0].name);
+    console.log('user tags', user.tags.length);
   }
 });
+
+(async () => {
+  await client.ready;
+
+  let user = client.context.user;
+  let tag = user.tags[0];
+
+  if (tag) {
+    client.unassociate(user, tag);
+  }
+})().catch(console.error);

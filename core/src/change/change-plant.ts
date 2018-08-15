@@ -100,62 +100,61 @@ export class ChangePlant<TChange extends Change = Change> {
       _.cloneDeep(syncable),
     );
 
-    let result = processor(clonedSyncableDict, {
-      objects: syncableObjectDict,
-      context,
-      ...options,
-    });
+    let result =
+      processor(clonedSyncableDict, {
+        objects: syncableObjectDict,
+        context,
+        ...options,
+      }) || {};
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};
     let creations: Syncable[] | undefined;
     let removals: SyncableRef[] | undefined;
 
-    if (result) {
-      for (let key of keys) {
-        let latestSyncable = syncableDict[key];
-        let updatedSyncableClone = clonedSyncableDict[key];
+    for (let key of keys) {
+      let latestSyncable = syncableDict[key];
+      let updatedSyncableClone = clonedSyncableDict[key];
 
-        let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone);
+      let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone);
 
-        if (!diffs.length) {
-          continue;
-        }
-
-        let requireWriteRight = false;
-
-        for (let diff of diffs) {
-          let propertyName = diff.path[0];
-
-          if (/^[^$]/.test(type)) {
-            if (/^_/.test(propertyName)) {
-              throw new Error(
-                `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
-              );
-            }
-          } else {
-            requireWriteRight = true;
-          }
-        }
-
-        if (requireWriteRight) {
-          syncableObjectDict[key].validateAccessRights(['write'], context);
-        }
-
-        updateDict[key] = {diffs, snapshot: updatedSyncableClone};
+      if (!diffs || !diffs.length) {
+        continue;
       }
 
-      creations = result.creations;
+      let requireWriteRight = false;
 
-      removals =
-        result.removals &&
-        result.removals.map(key => {
-          let object = syncableObjectDict[key];
+      for (let diff of diffs) {
+        let propertyName = diff.path[0];
 
-          object.validateAccessRights(['full'], context);
+        if (/^[^$]/.test(type)) {
+          if (/^_/.test(propertyName)) {
+            throw new Error(
+              `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
+            );
+          }
+        } else {
+          requireWriteRight = true;
+        }
+      }
 
-          return object.ref;
-        });
+      if (requireWriteRight) {
+        syncableObjectDict[key].validateAccessRights(['write'], context);
+      }
+
+      updateDict[key] = {diffs, snapshot: updatedSyncableClone};
     }
+
+    creations = result.creations;
+
+    removals =
+      result.removals &&
+      result.removals.map(key => {
+        let object = syncableObjectDict[key];
+
+        object.validateAccessRights(['full'], context);
+
+        return object.ref;
+      });
 
     return {
       updates: updateDict,

@@ -31,7 +31,8 @@ export interface ClientAssociateOptions {
 }
 
 export class Client<TUser extends UserSyncableObject, TChange extends Change> {
-  context: Context<TUser>;
+  readonly context: Context<TUser>;
+  readonly ready: Promise<void>;
 
   private manager: SyncableManager;
   private socket: ClientSocket<TUser>;
@@ -52,15 +53,25 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     this.context = new Context();
     this.manager = new SyncableManager(factory, this.context);
 
-    this.socket = createClientSocket<TUser>(uri)
-      .on('snapshot', ({syncables, userRef}) => {
+    let socket = (this.socket = createClientSocket<TUser>(uri));
+
+    this.ready = new Promise<void>(resolve => {
+      socket.on('snapshot', ({syncables, userRef}) => {
         this.onSnapshot(syncables, userRef);
-      })
-      .on('consequent-series', ({uid, consequences}) => {
-        this.onConsequences(uid, consequences);
+        resolve();
       });
+    });
+
+    socket.on('consequent-series', ({uid, consequences}) => {
+      this.onConsequences(uid, consequences);
+    });
   }
 
+  associate(
+    target: SyncableObject,
+    source: SyncableObject,
+    options: ClientAssociateOptions,
+  ): void;
   associate(
     {ref: target}: SyncableObject,
     {ref: source}: SyncableObject,
@@ -73,6 +84,7 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     });
   }
 
+  unassociate(target: SyncableObject, source: SyncableObject): void;
   unassociate(
     {ref: target}: SyncableObject,
     {ref: source}: SyncableObject,

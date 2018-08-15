@@ -16,16 +16,16 @@
     esutils "^2.0.2"
     js-tokens "^3.0.0"
 
-"@magicspace/configs@^0.1.11":
-  version "0.1.11"
-  resolved "http://registry.npm.taobao.org/@magicspace/configs/download/@magicspace/configs-0.1.11.tgz#7a8f636c460f8f64c9ea1aacc3b4052a374863b5"
+"@magicspace/configs@^0.1.12":
+  version "0.1.12"
+  resolved "http://registry.npm.taobao.org/@magicspace/configs/download/@magicspace/configs-0.1.12.tgz#9dd0db2513827d74bfdd7aeaba8e2bf842ed0d1a"
   dependencies:
-    "@magicspace/tslint-rules" "^0.1.7"
+    "@magicspace/tslint-rules" "^0.1.8"
     tslint-config-prettier "^1.10.0"
 
-"@magicspace/tslint-rules@^0.1.7":
-  version "0.1.7"
-  resolved "http://registry.npm.taobao.org/@magicspace/tslint-rules/download/@magicspace/tslint-rules-0.1.7.tgz#600adc9801c9da8fe5dd7481c6bc633ecab06055"
+"@magicspace/tslint-rules@^0.1.8":
+  version "0.1.8"
+  resolved "http://registry.npm.taobao.org/@magicspace/tslint-rules/download/@magicspace/tslint-rules-0.1.8.tgz#7ddf06f7b8677377ab31f26b8d5820c35e5d3dc1"
   dependencies:
     lodash "^4.17.10"
     resolve "^1.8.1"
@@ -56,6 +56,10 @@
 "@types/lodash@^4.14.115":
   version "4.14.115"
   resolved "http://registry.npm.taobao.org/@types/lodash/download/@types/lodash-4.14.115.tgz#54d171b2ce12c058742443b5f6754760f701b8f9"
+
+"@types/lodash@^4.14.116":
+  version "4.14.116"
+  resolved "http://registry.npm.taobao.org/@types/lodash/download/@types/lodash-4.14.116.tgz#5ccf215653e3e8c786a58390751033a9adca0eb9"
 
 "@types/mongodb@^3.1.3":
   version "3.1.3"

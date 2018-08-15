@@ -12,6 +12,7 @@ import {
   UserSyncableObject,
   getSyncableRef,
 } from '@syncable/core';
+import _ from 'lodash';
 
 import {Server, ViewQueryFilter} from './server';
 
@@ -42,9 +43,14 @@ export class Connection {
 
     let request = socket.request as IncomingMessage;
 
-    socket.on('change', packet => {}).on('view-query', query => {
-      this.updateViewQuery(query);
-    });
+    socket
+      .on('change', packet => {
+        console.log(packet);
+        this.update(packet);
+      })
+      .on('view-query', query => {
+        this.updateViewQuery(query);
+      });
 
     let user = manager.requireSyncableObject(userRef);
 
@@ -108,7 +114,7 @@ export class Connection {
 
           let associatedSyncable = manager.requireSyncable(ref);
 
-          ensureAssociationsAndSnapshot(associatedSyncable, requisite);
+          ensureAssociationsAndSnapshot(associatedSyncable, !!requisite);
         }
       }
 
@@ -120,7 +126,43 @@ export class Connection {
 
   private filter: ViewQueryFilter = () => false;
 
+  private update(packet: ChangePacket): void {
+    this.applyChangePacket(packet);
+  }
+
   private updateViewQuery(query: unknown): void {
     this.filter = this.server.getViewQueryFilter(query);
+  }
+
+  private applyChangePacket(packet: ChangePacket): void {
+    let manager = this.manager;
+
+    let refDict = packet.refs;
+
+    let syncableObjectDict = _.mapValues(refDict, ref =>
+      manager.requireSyncableObject(ref),
+    );
+
+    let {
+      updates: updateDict,
+      creations,
+      removals,
+    } = this.server.changePlant.process(
+      packet,
+      syncableObjectDict,
+      this.context,
+    );
+
+    for (let {snapshot} of Object.values(updateDict)) {
+      manager.updateSyncable(snapshot);
+    }
+
+    for (let ref of removals) {
+      manager.removeSyncable(ref);
+    }
+
+    for (let syncable of creations) {
+      manager.addSyncable(syncable);
+    }
   }
 }
