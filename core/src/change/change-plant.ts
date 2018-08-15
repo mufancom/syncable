@@ -9,7 +9,7 @@ import {
   AccessControlChange,
   accessControlChangePlantBlueprint,
 } from './access-control-changes';
-import {Change, GeneralChange} from './change';
+import {Change, ChangePacket, ChangePacketUID, GeneralChange} from './change';
 
 export type RefDictToSyncableObjectDict<T extends object> = T extends object
   ? {
@@ -59,9 +59,15 @@ export interface ChangePlantProcessingResultUpdateItem {
 }
 
 export interface ChangePlantProcessingResult {
+  uid: ChangePacketUID;
   updates: Dict<ChangePlantProcessingResultUpdateItem>;
   creations: Syncable[];
   removals: SyncableRef[];
+}
+
+export interface ChangePlantProcessingResultWithTimestamp
+  extends ChangePlantProcessingResult {
+  timestamp: number;
 }
 
 export interface ChangePlantProcessorOptions<TChange extends Change> {
@@ -82,10 +88,22 @@ export class ChangePlant<TChange extends Change = Change> {
   constructor(private blueprint: ChangePlantBlueprint<TChange>) {}
 
   process(
-    {type, options}: Change,
+    packet: ChangePacket,
     syncableObjectDict: Dict<SyncableObject>,
     context: Context,
-  ): ChangePlantProcessingResult {
+  ): ChangePlantProcessingResult;
+  process(
+    packet: ChangePacket,
+    syncableObjectDict: Dict<SyncableObject>,
+    context: Context,
+    timestamp: number,
+  ): ChangePlantProcessingResultWithTimestamp;
+  process(
+    {uid, type, options}: ChangePacket,
+    syncableObjectDict: Dict<SyncableObject>,
+    context: Context,
+    timestamp?: number,
+  ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
     let processor = ((accessControlChangePlantBlueprint as Dict<
       ChangePlantProcessor<AccessControlChange> | undefined
     >)[type] ||
@@ -115,9 +133,17 @@ export class ChangePlant<TChange extends Change = Change> {
       let latestSyncable = syncableDict[key];
       let updatedSyncableClone = clonedSyncableDict[key];
 
+      if (timestamp !== undefined) {
+        updatedSyncableClone._timestamp = timestamp;
+      }
+
       let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone);
 
-      if (!diffs || !diffs.length) {
+      if (
+        !diffs ||
+        !diffs.length ||
+        (diffs.length === 1 && diffs[0].path[0] === '_timestamp')
+      ) {
         continue;
       }
 
@@ -127,7 +153,7 @@ export class ChangePlant<TChange extends Change = Change> {
         let propertyName = diff.path[0];
 
         if (/^[^$]/.test(type)) {
-          if (/^_/.test(propertyName)) {
+          if (/^_(?!timestamp)$/.test(propertyName)) {
             throw new Error(
               `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
             );
@@ -157,6 +183,8 @@ export class ChangePlant<TChange extends Change = Change> {
       });
 
     return {
+      uid,
+      timestamp,
       updates: updateDict,
       creations: creations || [],
       removals: removals || [],

@@ -1,27 +1,30 @@
-import {IncomingMessage} from 'http';
-
 import {
+  ChangeAck,
   ChangePacket,
-  ConsequentSeries,
+  ChangePlantProcessingResultWithTimestamp,
   Context,
-  SnapshotEventData,
+  InitialData,
+  SnapshotData,
   Syncable,
   SyncableId,
   SyncableManager,
   SyncableRef,
+  SyncingData,
+  SyncingDataUpdateEntry,
   UserSyncableObject,
   getSyncableRef,
 } from '@syncable/core';
 import _ from 'lodash';
+import {observable} from 'mobx';
 
-import {Server, ViewQueryFilter} from './server';
+import {GroupClock, Server, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'view-query', listener: (query: unknown) => void): this;
   on(event: 'change', listener: (packet: ChangePacket) => void): this;
 
-  emit(event: 'snapshot', snapshot: SnapshotEventData): boolean;
-  emit(event: 'consequent-series', series: ConsequentSeries): boolean;
+  emit(event: 'initialize', data: InitialData): boolean;
+  emit(event: 'sync', data: SyncingData): boolean;
 }
 
 export class Connection {
@@ -29,8 +32,10 @@ export class Connection {
   private snapshotIdSet = new Set<SyncableId>();
 
   constructor(
+    readonly group: string,
     private socket: ConnectionSocket,
     private server: Server,
+    private clock: GroupClock,
     private manager: SyncableManager,
   ) {}
 
@@ -41,12 +46,9 @@ export class Connection {
     let socket = this.socket;
     let manager = this.manager;
 
-    let request = socket.request as IncomingMessage;
-
     socket
       .on('change', packet => {
-        console.log(packet);
-        this.update(packet);
+        this.getTimestampAndUpdate(packet).catch(this.error);
       })
       .on('view-query', query => {
         this.updateViewQuery(query);
@@ -58,83 +60,146 @@ export class Connection {
 
     this.updateViewQuery(viewQuery);
 
-    let syncables = this.snapshot(userRef);
+    let snapshotData = this.snapshot(userRef);
 
-    socket.emit('snapshot', {
-      userRef,
-      syncables,
-    });
+    socket.emit('initialize', {userRef, ...snapshotData});
   }
 
-  snapshot(userRef?: SyncableRef<UserSyncableObject>): Syncable[] {
+  // TODO: ability limit iteration within a subset of syncables to improve
+  // performance.
+  snapshot(userRef?: SyncableRef<UserSyncableObject>): SnapshotData {
     let manager = this.manager;
     let context = this.context;
 
     let filter = this.filter;
     let snapshotIdSet = this.snapshotIdSet;
 
-    let result: Syncable[] = [];
+    let ensuredSyncableSet = new Set<Syncable>();
+
+    let snapshotSyncables: Syncable[] = [];
+    let snapshotRemovals: SyncableRef[] = [];
 
     if (userRef) {
       let userSyncable = manager.requireSyncable(userRef);
-      ensureAssociationsAndSnapshot(userSyncable, true);
+      ensureAssociationsAndDoSnapshot(userSyncable, true);
     }
 
     for (let syncable of manager.syncables) {
-      ensureAssociationsAndSnapshot(syncable, false);
+      ensureAssociationsAndDoSnapshot(syncable, false);
     }
 
-    return result;
+    return {
+      syncables: snapshotSyncables,
+      removals: snapshotRemovals,
+    };
 
-    function ensureAssociationsAndSnapshot(
+    function ensureAssociationsAndDoSnapshot(
       syncable: Syncable,
       requisite: boolean,
     ): void {
+      if (ensuredSyncableSet.has(syncable)) {
+        return;
+      }
+
+      ensuredSyncableSet.add(syncable);
+
       let {_id: id, _associations: associations} = syncable;
+
+      let ref = getSyncableRef(syncable);
+      let object = manager.requireSyncableObject(ref);
+
+      let visible = object.testAccessRights(['read'], context, {});
+
+      if (!visible) {
+        if (snapshotIdSet.has(id)) {
+          snapshotIdSet.delete(id);
+          snapshotRemovals.push(ref);
+        }
+
+        return;
+      }
 
       if (snapshotIdSet.has(id)) {
         return;
       }
 
-      let ref = getSyncableRef(syncable);
-      let object = manager.requireSyncableObject(ref);
-
-      if (
-        (!requisite && filter && !filter(object)) ||
-        !object.testAccessRights(['read'], context, {})
-      ) {
+      if (!requisite && filter && !filter(object)) {
         return;
       }
 
       if (associations) {
-        for (let {requisite, ref} of associations) {
-          if (snapshotIdSet.has(ref.id)) {
-            continue;
-          }
-
-          let associatedSyncable = manager.requireSyncable(ref);
-
-          ensureAssociationsAndSnapshot(associatedSyncable, !!requisite);
+        for (let {requisite = false, ref} of associations) {
+          let syncable = manager.requireSyncable(ref);
+          ensureAssociationsAndDoSnapshot(syncable, requisite);
         }
       }
 
       snapshotIdSet.add(id);
-
-      result.push(syncable);
+      snapshotSyncables.push(syncable);
     }
   }
 
-  private filter: ViewQueryFilter = () => false;
+  handleChangeResult({
+    uid,
+    timestamp,
+    updates: updateDict,
+  }: ChangePlantProcessingResultWithTimestamp): void {
+    let socket = this.socket;
 
-  private update(packet: ChangePacket): void {
-    this.applyChangePacket(packet);
+    let snapshotData = this.snapshot();
+
+    let updates: SyncingDataUpdateEntry[] = [];
+
+    let snapshotIdSet = this.snapshotIdSet;
+
+    for (let {snapshot, diffs} of Object.values(updateDict)) {
+      let ref = getSyncableRef(snapshot);
+      let {id} = ref;
+
+      if (snapshotIdSet.has(id)) {
+        updates.push({
+          ref,
+          diffs,
+        });
+      }
+    }
+
+    let ack: ChangeAck = {uid, timestamp};
+
+    socket.emit('sync', {ack, updates, ...snapshotData});
+  }
+
+  @observable private filter: ViewQueryFilter = () => false;
+
+  private error = (error: Error): void => {
+    console.error(error);
+    this.socket.disconnect();
+  };
+
+  private async getTimestampAndUpdate(packet: ChangePacket): Promise<void> {
+    let timestamp = await this.clock.next();
+
+    await this.update(packet, timestamp);
+  }
+
+  private async update(packet: ChangePacket, timestamp: number): Promise<void> {
+    let result = this.applyChangePacket(packet, timestamp);
+
+    this.server.saveAndBroadcastChangeResult(this.group, result);
   }
 
   private updateViewQuery(query: unknown): void {
     this.filter = this.server.getViewQueryFilter(query);
+
+    let snapshotData = this.snapshot();
+
+    this.socket.emit('sync', {...snapshotData});
   }
 
-  private applyChangePacket(packet: ChangePacket): void {
+  private applyChangePacket(
+    packet: ChangePacket,
+    timestamp: number,
+  ): ChangePlantProcessingResultWithTimestamp {
     let manager = this.manager;
 
     let refDict = packet.refs;
@@ -143,26 +208,27 @@ export class Connection {
       manager.requireSyncableObject(ref),
     );
 
-    let {
-      updates: updateDict,
-      creations,
-      removals,
-    } = this.server.changePlant.process(
+    let result = this.server.changePlant.process(
       packet,
       syncableObjectDict,
       this.context,
+      timestamp,
     );
+
+    let {updates: updateDict, creations, removals} = result;
 
     for (let {snapshot} of Object.values(updateDict)) {
       manager.updateSyncable(snapshot);
+    }
+
+    for (let syncable of creations) {
+      manager.addSyncable(syncable);
     }
 
     for (let ref of removals) {
       manager.removeSyncable(ref);
     }
 
-    for (let syncable of creations) {
-      manager.addSyncable(syncable);
-    }
+    return result;
   }
 }

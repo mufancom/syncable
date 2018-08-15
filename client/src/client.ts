@@ -4,15 +4,17 @@ import {
   ChangePacket,
   ChangePacketUID,
   ChangePlant,
-  Consequence,
   Context,
   GeneralChange,
+  InitialData,
+  SnapshotData,
   Syncable,
   SyncableId,
   SyncableManager,
   SyncableObject,
   SyncableObjectFactory,
   SyncableRef,
+  SyncingData,
   UserSyncableObject,
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
@@ -20,10 +22,6 @@ import _ from 'lodash';
 import uuid from 'uuid';
 
 import {ClientSocket, createClientSocket} from './@client-socket';
-
-export interface SnapshotsData {
-  snapshots: Syncable[];
-}
 
 export interface ClientAssociateOptions {
   requisite?: boolean;
@@ -51,19 +49,20 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     private changePlant: ChangePlant<GeneralChange>,
   ) {
     this.context = new Context();
-    this.manager = new SyncableManager(factory, this.context);
+    this.manager = new SyncableManager(factory);
 
     let socket = (this.socket = createClientSocket<TUser>(uri));
 
     this.ready = new Promise<void>(resolve => {
-      socket.on('snapshot', ({syncables, userRef}) => {
-        this.onSnapshot(syncables, userRef);
+      socket.on('initialize', data => {
+        console.log(data);
+        this.onInitialize(data);
         resolve();
       });
     });
 
-    socket.on('consequent-series', ({uid, consequences}) => {
-      this.onConsequences(uid, consequences);
+    socket.on('sync', data => {
+      this.onSync(data);
     });
   }
 
@@ -108,46 +107,40 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
 
   private onConnection(): void {}
 
-  private onSnapshot(
-    syncables: Syncable[],
-    userRef?: SyncableRef<TUser>,
-  ): void {
-    for (let syncable of syncables) {
-      this.manager.addSyncable(syncable);
-    }
+  private onInitialize({userRef, ...data}: InitialData<TUser>): void {
+    this.onSnapshotData(data);
 
-    if (userRef) {
-      let user = this.manager.requireSyncableObject(userRef);
-      this.context.initialize(user);
-    }
+    let user = this.manager.requireSyncableObject(userRef);
+    this.context.initialize(user);
   }
 
-  private onConsequences(
-    uid: ChangePacketUID,
-    consequences: Consequence[],
-  ): void {
-    this.shiftChangePacket(uid);
+  private onSync(data: SyncingData): void {
+    this.onSnapshotData(data);
 
-    for (let consequence of consequences) {
-      switch (consequence.type) {
-        case 'creation':
-          this.onConsequentCreation(consequence.syncable);
-          break;
-        case 'removal':
-          this.onConsequentRemoval(consequence.ref);
-          break;
-        case 'update':
-          this.onConsequentUpdate(consequence.ref, consequence.diffs);
-          break;
+    if ('ack' in data) {
+      for (let {ref, diffs} of data.updates) {
+        this.onUpdateChange(ref, diffs);
+      }
+
+      this.shiftChangePacket(data.ack.uid);
+
+      for (let packet of this.pendingChangePackets) {
+        this.applyChangePacket(packet);
       }
     }
+  }
 
-    for (let packet of this.pendingChangePackets) {
-      this.applyChangePacket(packet);
+  private onSnapshotData({syncables, removals}: SnapshotData): void {
+    for (let syncable of syncables) {
+      this.onUpdateCreate(syncable);
+    }
+
+    for (let ref of removals) {
+      this.onUpdateRemove(ref);
     }
   }
 
-  private onConsequentCreation(syncable: Syncable): void {
+  private onUpdateCreate(syncable: Syncable): void {
     this.manager.addSyncable(syncable);
 
     let snapshot = _.cloneDeep(syncable);
@@ -155,12 +148,12 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     this.syncableSnapshotMap.set(syncable._id, snapshot);
   }
 
-  private onConsequentRemoval(ref: SyncableRef): void {
+  private onUpdateRemove(ref: SyncableRef): void {
     this.manager.removeSyncable(ref);
     this.syncableSnapshotMap.delete(ref.id);
   }
 
-  private onConsequentUpdate(ref: SyncableRef, diffs: deepDiff.IDiff[]): void {
+  private onUpdateChange(ref: SyncableRef, diffs: deepDiff.IDiff[]): void {
     let snapshot = this.syncableSnapshotMap.get(ref.id)!;
 
     for (let diff of diffs) {

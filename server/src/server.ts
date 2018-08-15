@@ -4,6 +4,7 @@ import {Server as HTTPServer} from 'http';
 import {
   Change,
   ChangePlant,
+  ChangePlantProcessingResultWithTimestamp,
   GeneralChange,
   Syncable,
   SyncableManager,
@@ -24,8 +25,14 @@ export interface ConnectionSession<TViewQuery> {
   viewQuery: TViewQuery | undefined;
 }
 
+export interface GroupClock {
+  next(): Promise<number>;
+}
+
 interface GroupInfo {
+  clock: GroupClock;
   manager: SyncableManager;
+  connectionSet: Set<Connection>;
   loadingPromise: Promise<void>;
 }
 
@@ -34,7 +41,6 @@ export abstract class Server<
   TViewQuery extends unknown = unknown
 > extends EventEmitter {
   private server: io.Server;
-  private connectionSet = new Set<Connection>();
   private groupInfoMap = new Map<string, GroupInfo>();
 
   constructor(
@@ -46,16 +52,42 @@ export abstract class Server<
 
     this.server = io(httpServer);
 
-    this.initialize().catch(error => this.emit('error', error));
+    this.initialize().catch(this.error);
   }
 
   abstract getViewQueryFilter(query: TViewQuery): ViewQueryFilter;
+
+  saveAndBroadcastChangeResult(
+    group: string,
+    result: ChangePlantProcessingResultWithTimestamp,
+  ): void {
+    this._saveAndBroadcastChangeResult(group, result).catch(error =>
+      this.emit('error', error),
+    );
+  }
+
+  getNextTimestamp(group: string): Promise<number> {
+    let {clock} = this.groupInfoMap.get(group)!;
+    return clock.next();
+  }
+
+  protected abstract createGroupClock(group: string): GroupClock;
 
   protected abstract resolveSession(
     socket: ConnectionSocket,
   ): Promise<ConnectionSession<TViewQuery>>;
 
   protected abstract loadSyncables(group: string): Promise<Syncable[]>;
+
+  protected abstract saveSyncables(
+    syncables: Syncable[],
+    removals: SyncableRef[],
+  ): Promise<void>;
+
+  protected error = (error: Error): void => {
+    console.error(error);
+    this.emit('error', error);
+  };
 
   private async initialize(): Promise<void> {
     this.server.on('connection', (socket: ConnectionSocket) => {
@@ -71,11 +103,14 @@ export abstract class Server<
     let groupInfo = groupInfoMap.get(group);
 
     if (!groupInfo) {
+      let clock = this.createGroupClock(group);
       let manager = new SyncableManager(this.factory);
       let loadingPromise = this.loadAndAddSyncables(group, manager);
 
       groupInfo = {
+        clock,
         manager,
+        connectionSet: new Set(),
         loadingPromise,
       };
 
@@ -84,9 +119,15 @@ export abstract class Server<
 
     await groupInfo.loadingPromise;
 
-    let connection = new Connection(socket, this, groupInfo.manager);
+    let connection = new Connection(
+      group,
+      socket,
+      this,
+      groupInfo.clock,
+      groupInfo.manager,
+    );
 
-    this.connectionSet.add(connection);
+    groupInfo.connectionSet.add(connection);
 
     connection.initialize(userRef, viewQuery).catch(console.error);
   }
@@ -99,6 +140,26 @@ export abstract class Server<
 
     for (let syncable of syncables) {
       manager.addSyncable(syncable);
+    }
+  }
+
+  private async _saveAndBroadcastChangeResult(
+    group: string,
+    result: ChangePlantProcessingResultWithTimestamp,
+  ): Promise<void> {
+    let {updates: updateDict, creations, removals} = result;
+
+    let syncables = [
+      ...Object.values(updateDict).map(update => update.snapshot),
+      ...creations,
+    ];
+
+    await this.saveSyncables(syncables, removals);
+
+    let {connectionSet} = this.groupInfoMap.get(group)!;
+
+    for (let connection of connectionSet) {
+      connection.handleChangeResult(result);
     }
   }
 }

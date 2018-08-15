@@ -1,7 +1,8 @@
 import * as DeepDiff from 'deep-diff';
+import _ from 'lodash';
 import {observable} from 'mobx';
 
-import {Context, SyncableObjectFactory} from '../context';
+import {SyncableObjectFactory} from '../context';
 
 import {Syncable, SyncableId, SyncableRef} from './syncable';
 import {SyncableObject} from './syncable-object';
@@ -9,11 +10,9 @@ import {SyncableObject} from './syncable-object';
 export class SyncableManager {
   private syncableMap = new Map<SyncableId, Syncable>();
   private syncableObjectMap = new Map<SyncableId, SyncableObject>();
+  private associatedTargetSyncableSetMap = new Map<SyncableId, Set<Syncable>>();
 
-  constructor(
-    private factory: SyncableObjectFactory,
-    private context?: Context,
-  ) {}
+  constructor(private factory: SyncableObjectFactory) {}
 
   get syncables(): Syncable[] {
     return Array.from(this.syncableMap.values());
@@ -41,44 +40,94 @@ export class SyncableManager {
     return syncable;
   }
 
-  addSyncable(syncable: Syncable): void {
-    let map = this.syncableMap;
-    let id = syncable._id;
+  /**
+   * Add a syncable, please notice that it won't change
+   * the reference of the originally stored syncable. Instead, differences will
+   * be applied to it.
+   */
+  addSyncable(snapshot: Syncable): void {
+    let syncableMap = this.syncableMap;
+    let id = snapshot._id;
 
-    if (map.has(id)) {
+    if (syncableMap.has(id)) {
       throw new Error(`Syncable with ID "${id}" already exists in context`);
     }
 
-    map.set(id, observable(syncable));
+    let syncable = observable(snapshot);
+
+    syncableMap.set(id, syncable);
+
+    let associationIds = (snapshot._associations || []).map(
+      association => association.ref.id,
+    );
+
+    this.addAssociatedTargetSyncable(syncable, associationIds);
   }
 
   /**
-   * Update a syncable stored in context, please notice that it won't change
+   * Update a syncable stored by this manager, please notice that it won't change
    * the reference of the originally stored syncable. Instead, differences will
    * be applied to it.
    */
   updateSyncable(snapshot: Syncable): void {
+    let syncableMap = this.syncableMap;
     let id = snapshot._id;
 
-    let syncable = this.syncableMap.get(id);
+    let syncable = syncableMap.get(id);
 
     if (!syncable) {
       throw new Error(`Syncable with ID "${id}" does not exists in context`);
     }
 
+    let previousAssociationIds = (syncable._associations || []).map(
+      association => association.ref.id,
+    );
+    let nextAssociationIds = (snapshot._associations || []).map(
+      association => association.ref.id,
+    );
+
     DeepDiff.applyDiff(syncable, snapshot, undefined!);
+
+    let newAssociationIds = _.difference(
+      nextAssociationIds,
+      previousAssociationIds,
+    );
+
+    let obsoleteAssociationIds = _.difference(
+      previousAssociationIds,
+      nextAssociationIds,
+    );
+
+    this.addAssociatedTargetSyncable(syncable, newAssociationIds);
+    this.removeAssociatedTargetSyncable(syncable, obsoleteAssociationIds);
   }
 
   removeSyncable({id}: SyncableRef): void {
     let syncableMap = this.syncableMap;
     let syncableObjectMap = this.syncableObjectMap;
 
-    if (!syncableMap.has(id)) {
+    let syncable = syncableMap.get(id);
+
+    if (!syncable) {
       throw new Error(`Syncable with ID "${id}" does not exists in context`);
     }
 
     syncableMap.delete(id);
     syncableObjectMap.delete(id);
+
+    let associationIds = (syncable._associations || []).map(
+      association => association.ref.id,
+    );
+
+    this.removeAssociatedTargetSyncable(syncable, associationIds);
+  }
+
+  getAssociatedTargetSyncables(source: SyncableRef | Syncable): Syncable[] {
+    let id = 'id' in source ? source.id : source._id;
+
+    let set = this.associatedTargetSyncableSetMap.get(id);
+
+    return set ? Array.from(set) : [];
   }
 
   requireSyncableObject<T extends SyncableObject>(ref: SyncableRef<T>): T {
@@ -99,13 +148,44 @@ export class SyncableManager {
     return object;
   }
 
-  requireContext(context = this.context): Context {
-    if (!context) {
-      throw new Error(
-        'Context is neither available from parameter nor the instance',
-      );
-    }
+  private addAssociatedTargetSyncable(
+    syncable: Syncable,
+    ids: SyncableId[],
+  ): void {
+    let associatedTargetSyncableSetMap = this.associatedTargetSyncableSetMap;
 
-    return context;
+    for (let id of ids) {
+      let set = associatedTargetSyncableSetMap.get(id);
+
+      if (!set) {
+        set = new Set();
+        associatedTargetSyncableSetMap.set(id, set);
+      } else if (set.has(syncable)) {
+        console.error('Expecting associated target syncable not exists in set');
+        continue;
+      }
+
+      set.add(syncable);
+    }
+  }
+
+  private removeAssociatedTargetSyncable(
+    syncable: Syncable,
+    ids: SyncableId[],
+  ): void {
+    let associatedTargetSyncableSetMap = this.associatedTargetSyncableSetMap;
+
+    for (let id of ids) {
+      let set = associatedTargetSyncableSetMap.get(id);
+
+      if (!set || !set.has(syncable)) {
+        console.error(
+          'Expecting associated target syncable already exists in set',
+        );
+        continue;
+      }
+
+      set.delete(syncable);
+    }
   }
 }

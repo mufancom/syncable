@@ -1,7 +1,0 @@
-{
-  "name": "syncable-dev-types",
-  "private": true,
-  "devDependencies": {
-    "mobx": "^4.1.1"
-  }
-}

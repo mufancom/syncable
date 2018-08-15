@@ -3,12 +3,6 @@
   "compilerOptions": {
     "declaration": true,
     "experimentalDecorators": true,
-    "strictFunctionTypes": false,
-
-    "baseUrl": ".",
-    "paths": {
-      "*": ["../types/node_modules/*"]
-    },
 
     "rootDir": "src",
     "outDir": "bld"
