@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import {AccessControlEntry} from '../access-control';
 import {Syncable, SyncableAssociation, SyncableRef} from '../syncable';
 import {getSyncableRef} from '../utils';
@@ -94,21 +96,41 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
       associations = target._associations = [];
     }
 
-    if (
-      associations.find(association =>
-        compareAssociationWithSyncable(association, source),
-      )
-    ) {
-      return;
+    let matchedIndex = associations.findIndex(association =>
+      compareAssociationWithSyncable(association, source),
+    );
+
+    let matchedAssociation =
+      matchedIndex >= 0 ? associations[matchedIndex] : undefined;
+
+    let updatedAssociation: SyncableAssociation = {
+      ref: getSyncableRef(source),
+      ...(requisite ? {requisite: true} : undefined),
+      ...(secures ? {secures: true} : undefined),
+    };
+
+    let securesRelated: boolean;
+
+    if (matchedAssociation) {
+      if (_.isEqual(updatedAssociation, matchedAssociation)) {
+        return;
+      }
+
+      securesRelated = secures || !!matchedAssociation.secures;
+    } else {
+      securesRelated = secures;
     }
 
-    targetObject.validateAccessRights([secures ? 'full' : 'write'], context);
+    targetObject.validateAccessRights(
+      [securesRelated ? 'full' : 'write'],
+      context,
+    );
 
-    associations.push({
-      ref: getSyncableRef(source),
-      requisite: requisite || undefined,
-      secures: secures || undefined,
-    });
+    if (matchedAssociation) {
+      associations[matchedIndex] = updatedAssociation;
+    } else {
+      associations.push(updatedAssociation);
+    }
   },
   $unassociate({target, source}, {objects: {target: targetObject}, context}) {
     let associations = target._associations;

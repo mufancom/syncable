@@ -1,7 +1,7 @@
 import {createSyncable, getSyncableRef} from '@syncable/core';
 import {MongoClient} from 'mongodb';
 
-import {TagSyncable, UserId, UserSyncable} from '../shared';
+import {TagSyncable, UserSyncable} from '../shared';
 
 (async () => {
   let client = await MongoClient.connect('mongodb://localhost:27017', {

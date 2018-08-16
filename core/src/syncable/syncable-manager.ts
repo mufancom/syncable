@@ -3,19 +3,26 @@ import _ from 'lodash';
 import {observable} from 'mobx';
 
 import {SyncableObjectFactory} from '../context';
+import {getSyncableRef} from '../utils';
 
 import {Syncable, SyncableId, SyncableRef} from './syncable';
 import {SyncableObject} from './syncable-object';
 
 export class SyncableManager {
-  private syncableMap = new Map<SyncableId, Syncable>();
-  private syncableObjectMap = new Map<SyncableId, SyncableObject>();
+  @observable private syncableMap = new Map<SyncableId, Syncable>();
+  @observable private syncableObjectMap = new Map<SyncableId, SyncableObject>();
   private associatedTargetSyncableSetMap = new Map<SyncableId, Set<Syncable>>();
 
   constructor(private factory: SyncableObjectFactory) {}
 
   get syncables(): Syncable[] {
     return Array.from(this.syncableMap.values());
+  }
+
+  get syncableObjects(): SyncableObject[] {
+    return this.syncables.map(syncable =>
+      this.requireSyncableObject(getSyncableRef(syncable)),
+    );
   }
 
   existsSyncable({id}: SyncableRef): boolean {

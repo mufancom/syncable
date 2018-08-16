@@ -14,6 +14,7 @@ import {
   UserSyncableObject,
 } from '@syncable/core';
 import io from 'socket.io';
+import * as v from 'villa';
 
 import {Connection, ConnectionSocket} from './connection';
 
@@ -147,19 +148,21 @@ export abstract class Server<
     group: string,
     result: ChangePlantProcessingResultWithTimestamp,
   ): Promise<void> {
-    let {updates: updateDict, creations, removals} = result;
+    return v.lock(group, async () => {
+      let {updates: updateDict, creations, removals} = result;
 
-    let syncables = [
-      ...Object.values(updateDict).map(update => update.snapshot),
-      ...creations,
-    ];
+      let syncables = [
+        ...Object.values(updateDict).map(update => update.snapshot),
+        ...creations,
+      ];
 
-    await this.saveSyncables(syncables, removals);
+      await this.saveSyncables(syncables, removals);
 
-    let {connectionSet} = this.groupInfoMap.get(group)!;
+      let {connectionSet} = this.groupInfoMap.get(group)!;
 
-    for (let connection of connectionSet) {
-      connection.handleChangeResult(result);
-    }
+      for (let connection of connectionSet) {
+        connection.handleChangeResult(result);
+      }
+    });
   }
 }

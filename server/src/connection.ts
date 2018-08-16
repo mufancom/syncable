@@ -58,7 +58,7 @@ export class Connection {
 
     this.context = new Context(user);
 
-    this.updateViewQuery(viewQuery);
+    this.updateViewQuery(viewQuery, false);
 
     let snapshotData = this.snapshot(userRef);
 
@@ -188,12 +188,13 @@ export class Connection {
     this.server.saveAndBroadcastChangeResult(this.group, result);
   }
 
-  private updateViewQuery(query: unknown): void {
+  private updateViewQuery(query: unknown, snapshot = true): void {
     this.filter = this.server.getViewQueryFilter(query);
 
-    let snapshotData = this.snapshot();
-
-    this.socket.emit('sync', {...snapshotData});
+    if (snapshot) {
+      let snapshotData = this.snapshot();
+      this.socket.emit('sync', {...snapshotData});
+    }
   }
 
   private applyChangePacket(

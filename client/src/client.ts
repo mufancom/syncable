@@ -28,7 +28,11 @@ export interface ClientAssociateOptions {
   secures?: boolean;
 }
 
-export class Client<TUser extends UserSyncableObject, TChange extends Change> {
+export class Client<
+  TUser extends UserSyncableObject,
+  TSyncableObject extends SyncableObject,
+  TChange extends Change
+> {
   readonly context: Context<TUser>;
   readonly ready: Promise<void>;
 
@@ -55,26 +59,35 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
 
     this.ready = new Promise<void>(resolve => {
       socket.on('initialize', data => {
-        console.log(data);
+        console.log('initialize', data);
         this.onInitialize(data);
         resolve();
       });
     });
 
     socket.on('sync', data => {
+      // console.log('sync', data);
       this.onSync(data);
     });
   }
 
+  get user(): TUser {
+    return this.context.user;
+  }
+
+  get objects(): TSyncableObject[] {
+    return this.manager.syncableObjects as TSyncableObject[];
+  }
+
   associate(
-    target: SyncableObject,
-    source: SyncableObject,
-    options: ClientAssociateOptions,
+    target: TSyncableObject,
+    source: TSyncableObject,
+    options?: ClientAssociateOptions,
   ): void;
   associate(
-    {ref: target}: SyncableObject,
-    {ref: source}: SyncableObject,
-    {secures = false, requisite = secures}: ClientAssociateOptions,
+    {ref: target}: TSyncableObject,
+    {ref: source}: TSyncableObject,
+    {secures = false, requisite = secures}: ClientAssociateOptions = {},
   ): void {
     this.update({
       type: '$associate',
@@ -83,10 +96,10 @@ export class Client<TUser extends UserSyncableObject, TChange extends Change> {
     });
   }
 
-  unassociate(target: SyncableObject, source: SyncableObject): void;
+  unassociate(target: TSyncableObject, source: TSyncableObject): void;
   unassociate(
-    {ref: target}: SyncableObject,
-    {ref: source}: SyncableObject,
+    {ref: target}: TSyncableObject,
+    {ref: source}: TSyncableObject,
   ): void {
     this.update({
       type: '$unassociate',

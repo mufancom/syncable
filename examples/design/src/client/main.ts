@@ -8,6 +8,7 @@ import {autorun} from 'mobx';
 
 import {
   MFChange,
+  MFSyncableObject,
   MFSyncableObjectFactory,
   User,
   mfChangePlantBlueprint,
@@ -16,27 +17,38 @@ import {
 let factory = new MFSyncableObjectFactory();
 let changePlant = new ChangePlant<MFChange>(mfChangePlantBlueprint);
 
-let client = new Client<User, MFChange>(
+let client = new Client<User, MFSyncableObject, MFChange>(
   'ws://localhost:8080',
   factory,
   changePlant,
 );
 
 autorun(() => {
-  let user = client.context.user;
+  let user = client.user;
 
   if (user) {
-    console.log('user tags', user.tags.length);
+    console.log('tags', user.tags.map(tag => tag.name));
+    console.log(JSON.stringify(user.syncable));
   }
 });
 
 (async () => {
   await client.ready;
 
-  let user = client.context.user;
-  let tag = user.tags[0];
+  let user = client.user;
+  let tags = client.objects.filter(object => object.type === 'tag');
 
-  if (tag) {
-    client.unassociate(user, tag);
+  for (let tag of tags) {
+    client.associate(user, tag, {requisite: true});
   }
+
+  // console.log(client.objects);
+
+  // let user = client.context.user;
+
+  // let tag = user.tags[0];
+
+  // if (tag) {
+  //   client.unassociate(user, tag);
+  // }
 })().catch(console.error);
