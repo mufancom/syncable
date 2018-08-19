@@ -24,6 +24,7 @@ import uuid from 'uuid';
 import {ClientSocket, createClientSocket} from './@client-socket';
 
 export interface ClientAssociateOptions {
+  name?: string;
   requisite?: boolean;
   secures?: boolean;
 }
@@ -87,12 +88,12 @@ export class Client<
   associate(
     {ref: target}: TSyncableObject,
     {ref: source}: TSyncableObject,
-    {secures = false, requisite = secures}: ClientAssociateOptions = {},
+    {name, secures = false, requisite = secures}: ClientAssociateOptions = {},
   ): void {
     this.update({
       type: '$associate',
       refs: {target, source},
-      options: {requisite, secures},
+      options: {name, requisite, secures},
     });
   }
 

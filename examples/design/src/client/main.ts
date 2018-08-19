@@ -39,7 +39,7 @@ autorun(() => {
   let tags = client.objects.filter(object => object.type === 'tag');
 
   for (let tag of tags) {
-    client.associate(user, tag, {requisite: true});
+    client.associate(user, tag, {requisite: true, name: 'tag'});
   }
 
   // console.log(client.objects);

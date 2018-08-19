@@ -7,6 +7,7 @@ import {
   AccessControlEntryType,
   AccessRight,
   Permission,
+  SecuringAccessControlEntry,
   getAccessControlEntryPriority,
 } from '../access-control';
 import {AccessControlRuleTester, Context} from '../context';
@@ -70,7 +71,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     return this.syncable._grants || [];
   }
 
-  getSecuringACL(): AccessControlEntry[] {
+  getSecuringACL(): SecuringAccessControlEntry[] {
     return this.syncable._secures || [];
   }
 
@@ -197,11 +198,15 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
       hasNonEmptyACL = hasNonEmptyACL || !!securingACL.length;
 
       for (let entry of securingACL) {
-        if (!association.testAccessControlEntry(this, entry, context)) {
+        let {type, match, grantable, rights} = entry;
+
+        if (match && !match.includes(association.type)) {
           continue;
         }
 
-        let {type, grantable, rights} = entry;
+        if (!association.testAccessControlEntry(this, entry, context)) {
+          continue;
+        }
 
         let item: AccessRightComparableItem = {
           type,

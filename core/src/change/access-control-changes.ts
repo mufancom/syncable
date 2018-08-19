@@ -23,6 +23,7 @@ export interface AssociateChangeRefDict {
 }
 
 export interface AssociateChangeOptions {
+  name?: string;
   requisite: boolean;
   secures: boolean;
 }
@@ -88,7 +89,7 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
 > = {
   $associate(
     {target, source},
-    {requisite, secures, objects: {target: targetObject}, context},
+    {name, requisite, secures, objects: {target: targetObject}, context},
   ) {
     let associations = target._associations;
 
@@ -105,6 +106,7 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
 
     let updatedAssociation: SyncableAssociation = {
       ref: getSyncableRef(source),
+      ...(name ? {name} : undefined),
       ...(requisite ? {requisite: true} : undefined),
       ...(secures ? {secures: true} : undefined),
     };

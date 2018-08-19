@@ -1,6 +1,10 @@
 import uuid from 'uuid';
 
-import {AccessControlEntry, Permission} from '../access-control';
+import {
+  AccessControlEntry,
+  Permission,
+  SecuringAccessControlEntry,
+} from '../access-control';
 import {ExcludeProperty, StringType} from '../lang';
 
 import {SyncableObject} from './syncable-object';
@@ -53,7 +57,7 @@ export interface Syncable<Type extends string = string> {
    * A list of extra access control entries to be attached by making this
    * object association of the target object.
    */
-  _secures?: AccessControlEntry[];
+  _secures?: SecuringAccessControlEntry[];
 }
 
 ///////////////

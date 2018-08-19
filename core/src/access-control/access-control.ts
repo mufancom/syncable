@@ -10,14 +10,19 @@ export type AccessControlEntryRuleName = StringType<
   'access-control-entry-rule-name'
 >;
 
-export interface AccessControlEntry<Options extends object = object> {
+export interface AccessControlEntry<TOptions extends object = object> {
   name: string;
   rule: AccessControlEntryRuleName;
   type: AccessControlEntryType;
   explicit: boolean;
   grantable: boolean;
   rights: AccessRight[];
-  options?: Options;
+  options?: TOptions;
+}
+
+export interface SecuringAccessControlEntry<TOptions extends object = object>
+  extends AccessControlEntry<TOptions> {
+  match?: string[];
 }
 
 export function getAccessControlEntryPriority(
