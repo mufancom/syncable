@@ -1,5 +1,5 @@
 import {
-  AccessControlChange,
+  BuiltInChange,
   Change,
   ChangePacket,
   ChangePacketUID,
@@ -109,7 +109,7 @@ export class Client<
     });
   }
 
-  update(change: TChange | AccessControlChange): void {
+  update(change: TChange | BuiltInChange): void {
     let packet: ChangePacket = {
       uid: uuid() as ChangePacketUID,
       ...(change as GeneralChange),

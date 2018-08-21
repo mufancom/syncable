@@ -7,7 +7,7 @@ import {getSyncableRef} from '../utils';
 import {Change} from './change';
 import {ChangePlantBlueprint} from './change-plant';
 
-export type AccessControlChange =
+export type BuiltInChange =
   | AssociateChange
   | UnassociateChange
   | SetAccessControlEntriesChange
@@ -84,8 +84,8 @@ export type UnsetAccessControlEntriesChange = Change<
   UnsetAccessControlEntriesChangeOptions
 >;
 
-export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
-  AccessControlChange
+export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
+  BuiltInChange
 > = {
   $associate(
     {target, source},
@@ -106,9 +106,9 @@ export const accessControlChangePlantBlueprint: ChangePlantBlueprint<
 
     let updatedAssociation: SyncableAssociation = {
       ref: getSyncableRef(source),
-      ...(name ? {name} : undefined),
-      ...(requisite ? {requisite: true} : undefined),
-      ...(secures ? {secures: true} : undefined),
+      name,
+      requisite: requisite || undefined,
+      secures: secures || undefined,
     };
 
     let securesRelated: boolean;

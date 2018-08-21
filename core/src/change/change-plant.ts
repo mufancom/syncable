@@ -5,10 +5,7 @@ import {Context} from '../context';
 import {Dict} from '../lang';
 import {Syncable, SyncableObject, SyncableRef} from '../syncable';
 
-import {
-  AccessControlChange,
-  accessControlChangePlantBlueprint,
-} from './access-control-changes';
+import {BuiltInChange, BuiltInChangePlantBlueprint} from './built-in-changes';
 import {Change, ChangePacket, ChangePacketUID, GeneralChange} from './change';
 
 export type RefDictToSyncableObjectDict<T extends object> = T extends object
@@ -104,8 +101,8 @@ export class ChangePlant<TChange extends Change = Change> {
     context: Context,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
-    let processor = ((accessControlChangePlantBlueprint as Dict<
-      ChangePlantProcessor<AccessControlChange> | undefined
+    let processor = ((BuiltInChangePlantBlueprint as Dict<
+      ChangePlantProcessor<BuiltInChange> | undefined
     >)[type] ||
       (this.blueprint as Dict<ChangePlantProcessor<TChange> | undefined>)[
         type

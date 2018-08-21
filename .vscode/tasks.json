@@ -5,7 +5,7 @@
       "label": "biu",
       "type": "shell",
       "command": "yarn",
-      "args": ["biu"],
+      "args": ["biu", "--port", "8089"],
       "isBackground": true,
       "group": {
         "kind": "build",

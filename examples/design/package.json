@@ -7,7 +7,7 @@
     "@syncable/core": "^2.0.0",
     "@syncable/server": "^2.0.0",
     "lodash": "^4.17.10",
-    "mobx": "^5.0.3",
+    "mobx": "^5.0.4",
     "mongodb": "^3.1.1",
     "source-map-support": "^0.5.6",
     "villa": "^0.3.1"
