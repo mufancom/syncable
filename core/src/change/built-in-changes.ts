@@ -89,7 +89,8 @@ export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
 > = {
   $associate(
     {target, source},
-    {name, requisite, secures, objects: {target: targetObject}, context},
+    {target: targetObject},
+    {name, requisite, secures, context},
   ) {
     let associations = target._associations;
 
@@ -134,7 +135,7 @@ export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
       associations.push(updatedAssociation);
     }
   },
-  $unassociate({target, source}, {objects: {target: targetObject}, context}) {
+  $unassociate({target, source}, {target: targetObject}, {context}) {
     let associations = target._associations;
 
     if (!associations) {
@@ -155,7 +156,8 @@ export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
   },
   '$set-access-control-entries'(
     {target},
-    {objects: {target: targetObject}, context, entries},
+    {target: targetObject},
+    {context, entries},
   ) {
     targetObject.validateAccessRights(['full'], context);
 
@@ -177,7 +179,8 @@ export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
   },
   '$unset-access-control-entries'(
     {target},
-    {objects: {target: targetObject}, context, names},
+    {target: targetObject},
+    {context, names},
   ) {
     targetObject.validateAccessRights(['full'], context);
 

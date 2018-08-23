@@ -36,7 +36,7 @@ autorun(() => {
   await client.ready;
 
   let user = client.user;
-  let tags = client.objects.filter(object => object.type === 'tag');
+  let tags = client.getObjects('tag');
 
   for (let tag of tags) {
     client.associate(user, tag, {requisite: true, name: 'tag'});

@@ -41,7 +41,7 @@ export const tagChangePlantBlueprint: ChangePlantBlueprint<MFTagChange> = {
   'tag:tag'({tag}) {
     return {};
   },
-  'tag:create'({}, {name}) {
+  'tag:create'({}, {}, {name}) {
     let tag = createSyncable<Tag>('tag', {
       name,
       derivations: [],

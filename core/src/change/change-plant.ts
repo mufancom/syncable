@@ -28,10 +28,9 @@ export type RefDictToObjectOrCreationRefDict<
     }
   : never;
 
-export type ChangeToObjectDict<T extends Change> = T extends Change<
-  string,
-  infer TRefDict
->
+export type ChangeToObjectOrCreationRefDict<
+  T extends Change
+> = T extends Change<string, infer TRefDict>
   ? RefDictToObjectOrCreationRefDict<TRefDict>
   : never;
 
@@ -62,9 +61,8 @@ export type RefDictToCreation<T extends object> = ValueOfType<
 export type ChangeToCreation<T extends Change> = T extends Change<
   string,
   infer TRefDict
->
-  ? // ? RefDictToCreation<TRefDict>
-    SyncableType<ValueOfType<TRefDict, SyncableCreationRef>>
+> // ? RefDictToCreation<TRefDict>
+  ? SyncableType<ValueOfType<TRefDict, SyncableCreationRef>>
   : never;
 
 export interface ChangePlantProcessorOutput<TChange extends Change> {
@@ -89,14 +87,14 @@ export interface ChangePlantProcessingResultWithTimestamp
   timestamp: number;
 }
 
-export interface ChangePlantProcessorOptions<TChange extends Change> {
-  objects: ChangeToObjectDict<TChange>;
+export interface ChangePlantProcessorOptions {
   context: Context;
 }
 
 export type ChangePlantProcessor<TChange extends Change = Change> = (
   syncables: ChangeToSyncableDict<TChange>,
-  options: ChangePlantProcessorOptions<TChange> & TChange['options'],
+  objects: ChangeToObjectOrCreationRefDict<TChange>,
+  options: ChangePlantProcessorOptions & TChange['options'],
 ) => ChangePlantProcessorOutput<TChange> | void;
 
 export type ChangePlantBlueprint<T extends Change> = {
@@ -163,11 +161,16 @@ export class ChangePlant<TChange extends Change = Change> {
     );
 
     let result =
-      processor(clonedSyncableDict, {
-        objects: syncableObjectOrCreationRefDict,
-        context,
-        ...options,
-      } as ChangePlantProcessorOptions<GeneralChange>) || {};
+      processor(
+        clonedSyncableDict,
+        syncableObjectOrCreationRefDict as ChangeToObjectOrCreationRefDict<
+          GeneralChange
+        >,
+        {
+          context,
+          ...options,
+        } as ChangePlantProcessorOptions,
+      ) || {};
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};
     let creations: Syncable[] | undefined;
