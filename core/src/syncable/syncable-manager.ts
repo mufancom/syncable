@@ -230,6 +230,20 @@ export class SyncableManager {
     return object;
   }
 
+  clear(): void {
+    clearMapOrSetMap(this.typeToIdToSyncableMapMap);
+    clearMapOrSetMap(this.typeToIdToSyncableObjectMapMap);
+    clearMapOrSetMap(this.associatedTargetSyncableSetMap);
+
+    function clearMapOrSetMap(
+      mapMap: Map<any, Map<any, any> | Set<any>>,
+    ): void {
+      for (let map of Array.from(mapMap.values())) {
+        map.clear();
+      }
+    }
+  }
+
   private addAssociatedTargetSyncable(
     syncable: Syncable,
     ids: SyncableId[],

@@ -61,13 +61,13 @@ export class Client<
 
     this.ready = new Promise<void>(resolve => {
       socket.on('initialize', data => {
+        this.manager.clear();
         this.onInitialize(data);
         resolve();
       });
     });
 
     socket.on('sync', data => {
-      // console.log('sync', data);
       this.onSync(data);
     });
   }

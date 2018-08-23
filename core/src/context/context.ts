@@ -27,10 +27,6 @@ export class Context<TUser extends UserSyncableObject = UserSyncableObject> {
   }
 
   initialize(user: TUser): void {
-    if (this.user) {
-      throw new Error('User already set');
-    }
-
     this.user = user;
   }
 
