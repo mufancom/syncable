@@ -8,7 +8,9 @@ export interface UserSyncable extends Syncable<'user'> {
   name: string;
 }
 
-export class User extends UserSyncableObject<UserSyncable> {
+export type MFPermission = 'server' | 'sms';
+
+export class User extends UserSyncableObject<UserSyncable, MFPermission> {
   get name(): string {
     return this.syncable.name;
   }

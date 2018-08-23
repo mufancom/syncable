@@ -27,8 +27,8 @@ autorun(() => {
   let user = client.user;
 
   if (user) {
-    console.log('tags', user.tags.map(tag => tag.name));
-    console.log(JSON.stringify(user.syncable));
+    console.info('tags', user.tags.map(tag => tag.name));
+    console.info(JSON.stringify(user.syncable));
   }
 });
 
@@ -41,14 +41,4 @@ autorun(() => {
   for (let tag of tags) {
     client.associate(user, tag, {requisite: true, name: 'tag'});
   }
-
-  // console.log(client.objects);
-
-  // let user = client.context.user;
-
-  // let tag = user.tags[0];
-
-  // if (tag) {
-  //   client.unassociate(user, tag);
-  // }
 })().catch(console.error);
