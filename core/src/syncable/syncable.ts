@@ -5,6 +5,7 @@ import {
   Permission,
   SecuringAccessControlEntry,
 } from '../access-control';
+import {SyncableCreationRef} from '../change';
 import {ExcludeProperty, StringType} from '../lang';
 
 import {SyncableObject} from './syncable-object';
@@ -76,11 +77,37 @@ export type SyncableObjectType<T extends SyncableRef> = T extends SyncableRef<
   ? TSyncableObject
   : never;
 
-export function createSyncable<T extends Syncable>(
-  type: T['_type'],
-  data: ExcludeProperty<T, keyof Syncable>,
-): T {
-  let id = uuid() as Syncable['_id'];
+export type SyncableType<T extends SyncableRef> = T extends SyncableCreationRef<
+  infer TSyncableObject
+>
+  ? TSyncableObject['syncable']
+  : T extends SyncableRef<infer TSyncableObject>
+    ? TSyncableObject['syncable']
+    : never;
+
+export function createSyncableCreationRef<T extends SyncableObject>(
+  type: T['type'],
+): SyncableCreationRef<T> {
+  return {
+    type,
+    id: uuid() as T['id'],
+    creation: true,
+  };
+}
+
+export function createSyncable<T extends SyncableObject>(
+  type: T['type'] | SyncableCreationRef<T>,
+  data: ExcludeProperty<T['syncable'], keyof Syncable>,
+): T['syncable'] {
+  let id: T['id'];
+
+  if (typeof type === 'string') {
+    id = uuid() as T['id'];
+  } else {
+    id = type.id;
+    type = type.type;
+  }
+
   let timestamp = 0;
 
   return {
@@ -88,5 +115,5 @@ export function createSyncable<T extends Syncable>(
     _type: type,
     _timestamp: timestamp,
     ...(data as object),
-  } as T;
+  };
 }

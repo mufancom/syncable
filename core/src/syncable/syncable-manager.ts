@@ -1,38 +1,82 @@
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
-import {observable} from 'mobx';
+import {ObservableMap, observable} from 'mobx';
 
 import {SyncableObjectFactory} from '../context';
-import {getSyncableRef} from '../utils';
 
 import {Syncable, SyncableId, SyncableRef} from './syncable';
 import {SyncableObject} from './syncable-object';
 
 export class SyncableManager {
-  @observable private syncableMap = new Map<SyncableId, Syncable>();
-  @observable private syncableObjectMap = new Map<SyncableId, SyncableObject>();
+  private typeToIdToSyncableMapMap = observable.map<
+    string,
+    ObservableMap<SyncableId, Syncable>
+  >();
+
+  private typeToIdToSyncableObjectMapMap = observable.map<
+    string,
+    ObservableMap<SyncableId, SyncableObject>
+  >();
+
   private associatedTargetSyncableSetMap = new Map<SyncableId, Set<Syncable>>();
 
   constructor(private factory: SyncableObjectFactory) {}
 
-  get syncables(): Syncable[] {
-    return Array.from(this.syncableMap.values());
+  getSyncables(type?: string): Syncable[] {
+    let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
+
+    if (type) {
+      let syncableMap = typeToIdToSyncableMapMap.get(type);
+
+      if (!syncableMap) {
+        return [];
+      }
+
+      return Array.from(syncableMap.values());
+    } else {
+      return _.flatten(
+        Array.from(typeToIdToSyncableMapMap.values()).map(map =>
+          Array.from(map.values()),
+        ),
+      );
+    }
   }
 
-  get syncableObjects(): SyncableObject[] {
-    return this.syncables.map(syncable =>
-      this.requireSyncableObject(getSyncableRef(syncable)),
-    );
+  getSyncableObjects(type?: string): SyncableObject[] {
+    let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
+
+    if (type) {
+      let syncableMap = typeToIdToSyncableMapMap.get(type);
+
+      if (!syncableMap) {
+        return [];
+      }
+
+      return Array.from(syncableMap.keys()).map(id =>
+        this.requireSyncableObject({type, id}),
+      );
+    } else {
+      return _.flatten(
+        Array.from(typeToIdToSyncableMapMap).map(([type, map]) =>
+          Array.from(map.keys()).map(id =>
+            this.requireSyncableObject({type, id}),
+          ),
+        ),
+      );
+    }
   }
 
-  existsSyncable({id}: SyncableRef): boolean {
-    return this.syncableMap.has(id);
+  existsSyncable({type, id}: SyncableRef): boolean {
+    let syncableMap = this.typeToIdToSyncableMapMap.get(type);
+    return !!syncableMap && syncableMap.has(id);
   }
 
   getSyncable<T extends SyncableObject>({
+    type,
     id,
   }: SyncableRef<T>): T['syncable'] | undefined {
-    return this.syncableMap.get(id);
+    let syncableMap = this.typeToIdToSyncableMapMap.get(type);
+    return syncableMap && syncableMap.get(id);
   }
 
   requireSyncable<T extends SyncableObject>(
@@ -48,16 +92,27 @@ export class SyncableManager {
   }
 
   /**
-   * Add a syncable, please notice that it won't change
-   * the reference of the originally stored syncable. Instead, differences will
-   * be applied to it.
+   * Add a syncable, please notice that it won't change the reference of the
+   * originally stored syncable. Instead, differences will be applied to it.
    */
-  addSyncable(snapshot: Syncable): void {
-    let syncableMap = this.syncableMap;
-    let id = snapshot._id;
+  addSyncable(snapshot: Syncable, update = false): void {
+    let {_id: id, _type: type} = snapshot;
 
-    if (syncableMap.has(id)) {
-      throw new Error(`Syncable with ID "${id}" already exists in context`);
+    let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
+    let syncableMap = typeToIdToSyncableMapMap.get(type);
+
+    if (syncableMap) {
+      if (syncableMap.has(id)) {
+        if (update) {
+          this.updateSyncable(snapshot);
+          return;
+        }
+
+        throw new Error(`Syncable with ID "${id}" already exists in context`);
+      }
+    } else {
+      syncableMap = observable.map();
+      typeToIdToSyncableMapMap.set(type, syncableMap);
     }
 
     let syncable = observable(snapshot);
@@ -77,10 +132,12 @@ export class SyncableManager {
    * be applied to it.
    */
   updateSyncable(snapshot: Syncable): void {
-    let syncableMap = this.syncableMap;
-    let id = snapshot._id;
+    let {_id: id, _type: type} = snapshot;
 
-    let syncable = syncableMap.get(id);
+    let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
+    let syncableMap = typeToIdToSyncableMapMap.get(type);
+
+    let syncable = syncableMap && syncableMap.get(id);
 
     if (!syncable) {
       throw new Error(`Syncable with ID "${id}" does not exists in context`);
@@ -109,18 +166,25 @@ export class SyncableManager {
     this.removeAssociatedTargetSyncable(syncable, obsoleteAssociationIds);
   }
 
-  removeSyncable({id}: SyncableRef): void {
-    let syncableMap = this.syncableMap;
-    let syncableObjectMap = this.syncableObjectMap;
+  removeSyncable({type, id}: SyncableRef): void {
+    let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
+    let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
 
-    let syncable = syncableMap.get(id);
+    let syncableMap = typeToIdToSyncableMapMap.get(type);
+
+    let syncable = syncableMap && syncableMap.get(id);
 
     if (!syncable) {
       throw new Error(`Syncable with ID "${id}" does not exists in context`);
     }
 
-    syncableMap.delete(id);
-    syncableObjectMap.delete(id);
+    syncableMap!.delete(id);
+
+    let syncableObjectMap = typeToIdToSyncableObjectMapMap.get(type);
+
+    if (syncableObjectMap) {
+      syncableObjectMap.delete(id);
+    }
 
     let associationIds = (syncable._associations || []).map(
       association => association.ref.id,
@@ -138,19 +202,30 @@ export class SyncableManager {
   }
 
   requireSyncableObject<T extends SyncableObject>(ref: SyncableRef<T>): T {
-    let map = this.syncableObjectMap;
+    let {type, id} = ref;
 
-    let object = map.get(ref.id) as T | undefined;
+    let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
 
-    if (object) {
-      return object;
+    let syncableObjectMap = typeToIdToSyncableObjectMapMap.get(type);
+
+    let object: T | undefined;
+
+    if (syncableObjectMap) {
+      object = syncableObjectMap.get(id) as T | undefined;
+
+      if (object) {
+        return object;
+      }
+    } else {
+      syncableObjectMap = observable.map();
+      typeToIdToSyncableObjectMapMap.set(type, syncableObjectMap);
     }
 
     let syncable = this.requireSyncable(ref);
 
     object = this.factory.create(syncable, this) as T;
 
-    map.set(ref.id, object);
+    syncableObjectMap.set(id, object);
 
     return object;
   }

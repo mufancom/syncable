@@ -1,45 +1,54 @@
 import {
   Change,
   ChangePlantBlueprint,
+  SyncableCreationRef,
   SyncableRef,
   createSyncable,
 } from '@syncable/core';
 
-import {Tag, TagSyncable} from '../syncables';
+import {Tag} from '../syncables';
 
-export type MFTagChange = TagChange | CreateTagChange;
+export type MFTagChange = TagTagChange | TagCreateChange;
 
-export interface TagChangeOptions {
+export interface TagTagChangeOptions {
   foo: boolean;
 }
 
-export interface TagChangeRefDict {
+export interface TagTagChangeRefDict {
   target: SyncableRef;
   tag: SyncableRef<Tag>;
 }
 
-export interface TagChange
-  extends Change<'tag', TagChangeRefDict, TagChangeOptions> {}
+export interface TagTagChange
+  extends Change<'tag:tag', TagTagChangeRefDict, TagTagChangeOptions> {}
 
-export interface CreateTagChangeOptions {
+export interface TagCreateChangeOptions {
   name: string;
 }
 
-export interface CreateTagChange
-  extends Change<'create-tag', {}, CreateTagChangeOptions> {}
+export interface TagCreateChangeRefDict {
+  tag: SyncableCreationRef<Tag>;
+}
+
+export interface TagCreateChange
+  extends Change<
+      'tag:create',
+      TagCreateChangeRefDict,
+      TagCreateChangeOptions
+    > {}
 
 export const tagChangePlantBlueprint: ChangePlantBlueprint<MFTagChange> = {
-  tag() {
+  'tag:tag'({tag}) {
     return {};
   },
-  'create-tag'({}, {name}) {
+  'tag:create'({}, {name}) {
+    let tag = createSyncable<Tag>('tag', {
+      name,
+      derivations: [],
+    });
+
     return {
-      creations: [
-        createSyncable<TagSyncable>('tag', {
-          name,
-          derivations: [],
-        }),
-      ],
+      creations: [tag],
     };
   },
 };

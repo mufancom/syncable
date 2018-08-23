@@ -1,7 +1,14 @@
 import {Dict, StringType} from '../lang';
-import {SyncableRef} from '../syncable';
+import {SyncableObject, SyncableRef} from '../syncable';
 
 export type ChangePacketUID = StringType<'change-uid'>;
+
+export interface SyncableCreationRef<T extends SyncableObject = SyncableObject>
+  extends SyncableRef<T> {
+  creation: true;
+}
+
+export type GeneralSyncableRef = SyncableRef | SyncableCreationRef;
 
 export interface Change<
   Type extends string = string,
@@ -13,7 +20,11 @@ export interface Change<
   options: Options;
 }
 
-export type GeneralChange = Change<string, Dict<SyncableRef>, Dict<any>>;
+export type GeneralChange = Change<
+  string,
+  Dict<SyncableRef | SyncableCreationRef>,
+  Dict<any>
+>;
 
 export interface ChangePacket extends GeneralChange {
   uid: ChangePacketUID;

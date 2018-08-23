@@ -1,7 +1,7 @@
 import {createSyncable, getSyncableRef} from '@syncable/core';
 import {MongoClient} from 'mongodb';
 
-import {TagSyncable, UserSyncable} from '../shared';
+import {Tag, User} from '../shared';
 
 (async () => {
   let client = await MongoClient.connect('mongodb://localhost:27017', {
@@ -13,16 +13,16 @@ import {TagSyncable, UserSyncable} from '../shared';
 
   await syncablesCollection.drop();
 
-  let userSyncable = createSyncable<UserSyncable>('user', {
+  let userSyncable = createSyncable<User>('user', {
     name: 'vilicvane',
   });
 
-  let adminTagSyncable = createSyncable<TagSyncable>('tag', {
+  let adminTagSyncable = createSyncable<Tag>('tag', {
     name: 'admin',
     derivations: [],
   });
 
-  let irrelevantTagSyncable = createSyncable<TagSyncable>('tag', {
+  let irrelevantTagSyncable = createSyncable<Tag>('tag', {
     name: 'irrelevant',
     derivations: [],
   });

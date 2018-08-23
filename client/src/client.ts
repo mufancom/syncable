@@ -6,6 +6,7 @@ import {
   ChangePlant,
   Context,
   GeneralChange,
+  GeneralSyncableRef,
   InitialData,
   SnapshotData,
   Syncable,
@@ -60,7 +61,6 @@ export class Client<
 
     this.ready = new Promise<void>(resolve => {
       socket.on('initialize', data => {
-        console.log('initialize', data);
         this.onInitialize(data);
         resolve();
       });
@@ -76,8 +76,10 @@ export class Client<
     return this.context.user;
   }
 
-  get objects(): TSyncableObject[] {
-    return this.manager.syncableObjects as TSyncableObject[];
+  getObjects(): TSyncableObject[];
+  getObjects<T extends TSyncableObject>(type: T['type']): T[];
+  getObjects(type?: TSyncableObject['type']): TSyncableObject[] {
+    return this.manager.getSyncableObjects(type) as TSyncableObject[];
   }
 
   associate(
@@ -119,19 +121,17 @@ export class Client<
     this.pushChangePacket(packet);
   }
 
-  private onConnection(): void {}
-
   private onInitialize({userRef, ...data}: InitialData<TUser>): void {
-    this.onSnapshotData(data);
+    this.onSnapshotData(data, false);
 
     let user = this.manager.requireSyncableObject(userRef);
     this.context.initialize(user);
   }
 
   private onSync(data: SyncingData): void {
-    this.onSnapshotData(data);
-
     if ('ack' in data) {
+      this.onSnapshotData(data, true);
+
       for (let {ref, diffs} of data.updates) {
         this.onUpdateChange(ref, diffs);
       }
@@ -141,12 +141,17 @@ export class Client<
       for (let packet of this.pendingChangePackets) {
         this.applyChangePacket(packet);
       }
+    } else {
+      this.onSnapshotData(data, false);
     }
   }
 
-  private onSnapshotData({syncables, removals}: SnapshotData): void {
+  private onSnapshotData(
+    {syncables, removals}: SnapshotData,
+    update: boolean,
+  ): void {
     for (let syncable of syncables) {
-      this.onUpdateCreate(syncable);
+      this.onUpdateCreate(syncable, update);
     }
 
     for (let ref of removals) {
@@ -154,8 +159,8 @@ export class Client<
     }
   }
 
-  private onUpdateCreate(syncable: Syncable): void {
-    this.manager.addSyncable(syncable);
+  private onUpdateCreate(syncable: Syncable, update: boolean): void {
+    this.manager.addSyncable(syncable, update);
 
     let snapshot = _.cloneDeep(syncable);
 
@@ -201,13 +206,17 @@ export class Client<
 
     let refDict = packet.refs;
 
-    let syncableObjectDict = _.mapValues(refDict, ref =>
-      manager.requireSyncableObject(ref),
+    let syncableObjectOrCreationRefDict = _.mapValues(
+      refDict,
+      (ref: GeneralSyncableRef) =>
+        'creation' in ref && ref.creation
+          ? ref
+          : manager.requireSyncableObject(ref),
     );
 
     let {updates: updateDict, creations, removals} = this.changePlant.process(
       packet,
-      syncableObjectDict,
+      syncableObjectOrCreationRefDict,
       this.context,
     );
 

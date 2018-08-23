@@ -37,6 +37,14 @@ export type ExtractProperty<T extends object, K> = T extends object
   ? Pick<T, Extract<keyof T, K>>
   : never;
 
-export type KeyOf<T extends object, Type extends any> = Extract<keyof T, Type>;
+export type KeyOf<T extends object, Type = any> = Extract<keyof T, Type>;
+
+export type KeyOfType<T extends object, Type = any> = {
+  [K in keyof T]: T[K] extends Type ? K : never
+}[keyof T];
+
+export type ValueOfType<T extends object, Type = any> = {
+  [K in keyof T]: T[K] extends Type ? T[K] : never
+}[keyof T];
 
 export type Constructor<T extends object = object> = new (...args: any[]) => T;

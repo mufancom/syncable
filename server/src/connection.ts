@@ -3,6 +3,7 @@ import {
   ChangePacket,
   ChangePlantProcessingResultWithTimestamp,
   Context,
+  GeneralSyncableRef,
   InitialData,
   SnapshotData,
   Syncable,
@@ -84,7 +85,7 @@ export class Connection {
       ensureAssociationsAndDoSnapshot(userSyncable, true);
     }
 
-    for (let syncable of manager.syncables) {
+    for (let syncable of manager.getSyncables()) {
       ensureAssociationsAndDoSnapshot(syncable, false);
     }
 
@@ -205,13 +206,17 @@ export class Connection {
 
     let refDict = packet.refs;
 
-    let syncableObjectDict = _.mapValues(refDict, ref =>
-      manager.requireSyncableObject(ref),
+    let syncableObjectOrCreationRefDict = _.mapValues(
+      refDict,
+      (ref: GeneralSyncableRef) =>
+        'creation' in ref && ref.creation
+          ? ref
+          : manager.requireSyncableObject(ref),
     );
 
     let result = this.server.changePlant.process(
       packet,
-      syncableObjectDict,
+      syncableObjectOrCreationRefDict,
       this.context,
       timestamp,
     );
