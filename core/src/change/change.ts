@@ -1,7 +1,8 @@
-import {Dict, StringType} from '../lang';
+import {Dict, Nominal} from 'tslang';
+
 import {SyncableObject, SyncableRef} from '../syncable';
 
-export type ChangePacketUID = StringType<'change-uid'>;
+export type ChangePacketUID = Nominal<string, 'change-uid'>;
 
 export interface SyncableCreationRef<T extends SyncableObject = SyncableObject>
   extends SyncableRef<T> {

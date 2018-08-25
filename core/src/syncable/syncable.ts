@@ -1,3 +1,4 @@
+import {Nominal, OmitValueOfKey} from 'tslang';
 import uuid from 'uuid';
 
 import {
@@ -6,11 +7,11 @@ import {
   SecuringAccessControlEntry,
 } from '../access-control';
 import {SyncableCreationRef} from '../change';
-import {ExcludeProperty, StringType} from '../lang';
 
 import {SyncableObject} from './syncable-object';
 
-export type SyncableId<Type extends string = string> = StringType<
+export type SyncableId<Type extends string = string> = Nominal<
+  string,
   [Type, 'syncable-id']
 >;
 
@@ -97,7 +98,7 @@ export function createSyncableCreationRef<T extends SyncableObject>(
 
 export function createSyncable<T extends SyncableObject>(
   type: T['type'] | SyncableCreationRef<T>,
-  data: ExcludeProperty<T['syncable'], keyof Syncable>,
+  data: OmitValueOfKey<T['syncable'], keyof Syncable>,
 ): T['syncable'] {
   let id: T['id'];
 

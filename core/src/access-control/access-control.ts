@@ -1,4 +1,4 @@
-import {StringType} from '../lang';
+import {Nominal} from 'tslang';
 
 export type AccessRight = 'read' | 'write' | 'full';
 
@@ -6,7 +6,8 @@ export const ACCESS_RIGHTS: AccessRight[] = ['read', 'write', 'full'];
 
 export type AccessControlEntryType = 'allow' | 'deny';
 
-export type AccessControlEntryRuleName = StringType<
+export type AccessControlEntryRuleName = Nominal<
+  string,
   'access-control-entry-rule-name'
 >;
 

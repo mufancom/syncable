@@ -1,8 +1,8 @@
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
+import {Dict, KeyOfValueWithType, ValueWithType} from 'tslang';
 
 import {Context} from '../context';
-import {Dict, KeyOfType, ValueOfType} from '../lang';
 import {Syncable, SyncableObject, SyncableRef, SyncableType} from '../syncable';
 
 import {BuiltInChange, BuiltInChangePlantBlueprint} from './built-in-changes';
@@ -18,7 +18,7 @@ export type RefDictToObjectOrCreationRefDict<
   T extends object
 > = T extends object
   ? {
-      [K in KeyOfType<T, SyncableRef>]: T[K] extends SyncableRef<
+      [K in KeyOfValueWithType<T, SyncableRef>]: T[K] extends SyncableRef<
         infer TSyncableObject
       >
         ? T[K] extends SyncableCreationRef<TSyncableObject>
@@ -36,7 +36,7 @@ export type ChangeToObjectOrCreationRefDict<
 
 export type RefDictToSyncableDict<T extends object> = T extends object
   ? {
-      [K in KeyOfType<T, SyncableRef>]: T[K] extends SyncableRef<
+      [K in KeyOfValueWithType<T, SyncableRef>]: T[K] extends SyncableRef<
         infer TSyncableObject
       >
         ? T[K] extends SyncableCreationRef<TSyncableObject>
@@ -53,7 +53,7 @@ export type ChangeToSyncableDict<T extends Change> = T extends Change<
   ? RefDictToSyncableDict<TRefDict>
   : never;
 
-export type RefDictToCreation<T extends object> = ValueOfType<
+export type RefDictToCreation<T extends object> = ValueWithType<
   T,
   SyncableCreationRef
 >;
@@ -62,7 +62,7 @@ export type ChangeToCreation<T extends Change> = T extends Change<
   string,
   infer TRefDict
 > // ? RefDictToCreation<TRefDict>
-  ? SyncableType<ValueOfType<TRefDict, SyncableCreationRef>>
+  ? SyncableType<ValueWithType<TRefDict, SyncableCreationRef>>
   : never;
 
 export interface ChangePlantProcessorOutput<TChange extends Change> {
