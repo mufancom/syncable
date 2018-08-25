@@ -18,7 +18,6 @@ import {
   MFChange,
   MFSyncableObjectFactory,
   MFViewQuery,
-  User,
   UserSyncable,
 } from '../shared';
 
@@ -54,7 +53,7 @@ export class MFGroupClock {
   }
 }
 
-export class MFServer extends Server<User, MFChange, MFViewQuery> {
+export class MFServer extends Server<MFChange, MFViewQuery> {
   private dbClientPromise = MongoClient.connect('mongodb://localhost:27017', {
     useNewUrlParser: true,
   });
