@@ -38,6 +38,7 @@ interface GroupInfo {
 }
 
 export abstract class Server<
+  TUser extends UserSyncableObject = UserSyncableObject,
   TChange extends Change = GeneralChange,
   TViewQuery extends unknown = unknown
 > extends EventEmitter {
@@ -47,7 +48,7 @@ export abstract class Server<
   constructor(
     httpServer: HTTPServer,
     readonly factory: SyncableObjectFactory,
-    readonly changePlant: ChangePlant<TChange>,
+    readonly changePlant: ChangePlant<TUser, TChange>,
   ) {
     super();
 

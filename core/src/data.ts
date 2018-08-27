@@ -18,13 +18,13 @@ export interface InitialData<
 }
 
 export interface UpdateData extends SnapshotData {
-  ack: ChangeAck;
+  source: ChangeSource;
   updates: SyncingDataUpdateEntry[];
 }
 
 export type SyncingData = SnapshotData | UpdateData;
 
-export interface ChangeAck {
+export interface ChangeSource {
   uid: ChangePacketUID;
   timestamp: number;
 }

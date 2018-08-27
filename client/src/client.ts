@@ -47,12 +47,12 @@ export class Client<
   constructor(
     uri: string,
     factory: SyncableObjectFactory,
-    changePlant: ChangePlant<TChange>,
+    changePlant: ChangePlant<TUser, TChange>,
   );
   constructor(
     uri: string,
     factory: SyncableObjectFactory,
-    private changePlant: ChangePlant<GeneralChange>,
+    private changePlant: ChangePlant,
   ) {
     this.context = new Context();
     this.manager = new SyncableManager(factory);
@@ -129,14 +129,14 @@ export class Client<
   }
 
   private onSync(data: SyncingData): void {
-    if ('ack' in data) {
-      this.onSnapshotData(data, true);
+    if ('source' in data) {
+      let matched = this.shiftChangePacket(data.source.uid);
+
+      this.onSnapshotData(data, matched);
 
       for (let {ref, diffs} of data.updates) {
         this.onUpdateChange(ref, diffs);
       }
-
-      this.shiftChangePacket(data.ack.uid);
 
       for (let packet of this.pendingChangePackets) {
         this.applyChangePacket(packet);
@@ -182,18 +182,18 @@ export class Client<
     this.manager.updateSyncable(snapshot);
   }
 
-  private shiftChangePacket(uid: ChangePacketUID): void {
+  private shiftChangePacket(uid: ChangePacketUID): boolean {
     let packets = this.pendingChangePackets;
 
     let index = packets.findIndex(packet => packet.uid === uid);
 
     if (index < 0) {
-      return;
+      return false;
     }
 
     if (index === 0) {
       packets.shift();
-      return;
+      return true;
     }
 
     throw new Error(

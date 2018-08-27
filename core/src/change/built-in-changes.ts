@@ -1,7 +1,12 @@
 import _ from 'lodash';
 
 import {AccessControlEntry} from '../access-control';
-import {Syncable, SyncableAssociation, SyncableRef} from '../syncable';
+import {
+  Syncable,
+  SyncableAssociation,
+  SyncableRef,
+  UserSyncableObject,
+} from '../syncable';
 import {getSyncableRef} from '../utils';
 
 import {Change} from './change';
@@ -85,6 +90,7 @@ export type UnsetAccessControlEntriesChange = Change<
 >;
 
 export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
+  UserSyncableObject,
   BuiltInChange
 > = {
   $associate(

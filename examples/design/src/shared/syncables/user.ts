@@ -1,12 +1,12 @@
-import {Syncable, SyncableId, UserSyncableObject} from '@syncable/core';
+import {Syncable, SyncableIdType, UserSyncableObject} from '@syncable/core';
 
 import {Tag} from './tag';
-
-export type UserId = SyncableId<'user'>;
 
 export interface UserSyncable extends Syncable<'user'> {
   name: string;
 }
+
+export type UserId = SyncableIdType<UserSyncable>;
 
 export type MFPermission = 'server' | 'sms';
 

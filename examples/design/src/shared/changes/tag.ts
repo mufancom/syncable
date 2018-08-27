@@ -6,7 +6,7 @@ import {
   createSyncable,
 } from '@syncable/core';
 
-import {Tag} from '../syncables';
+import {Tag, User} from '../syncables';
 
 export type MFTagChange = TagTagChange | TagCreateChange;
 
@@ -37,7 +37,10 @@ export interface TagCreateChange
       TagCreateChangeOptions
     > {}
 
-export const tagChangePlantBlueprint: ChangePlantBlueprint<MFTagChange> = {
+export const tagChangePlantBlueprint: ChangePlantBlueprint<
+  User,
+  MFTagChange
+> = {
   'tag:tag'({tag}) {
     return {};
   },

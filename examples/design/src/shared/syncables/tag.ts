@@ -2,12 +2,10 @@ import {
   AccessControlRule,
   Context,
   Syncable,
-  SyncableId,
+  SyncableIdType,
   SyncableObject,
 } from '@syncable/core';
 import _ from 'lodash';
-
-export type TagId = SyncableId<'tag'>;
 
 export interface TagMutualAssociationOptions {
   acceptDerivation?: boolean;
@@ -17,6 +15,8 @@ export interface TagSyncable extends Syncable<'tag'> {
   name: string;
   derivations: string[];
 }
+
+export type TagId = SyncableIdType<TagSyncable>;
 
 export class Tag extends SyncableObject<TagSyncable> {
   get name(): string {

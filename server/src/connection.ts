@@ -1,7 +1,7 @@
 import {
-  ChangeAck,
   ChangePacket,
   ChangePlantProcessingResultWithTimestamp,
+  ChangeSource,
   Context,
   GeneralSyncableRef,
   InitialData,
@@ -165,9 +165,9 @@ export class Connection {
       }
     }
 
-    let ack: ChangeAck = {uid, timestamp};
+    let source: ChangeSource = {uid, timestamp};
 
-    socket.emit('sync', {ack, updates, ...snapshotData});
+    socket.emit('sync', {source, updates, ...snapshotData});
   }
 
   @observable private filter: ViewQueryFilter = () => false;

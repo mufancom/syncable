@@ -3,7 +3,13 @@ import _ from 'lodash';
 import {Dict, KeyOfValueWithType, ValueWithType} from 'tslang';
 
 import {Context} from '../context';
-import {Syncable, SyncableObject, SyncableRef, SyncableType} from '../syncable';
+import {
+  Syncable,
+  SyncableObject,
+  SyncableRef,
+  SyncableType,
+  UserSyncableObject,
+} from '../syncable';
 
 import {BuiltInChange, BuiltInChangePlantBlueprint} from './built-in-changes';
 import {
@@ -61,7 +67,7 @@ export type RefDictToCreation<T extends object> = ValueWithType<
 export type ChangeToCreation<T extends Change> = T extends Change<
   string,
   infer TRefDict
-> // ? RefDictToCreation<TRefDict>
+>
   ? SyncableType<ValueWithType<TRefDict, SyncableCreationRef>>
   : never;
 
@@ -87,32 +93,46 @@ export interface ChangePlantProcessingResultWithTimestamp
   timestamp: number;
 }
 
-export interface ChangePlantProcessorOptions {
-  context: Context;
+export interface ChangePlantProcessorOptions<
+  TUser extends UserSyncableObject = UserSyncableObject
+> {
+  context: Context<TUser>;
 }
 
-export type ChangePlantProcessor<TChange extends Change = Change> = (
+export type ChangePlantProcessor<
+  TUser extends UserSyncableObject = UserSyncableObject,
+  TChange extends Change = GeneralChange
+> = (
   syncables: ChangeToSyncableDict<TChange>,
   objects: ChangeToObjectOrCreationRefDict<TChange>,
-  options: ChangePlantProcessorOptions & TChange['options'],
+  options: ChangePlantProcessorOptions<TUser> & TChange['options'],
 ) => ChangePlantProcessorOutput<TChange> | void;
 
-export type ChangePlantBlueprint<T extends Change> = {
-  [K in T['type']]: ChangePlantProcessor<Extract<T, {type: K}>>
+export type ChangePlantBlueprint<
+  TUser extends UserSyncableObject,
+  TChange extends Change
+> = {
+  [K in TChange['type']]: ChangePlantProcessor<
+    TUser,
+    Extract<TChange, {type: K}>
+  >
 };
 
-export class ChangePlant<TChange extends Change = Change> {
-  constructor(private blueprint: ChangePlantBlueprint<TChange>) {}
+export class ChangePlant<
+  TUser extends UserSyncableObject = UserSyncableObject,
+  TChange extends Change = GeneralChange
+> {
+  constructor(private blueprint: ChangePlantBlueprint<TUser, TChange>) {}
 
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<SyncableObject | SyncableCreationRef>,
-    context: Context,
+    context: Context<TUser>,
   ): ChangePlantProcessingResult;
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<SyncableObject | SyncableCreationRef>,
-    context: Context,
+    context: Context<TUser>,
     timestamp: number,
   ): ChangePlantProcessingResultWithTimestamp;
   process(
@@ -122,11 +142,11 @@ export class ChangePlant<TChange extends Change = Change> {
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
     let processor = ((BuiltInChangePlantBlueprint as Dict<
-      ChangePlantProcessor<BuiltInChange> | undefined
+      ChangePlantProcessor<TUser, BuiltInChange> | undefined
     >)[type] ||
-      (this.blueprint as Dict<ChangePlantProcessor<TChange> | undefined>)[
-        type
-      ]) as ChangePlantProcessor<GeneralChange>;
+      (this.blueprint as Dict<
+        ChangePlantProcessor<TUser, TChange> | undefined
+      >)[type]) as ChangePlantProcessor;
 
     let syncableObjectEntries = Array.from(
       Object.entries(syncableObjectOrCreationRefDict),

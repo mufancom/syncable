@@ -15,7 +15,7 @@ import {
 } from '../shared';
 
 let factory = new MFSyncableObjectFactory();
-let changePlant = new ChangePlant<MFChange>(mfChangePlantBlueprint);
+let changePlant = new ChangePlant<User, MFChange>(mfChangePlantBlueprint);
 
 let client = new Client<User, MFSyncableObject, MFChange>(
   'ws://localhost:8080',

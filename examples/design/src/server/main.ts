@@ -9,6 +9,7 @@ import {ChangePlant} from '@syncable/core';
 import {
   MFChange,
   MFSyncableObjectFactory,
+  User,
   mfChangePlantBlueprint,
 } from '../shared';
 
@@ -16,7 +17,7 @@ import {MFServer} from './mf-server';
 
 let factory = new MFSyncableObjectFactory();
 
-let changePlant = new ChangePlant<MFChange>(mfChangePlantBlueprint);
+let changePlant = new ChangePlant<User, MFChange>(mfChangePlantBlueprint);
 
 let httpServer = createServer();
 
