@@ -69,6 +69,8 @@ export abstract class Server<
   abstract getViewQueryFilter(query: TViewQuery): ViewQueryFilter;
 
   async update(group: string, change: TChange | BuiltInChange): Promise<void> {
+    await this.initializeGroup(group);
+
     let packet: ChangePacket = {
       uid: uuid() as ChangePacketUID,
       ...(change as GeneralChange),
@@ -119,6 +121,16 @@ export abstract class Server<
   private async initializeConnection(socket: ConnectionSocket): Promise<void> {
     let {group, userRef, viewQuery} = await this.resolveSession(socket);
 
+    let groupInfo = await this.initializeGroup(group);
+
+    let connection = new Connection(group, socket, this, groupInfo.manager);
+
+    groupInfo.connectionSet.add(connection);
+
+    connection.initialize(userRef, viewQuery).catch(console.error);
+  }
+
+  private async initializeGroup(group: string): Promise<GroupInfo> {
     let groupInfoMap = this.groupInfoMap;
 
     let groupInfo = groupInfoMap.get(group);
@@ -140,11 +152,7 @@ export abstract class Server<
 
     await groupInfo.loadingPromise;
 
-    let connection = new Connection(group, socket, this, groupInfo.manager);
-
-    groupInfo.connectionSet.add(connection);
-
-    connection.initialize(userRef, viewQuery).catch(console.error);
+    return groupInfo;
   }
 
   private async loadAndAddSyncables(
