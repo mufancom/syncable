@@ -2,7 +2,7 @@
   "name": "syncable-packages",
   "private": true,
   "scripts": {
-    "lerna:publish": "lerna publish --npm-client=npm --registry=https://registry.npmjs.org"
+    "lerna:publish": "lerna publish --canary --npm-client=npm --registry=https://registry.npmjs.org"
   },
   "devDependencies": {
     "@magicspace/configs": "^0.1.24",

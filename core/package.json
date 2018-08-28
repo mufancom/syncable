@@ -18,8 +18,8 @@
   "main": "bld/index.js",
   "types": "bld/index.d.ts",
   "files": [
-    "src",
-    "types"
+    "bld",
+    "!*.js.map"
   ],
   "peerDependencies": {
     "mobx": "^5.0.3"
