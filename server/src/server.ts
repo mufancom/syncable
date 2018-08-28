@@ -44,6 +44,10 @@ interface GroupInfo {
   loadingPromise: Promise<void>;
 }
 
+export interface AbstractServerOptions {
+  path?: string;
+}
+
 export abstract class AbstractServer<
   TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
   TChange extends IChange = IChange,
@@ -58,10 +62,11 @@ export abstract class AbstractServer<
     httpServer: HTTPServer,
     readonly factory: AbstractSyncableObjectFactory,
     readonly changePlant: ChangePlant<TUser, TChange>,
+    {path}: AbstractServerOptions = {},
   ) {
     super();
 
-    this.server = io(httpServer);
+    this.server = io(httpServer, {path});
 
     this.initialize().catch(this.error);
   }
