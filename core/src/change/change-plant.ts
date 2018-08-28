@@ -11,7 +11,7 @@ import {
   UserSyncableObject,
 } from '../syncable';
 
-import {BuiltInChange, BuiltInChangePlantBlueprint} from './built-in-changes';
+import {builtInChangePlantBlueprint} from './built-in-changes';
 import {
   Change,
   ChangePacket,
@@ -94,9 +94,11 @@ export interface ChangePlantProcessingResultWithTimestamp
 }
 
 export interface ChangePlantProcessorOptions<
-  TUser extends UserSyncableObject = UserSyncableObject
+  TUser extends UserSyncableObject = UserSyncableObject,
+  TChange extends Change = GeneralChange
 > {
   context: Context<TUser>;
+  options: TChange['options'];
 }
 
 export type ChangePlantProcessor<
@@ -105,7 +107,7 @@ export type ChangePlantProcessor<
 > = (
   syncables: ChangeToSyncableDict<TChange>,
   objects: ChangeToObjectOrCreationRefDict<TChange>,
-  options: ChangePlantProcessorOptions<TUser> & TChange['options'],
+  data: ChangePlantProcessorOptions<TUser, TChange>,
 ) => ChangePlantProcessorOutput<TChange> | void;
 
 export type ChangePlantBlueprint<
@@ -141,12 +143,8 @@ export class ChangePlant<
     context: Context,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
-    let processor = ((BuiltInChangePlantBlueprint as Dict<
-      ChangePlantProcessor<TUser, BuiltInChange> | undefined
-    >)[type] ||
-      (this.blueprint as Dict<
-        ChangePlantProcessor<TUser, TChange> | undefined
-      >)[type]) as ChangePlantProcessor;
+    let processor = ((builtInChangePlantBlueprint as any)[type] ||
+      (this.blueprint as any)[type]) as ChangePlantProcessor<TUser, Change>;
 
     let syncableObjectEntries = Array.from(
       Object.entries(syncableObjectOrCreationRefDict),
@@ -188,8 +186,8 @@ export class ChangePlant<
         >,
         {
           context,
-          ...options,
-        } as ChangePlantProcessorOptions,
+          options,
+        } as ChangePlantProcessorOptions<TUser, TChange>,
       ) || {};
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};

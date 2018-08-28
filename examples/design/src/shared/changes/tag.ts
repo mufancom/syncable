@@ -44,7 +44,7 @@ export const tagChangePlantBlueprint: ChangePlantBlueprint<
   'tag:tag'({tag}) {
     return {};
   },
-  'tag:create'({}, {}, {name}) {
+  'tag:create'({}, {}, {options: {name}}) {
     let tag = createSyncable<Tag>('tag', {
       name,
       derivations: [],

@@ -1,9 +1,7 @@
 import {
   ChangePacket,
   ChangePlantProcessingResultWithTimestamp,
-  ChangeSource,
   Context,
-  GeneralSyncableRef,
   InitialData,
   SnapshotData,
   Syncable,
@@ -12,13 +10,14 @@ import {
   SyncableRef,
   SyncingData,
   SyncingDataUpdateEntry,
+  UpdateSource,
   UserSyncableObject,
   getSyncableRef,
 } from '@syncable/core';
 import _ from 'lodash';
 import {observable} from 'mobx';
 
-import {GroupClock, Server, ViewQueryFilter} from './server';
+import {Server, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'view-query', listener: (query: unknown) => void): this;
@@ -36,7 +35,6 @@ export class Connection {
     readonly group: string,
     private socket: ConnectionSocket,
     private server: Server,
-    private clock: GroupClock,
     private manager: SyncableManager,
   ) {}
 
@@ -49,7 +47,7 @@ export class Connection {
 
     socket
       .on('change', packet => {
-        this.getTimestampAndUpdate(packet).catch(this.error);
+        this.update(packet);
       })
       .on('view-query', query => {
         this.updateViewQuery(query);
@@ -57,7 +55,7 @@ export class Connection {
 
     let user = manager.requireSyncableObject(userRef);
 
-    this.context = new Context(user);
+    this.context = new Context('user', user);
 
     this.updateViewQuery(viewQuery, false);
 
@@ -165,28 +163,15 @@ export class Connection {
       }
     }
 
-    let source: ChangeSource = {uid, timestamp};
+    let source: UpdateSource = {uid, timestamp};
 
     socket.emit('sync', {source, updates, ...snapshotData});
   }
 
   @observable private filter: ViewQueryFilter = () => false;
 
-  private error = (error: Error): void => {
-    console.error(error);
-    this.socket.disconnect();
-  };
-
-  private async getTimestampAndUpdate(packet: ChangePacket): Promise<void> {
-    let timestamp = await this.clock.next();
-
-    await this.update(packet, timestamp);
-  }
-
-  private async update(packet: ChangePacket, timestamp: number): Promise<void> {
-    let result = this.applyChangePacket(packet, timestamp);
-
-    this.server.saveAndBroadcastChangeResult(this.group, result);
+  private update(packet: ChangePacket): void {
+    this.server.applyChangePacket(this.group, packet, this.context);
   }
 
   private updateViewQuery(query: unknown, snapshot = true): void {
@@ -196,45 +181,5 @@ export class Connection {
       let snapshotData = this.snapshot();
       this.socket.emit('sync', {...snapshotData});
     }
-  }
-
-  private applyChangePacket(
-    packet: ChangePacket,
-    timestamp: number,
-  ): ChangePlantProcessingResultWithTimestamp {
-    let manager = this.manager;
-
-    let refDict = packet.refs;
-
-    let syncableObjectOrCreationRefDict = _.mapValues(
-      refDict,
-      (ref: GeneralSyncableRef) =>
-        'creation' in ref && ref.creation
-          ? ref
-          : manager.requireSyncableObject(ref),
-    );
-
-    let result = this.server.changePlant.process(
-      packet,
-      syncableObjectOrCreationRefDict,
-      this.context,
-      timestamp,
-    );
-
-    let {updates: updateDict, creations, removals} = result;
-
-    for (let {snapshot} of Object.values(updateDict)) {
-      manager.updateSyncable(snapshot);
-    }
-
-    for (let syncable of creations) {
-      manager.addSyncable(syncable);
-    }
-
-    for (let ref of removals) {
-      manager.removeSyncable(ref);
-    }
-
-    return result;
   }
 }

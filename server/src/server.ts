@@ -2,10 +2,15 @@ import {EventEmitter} from 'events';
 import {Server as HTTPServer} from 'http';
 
 import {
+  BuiltInChange,
   Change,
+  ChangePacket,
+  ChangePacketUID,
   ChangePlant,
   ChangePlantProcessingResultWithTimestamp,
+  Context,
   GeneralChange,
+  GeneralSyncableRef,
   Syncable,
   SyncableManager,
   SyncableObject,
@@ -13,7 +18,9 @@ import {
   SyncableRef,
   UserSyncableObject,
 } from '@syncable/core';
+import _ from 'lodash';
 import io from 'socket.io';
+import uuid from 'uuid';
 import * as v from 'villa';
 
 import {Connection, ConnectionSocket} from './connection';
@@ -39,11 +46,13 @@ interface GroupInfo {
 
 export abstract class Server<
   TUser extends UserSyncableObject = UserSyncableObject,
-  TChange extends Change = GeneralChange,
+  TChange extends Change = Change,
   TViewQuery extends unknown = unknown
 > extends EventEmitter {
   private server: io.Server;
   private groupInfoMap = new Map<string, GroupInfo>();
+
+  private context = new Context<TUser>('server');
 
   constructor(
     httpServer: HTTPServer,
@@ -59,11 +68,21 @@ export abstract class Server<
 
   abstract getViewQueryFilter(query: TViewQuery): ViewQueryFilter;
 
-  saveAndBroadcastChangeResult(
+  async update(group: string, change: TChange | BuiltInChange): Promise<void> {
+    let packet: ChangePacket = {
+      uid: uuid() as ChangePacketUID,
+      ...(change as GeneralChange),
+    };
+
+    await this._applyChangePacket(group, packet, this.context);
+  }
+
+  applyChangePacket(
     group: string,
-    result: ChangePlantProcessingResultWithTimestamp,
+    packet: ChangePacket,
+    context: Context<TUser>,
   ): void {
-    this._saveAndBroadcastChangeResult(group, result).catch(error =>
+    this._applyChangePacket(group, packet, context).catch(error =>
       this.emit('error', error),
     );
   }
@@ -121,13 +140,7 @@ export abstract class Server<
 
     await groupInfo.loadingPromise;
 
-    let connection = new Connection(
-      group,
-      socket,
-      this,
-      groupInfo.clock,
-      groupInfo.manager,
-    );
+    let connection = new Connection(group, socket, this, groupInfo.manager);
 
     groupInfo.connectionSet.add(connection);
 
@@ -145,7 +158,58 @@ export abstract class Server<
     }
   }
 
-  private async _saveAndBroadcastChangeResult(
+  private async _applyChangePacket(
+    group: string,
+    packet: ChangePacket,
+    context: Context<TUser>,
+  ): Promise<void> {
+    let info = this.groupInfoMap.get(group);
+
+    if (!info) {
+      throw new Error(
+        `Syncable group "${info}" has not been initialized on this instance`,
+      );
+    }
+
+    let {manager, clock} = info;
+
+    let timestamp = await clock.next();
+
+    let refDict = packet.refs;
+
+    let syncableObjectOrCreationRefDict = _.mapValues(
+      refDict,
+      (ref: GeneralSyncableRef) =>
+        'creation' in ref && ref.creation
+          ? ref
+          : manager.requireSyncableObject(ref),
+    );
+
+    let result = this.changePlant.process(
+      packet,
+      syncableObjectOrCreationRefDict,
+      context,
+      timestamp,
+    );
+
+    let {updates: updateDict, creations, removals} = result;
+
+    for (let {snapshot} of Object.values(updateDict)) {
+      manager.updateSyncable(snapshot);
+    }
+
+    for (let syncable of creations) {
+      manager.addSyncable(syncable);
+    }
+
+    for (let ref of removals) {
+      manager.removeSyncable(ref);
+    }
+
+    await this.saveAndBroadcastChangeResult(group, result);
+  }
+
+  private async saveAndBroadcastChangeResult(
     group: string,
     result: ChangePlantProcessingResultWithTimestamp,
   ): Promise<void> {

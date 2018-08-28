@@ -54,7 +54,7 @@ export class Client<
     factory: SyncableObjectFactory,
     private changePlant: ChangePlant,
   ) {
-    this.context = new Context();
+    this.context = new Context('user');
     this.manager = new SyncableManager(factory);
 
     let socket = (this.socket = createClientSocket<TUser>(uri));

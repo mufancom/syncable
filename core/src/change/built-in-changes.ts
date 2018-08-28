@@ -89,14 +89,14 @@ export type UnsetAccessControlEntriesChange = Change<
   UnsetAccessControlEntriesChangeOptions
 >;
 
-export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
+export const builtInChangePlantBlueprint: ChangePlantBlueprint<
   UserSyncableObject,
   BuiltInChange
 > = {
   $associate(
     {target, source},
     {target: targetObject},
-    {name, requisite, secures, context},
+    {context, options: {name, requisite, secures}},
   ) {
     let associations = target._associations;
 
@@ -163,7 +163,7 @@ export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
   '$set-access-control-entries'(
     {target},
     {target: targetObject},
-    {context, entries},
+    {context, options: {entries}},
   ) {
     targetObject.validateAccessRights(['full'], context);
 
@@ -186,7 +186,7 @@ export const BuiltInChangePlantBlueprint: ChangePlantBlueprint<
   '$unset-access-control-entries'(
     {target},
     {target: targetObject},
-    {context, names},
+    {context, options: {names}},
   ) {
     targetObject.validateAccessRights(['full'], context);
 

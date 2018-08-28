@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
-    "@syncable/client": "^2.0.0",
-    "@syncable/core": "^2.0.0",
-    "@syncable/server": "^2.0.0",
+    "@syncable/client": "^2.0.0-wip.0",
+    "@syncable/core": "^2.0.0-wip.0",
+    "@syncable/server": "^2.0.0-wip.0",
     "lodash": "^4.17.10",
     "mobx": "^5.0.4",
     "mongodb": "^3.1.1",

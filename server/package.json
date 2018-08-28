@@ -25,17 +25,19 @@
     "!*.js.map"
   ],
   "peerDependencies": {
-    "@syncable/core": "^2.0.0",
+    "@syncable/core": "^2.0.0-wip.0",
     "mobx": "^5.0.3"
   },
   "dependencies": {
     "lodash": "^4.17.10",
     "socket.io": "^2.1.1",
     "tslang": "^0.1.4",
+    "uuid": "^3.3.2",
     "villa": "^0.3.1"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.116",
-    "@types/socket.io": "^1.4.36"
+    "@types/socket.io": "^1.4.36",
+    "@types/uuid": "^3.4.3"
   }
 }

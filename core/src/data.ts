@@ -18,13 +18,13 @@ export interface InitialData<
 }
 
 export interface UpdateData extends SnapshotData {
-  source: ChangeSource;
+  source: UpdateSource;
   updates: SyncingDataUpdateEntry[];
 }
 
 export type SyncingData = SnapshotData | UpdateData;
 
-export interface ChangeSource {
+export interface UpdateSource {
   uid: ChangePacketUID;
   timestamp: number;
 }
