@@ -1,6 +1,9 @@
 {
   "name": "@syncable/core",
   "version": "2.0.0-nightly.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Syncable.",
   "repository": {
     "type": "git",
