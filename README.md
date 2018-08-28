@@ -2,6 +2,7 @@
 
 ## Features
 
+* Based on MobX.
 * Real-time change synchronization.
 * Association-based access control.
 * View query support.
@@ -16,4 +17,6 @@ All syncables in the same group will be loaded into memory (single thread), shar
 * Performance optimization.
 * More flexible scaling options.
 
-## Change
+## License
+
+MIT License.
