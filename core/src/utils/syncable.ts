@@ -1,6 +1,6 @@
-import {SyncableObject, SyncableRef} from '../syncable';
+import {AbstractSyncableObject, SyncableRef} from '../syncable';
 
-export function getSyncableRef<T extends SyncableObject>({
+export function getSyncableRef<T extends AbstractSyncableObject>({
   _id,
   _type,
 }: T['syncable']): SyncableRef<T> {

@@ -1,6 +1,3 @@
 {
-  "extends": "@magicspace/configs/tslint-prettier",
-  "rules": {
-    "no-console": [true, "log"]
-  }
+  "extends": "@magicspace/configs/tslint-prettier"
 }

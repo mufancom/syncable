@@ -1,12 +1,12 @@
 import {
+  AbstractUserSyncableObject,
   ChangePacket,
   InitialData,
   SyncingData,
-  UserSyncableObject,
 } from '@syncable/core';
 import io from 'socket.io-client';
 
-export interface ClientSocket<TUser extends UserSyncableObject>
+export interface ClientSocket<TUser extends AbstractUserSyncableObject>
   extends SocketIOClient.Socket {
   on(event: 'reconnect', listener: (attempt: number) => void): this;
 
@@ -19,7 +19,7 @@ export interface ClientSocket<TUser extends UserSyncableObject>
   emit(event: 'request', request: Request): this;
 }
 
-export function createClientSocket<TUser extends UserSyncableObject>(
+export function createClientSocket<TUser extends AbstractUserSyncableObject>(
   uri: string,
 ): ClientSocket<TUser> {
   return io(uri, {transports: ['websocket']}) as ClientSocket<TUser>;

@@ -1,12 +1,12 @@
 import {Permission} from '../access-control';
 
-import {Syncable} from './syncable';
-import {SyncableObject} from './syncable-object';
+import {ISyncable} from './syncable';
+import {AbstractSyncableObject} from './syncable-object';
 
-export class UserSyncableObject<
-  T extends Syncable = Syncable,
+export abstract class AbstractUserSyncableObject<
+  T extends ISyncable = ISyncable,
   TPermission extends Permission = Permission
-> extends SyncableObject<T> {
+> extends AbstractSyncableObject<T> {
   get permissions(): TPermission[] {
     let associations = this.getRequisiteAssociations();
     let permissions = this.syncable._permissions || [];

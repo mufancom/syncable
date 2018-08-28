@@ -2,14 +2,14 @@ import _ from 'lodash';
 
 import {AccessControlEntry} from '../access-control';
 import {
-  Syncable,
+  AbstractUserSyncableObject,
+  ISyncable,
   SyncableAssociation,
   SyncableRef,
-  UserSyncableObject,
 } from '../syncable';
 import {getSyncableRef} from '../utils';
 
-import {Change} from './change';
+import {IChange} from './change';
 import {ChangePlantBlueprint} from './change-plant';
 
 export type BuiltInChange =
@@ -33,7 +33,7 @@ export interface AssociateChangeOptions {
   secures: boolean;
 }
 
-export type AssociateChange = Change<
+export type AssociateChange = IChange<
   '$associate',
   AssociateChangeRefDict,
   AssociateChangeOptions
@@ -48,7 +48,7 @@ export interface UnassociateChangeRefDict {
   source: SyncableRef;
 }
 
-export type UnassociateChange = Change<
+export type UnassociateChange = IChange<
   '$unassociate',
   UnassociateChangeRefDict
 >;
@@ -65,7 +65,7 @@ export interface SetAccessControlEntriesChangeOptions {
   entries: AccessControlEntry[];
 }
 
-export type SetAccessControlEntriesChange = Change<
+export type SetAccessControlEntriesChange = IChange<
   '$set-access-control-entries',
   SetAccessControlEntriesChangeRefDict,
   SetAccessControlEntriesChangeOptions
@@ -83,14 +83,14 @@ export interface UnsetAccessControlEntriesChangeOptions {
   names: string[];
 }
 
-export type UnsetAccessControlEntriesChange = Change<
+export type UnsetAccessControlEntriesChange = IChange<
   '$unset-access-control-entries',
   UnsetAccessControlEntriesChangeRefDict,
   UnsetAccessControlEntriesChangeOptions
 >;
 
 export const builtInChangePlantBlueprint: ChangePlantBlueprint<
-  UserSyncableObject,
+  AbstractUserSyncableObject,
   BuiltInChange
 > = {
   $associate(
@@ -204,7 +204,7 @@ export const builtInChangePlantBlueprint: ChangePlantBlueprint<
 
 function compareAssociationWithSyncable(
   {ref: {type, id}}: SyncableAssociation,
-  {_type, _id}: Syncable,
+  {_type, _id}: ISyncable,
 ): boolean {
   return type === _type && id === _id;
 }

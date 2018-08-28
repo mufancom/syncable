@@ -1,9 +1,9 @@
 import {
+  AbstractSyncableObject,
   AccessControlRule,
   Context,
-  Syncable,
+  ISyncable,
   SyncableIdType,
-  SyncableObject,
 } from '@syncable/core';
 import _ from 'lodash';
 
@@ -11,14 +11,14 @@ export interface TagMutualAssociationOptions {
   acceptDerivation?: boolean;
 }
 
-export interface TagSyncable extends Syncable<'tag'> {
+export interface TagSyncable extends ISyncable<'tag'> {
   name: string;
   derivations: string[];
 }
 
 export type TagId = SyncableIdType<TagSyncable>;
 
-export class Tag extends SyncableObject<TagSyncable> {
+export class Tag extends AbstractSyncableObject<TagSyncable> {
   get name(): string {
     return this.syncable.name;
   }
@@ -44,7 +44,7 @@ export class Tag extends SyncableObject<TagSyncable> {
 
   @AccessControlRule()
   protected 'require-mutual-association'(
-    _target: SyncableObject,
+    _target: AbstractSyncableObject,
     context: Context,
     {acceptDerivation = true}: TagMutualAssociationOptions = {},
   ): boolean {

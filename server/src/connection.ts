@@ -1,23 +1,23 @@
 import {
+  AbstractUserSyncableObject,
   ChangePacket,
   ChangePlantProcessingResultWithTimestamp,
   Context,
+  ISyncable,
   InitialData,
   SnapshotData,
-  Syncable,
   SyncableId,
   SyncableManager,
   SyncableRef,
   SyncingData,
   SyncingDataUpdateEntry,
   UpdateSource,
-  UserSyncableObject,
   getSyncableRef,
 } from '@syncable/core';
 import _ from 'lodash';
 import {observable} from 'mobx';
 
-import {Server, ViewQueryFilter} from './server';
+import {AbstractServer, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'view-query', listener: (query: unknown) => void): this;
@@ -34,12 +34,12 @@ export class Connection {
   constructor(
     readonly group: string,
     private socket: ConnectionSocket,
-    private server: Server,
+    private server: AbstractServer,
     private manager: SyncableManager,
   ) {}
 
   async initialize(
-    userRef: SyncableRef<UserSyncableObject>,
+    userRef: SyncableRef<AbstractUserSyncableObject>,
     viewQuery: unknown,
   ): Promise<void> {
     let socket = this.socket;
@@ -66,16 +66,16 @@ export class Connection {
 
   // TODO: ability limit iteration within a subset of syncables to improve
   // performance.
-  snapshot(userRef?: SyncableRef<UserSyncableObject>): SnapshotData {
+  snapshot(userRef?: SyncableRef<AbstractUserSyncableObject>): SnapshotData {
     let manager = this.manager;
     let context = this.context;
 
     let filter = this.filter;
     let snapshotIdSet = this.snapshotIdSet;
 
-    let ensuredSyncableSet = new Set<Syncable>();
+    let ensuredSyncableSet = new Set<ISyncable>();
 
-    let snapshotSyncables: Syncable[] = [];
+    let snapshotSyncables: ISyncable[] = [];
     let snapshotRemovals: SyncableRef[] = [];
 
     if (userRef) {
@@ -93,7 +93,7 @@ export class Connection {
     };
 
     function ensureAssociationsAndDoSnapshot(
-      syncable: Syncable,
+      syncable: ISyncable,
       requisite: boolean,
     ): void {
       if (ensuredSyncableSet.has(syncable)) {

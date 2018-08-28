@@ -2,8 +2,10 @@ import {EventEmitter} from 'events';
 import {Server as HTTPServer} from 'http';
 
 import {
+  AbstractSyncableObject,
+  AbstractSyncableObjectFactory,
+  AbstractUserSyncableObject,
   BuiltInChange,
-  Change,
   ChangePacket,
   ChangePacketUID,
   ChangePlant,
@@ -11,12 +13,10 @@ import {
   Context,
   GeneralChange,
   GeneralSyncableRef,
-  Syncable,
+  IChange,
+  ISyncable,
   SyncableManager,
-  SyncableObject,
-  SyncableObjectFactory,
   SyncableRef,
-  UserSyncableObject,
 } from '@syncable/core';
 import _ from 'lodash';
 import io from 'socket.io';
@@ -25,11 +25,11 @@ import * as v from 'villa';
 
 import {Connection, ConnectionSocket} from './connection';
 
-export type ViewQueryFilter = (object: SyncableObject) => boolean;
+export type ViewQueryFilter = (object: AbstractSyncableObject) => boolean;
 
 export interface ConnectionSession<TViewQuery> {
   group: string;
-  userRef: SyncableRef<UserSyncableObject>;
+  userRef: SyncableRef<AbstractUserSyncableObject>;
   viewQuery: TViewQuery | undefined;
 }
 
@@ -44,9 +44,9 @@ interface GroupInfo {
   loadingPromise: Promise<void>;
 }
 
-export abstract class Server<
-  TUser extends UserSyncableObject = UserSyncableObject,
-  TChange extends Change = Change,
+export abstract class AbstractServer<
+  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TChange extends IChange = IChange,
   TViewQuery extends unknown = unknown
 > extends EventEmitter {
   private server: io.Server;
@@ -56,7 +56,7 @@ export abstract class Server<
 
   constructor(
     httpServer: HTTPServer,
-    readonly factory: SyncableObjectFactory,
+    readonly factory: AbstractSyncableObjectFactory,
     readonly changePlant: ChangePlant<TUser, TChange>,
   ) {
     super();
@@ -100,10 +100,10 @@ export abstract class Server<
     socket: ConnectionSocket,
   ): Promise<ConnectionSession<TViewQuery>>;
 
-  protected abstract loadSyncables(group: string): Promise<Syncable[]>;
+  protected abstract loadSyncables(group: string): Promise<ISyncable[]>;
 
   protected abstract saveSyncables(
-    syncables: Syncable[],
+    syncables: ISyncable[],
     removals: SyncableRef[],
   ): Promise<void>;
 

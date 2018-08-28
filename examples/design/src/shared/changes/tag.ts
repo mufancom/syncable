@@ -1,6 +1,6 @@
 import {
-  Change,
   ChangePlantBlueprint,
+  IChange,
   SyncableCreationRef,
   SyncableRef,
   createSyncable,
@@ -20,7 +20,7 @@ export interface TagTagChangeRefDict {
 }
 
 export interface TagTagChange
-  extends Change<'tag:tag', TagTagChangeRefDict, TagTagChangeOptions> {}
+  extends IChange<'tag:tag', TagTagChangeRefDict, TagTagChangeOptions> {}
 
 export interface TagCreateChangeOptions {
   name: string;
@@ -31,7 +31,7 @@ export interface TagCreateChangeRefDict {
 }
 
 export interface TagCreateChange
-  extends Change<
+  extends IChange<
       'tag:create',
       TagCreateChangeRefDict,
       TagCreateChangeOptions

@@ -1,8 +1,8 @@
-import {SyncableManager, SyncableObjectFactory} from '@syncable/core';
+import {AbstractSyncableObjectFactory, SyncableManager} from '@syncable/core';
 
 import {MFSyncable, MFSyncableObject, Tag, User} from './syncables';
 
-export class MFSyncableObjectFactory extends SyncableObjectFactory {
+export class MFSyncableObjectFactory extends AbstractSyncableObjectFactory {
   create(syncable: MFSyncable, manager: SyncableManager): MFSyncableObject {
     switch (syncable._type) {
       case 'tag':

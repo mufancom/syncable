@@ -1,9 +1,9 @@
-import {Syncable, UserSyncableObject} from '../syncable';
+import {AbstractUserSyncableObject, ISyncable} from '../syncable';
 
 export type Permission = unknown;
 
 export type PermissionType<
-  TUser extends UserSyncableObject
-> = TUser extends UserSyncableObject<Syncable, infer TPermission>
+  TUser extends AbstractUserSyncableObject
+> = TUser extends AbstractUserSyncableObject<ISyncable, infer TPermission>
   ? TPermission
   : never;

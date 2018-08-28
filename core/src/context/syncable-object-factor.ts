@@ -1,5 +1,8 @@
-import {Syncable, SyncableManager, SyncableObject} from '../syncable';
+import {AbstractSyncableObject, ISyncable, SyncableManager} from '../syncable';
 
-export abstract class SyncableObjectFactory {
-  abstract create(syncable: Syncable, manager: SyncableManager): SyncableObject;
+export abstract class AbstractSyncableObjectFactory {
+  abstract create(
+    syncable: ISyncable,
+    manager: SyncableManager,
+  ): AbstractSyncableObject;
 }

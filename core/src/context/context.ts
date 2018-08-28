@@ -3,13 +3,13 @@ import {observable} from 'mobx';
 
 import {PermissionType} from '../access-control';
 import {
+  AbstractSyncableObject,
+  AbstractUserSyncableObject,
   GetAssociationOptions,
-  SyncableObject,
-  UserSyncableObject,
 } from '../syncable';
 
 export type AccessControlRuleTester = (
-  target: SyncableObject,
+  target: AbstractSyncableObject,
   context: Context,
   options?: object,
 ) => boolean;
@@ -24,7 +24,9 @@ export type AccessControlRuleTester = (
  */
 export type ContextType = 'server' | 'user';
 
-export class Context<TUser extends UserSyncableObject = UserSyncableObject> {
+export class Context<
+  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject
+> {
   @observable user!: TUser;
 
   constructor(readonly type: ContextType, user?: TUser) {
@@ -53,7 +55,7 @@ export class Context<TUser extends UserSyncableObject = UserSyncableObject> {
     throw new Error('Permission denied');
   }
 
-  getRequisiteAssociations<T extends SyncableObject>(
+  getRequisiteAssociations<T extends AbstractSyncableObject>(
     options: GetAssociationOptions<T> = {},
   ): T[] {
     return this.user.getRequisiteAssociations<T>(options);

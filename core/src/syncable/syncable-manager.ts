@@ -2,27 +2,30 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {ObservableMap, observable} from 'mobx';
 
-import {SyncableObjectFactory} from '../context';
+import {AbstractSyncableObjectFactory} from '../context';
 
-import {Syncable, SyncableId, SyncableRef} from './syncable';
-import {SyncableObject} from './syncable-object';
+import {ISyncable, SyncableId, SyncableRef} from './syncable';
+import {AbstractSyncableObject} from './syncable-object';
 
 export class SyncableManager {
   private typeToIdToSyncableMapMap = observable.map<
     string,
-    ObservableMap<SyncableId, Syncable>
+    ObservableMap<SyncableId, ISyncable>
   >();
 
   private typeToIdToSyncableObjectMapMap = observable.map<
     string,
-    ObservableMap<SyncableId, SyncableObject>
+    ObservableMap<SyncableId, AbstractSyncableObject>
   >();
 
-  private associatedTargetSyncableSetMap = new Map<SyncableId, Set<Syncable>>();
+  private associatedTargetSyncableSetMap = new Map<
+    SyncableId,
+    Set<ISyncable>
+  >();
 
-  constructor(private factory: SyncableObjectFactory) {}
+  constructor(private factory: AbstractSyncableObjectFactory) {}
 
-  getSyncables(type?: string): Syncable[] {
+  getSyncables(type?: string): ISyncable[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
 
     if (type) {
@@ -42,7 +45,7 @@ export class SyncableManager {
     }
   }
 
-  getSyncableObjects(type?: string): SyncableObject[] {
+  getSyncableObjects(type?: string): AbstractSyncableObject[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
 
     if (type) {
@@ -71,7 +74,7 @@ export class SyncableManager {
     return !!syncableMap && syncableMap.has(id);
   }
 
-  getSyncable<T extends SyncableObject>({
+  getSyncable<T extends AbstractSyncableObject>({
     type,
     id,
   }: SyncableRef<T>): T['syncable'] | undefined {
@@ -79,7 +82,7 @@ export class SyncableManager {
     return syncableMap && syncableMap.get(id);
   }
 
-  requireSyncable<T extends SyncableObject>(
+  requireSyncable<T extends AbstractSyncableObject>(
     ref: SyncableRef<T>,
   ): T['syncable'] {
     let syncable = this.getSyncable(ref);
@@ -95,7 +98,7 @@ export class SyncableManager {
    * Add a syncable, please notice that it won't change the reference of the
    * originally stored syncable. Instead, differences will be applied to it.
    */
-  addSyncable(snapshot: Syncable, update = false): void {
+  addSyncable(snapshot: ISyncable, update = false): void {
     let {_id: id, _type: type} = snapshot;
 
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
@@ -131,7 +134,7 @@ export class SyncableManager {
    * the reference of the originally stored syncable. Instead, differences will
    * be applied to it.
    */
-  updateSyncable(snapshot: Syncable): void {
+  updateSyncable(snapshot: ISyncable): void {
     let {_id: id, _type: type} = snapshot;
 
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
@@ -193,7 +196,7 @@ export class SyncableManager {
     this.removeAssociatedTargetSyncable(syncable, associationIds);
   }
 
-  getAssociatedTargetSyncables(source: SyncableRef | Syncable): Syncable[] {
+  getAssociatedTargetSyncables(source: SyncableRef | ISyncable): ISyncable[] {
     let id = 'id' in source ? source.id : source._id;
 
     let set = this.associatedTargetSyncableSetMap.get(id);
@@ -201,7 +204,9 @@ export class SyncableManager {
     return set ? Array.from(set) : [];
   }
 
-  requireSyncableObject<T extends SyncableObject>(ref: SyncableRef<T>): T {
+  requireSyncableObject<T extends AbstractSyncableObject>(
+    ref: SyncableRef<T>,
+  ): T {
     let {type, id} = ref;
 
     let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
@@ -245,7 +250,7 @@ export class SyncableManager {
   }
 
   private addAssociatedTargetSyncable(
-    syncable: Syncable,
+    syncable: ISyncable,
     ids: SyncableId[],
   ): void {
     let associatedTargetSyncableSetMap = this.associatedTargetSyncableSetMap;
@@ -266,7 +271,7 @@ export class SyncableManager {
   }
 
   private removeAssociatedTargetSyncable(
-    syncable: Syncable,
+    syncable: ISyncable,
     ids: SyncableId[],
   ): void {
     let associatedTargetSyncableSetMap = this.associatedTargetSyncableSetMap;

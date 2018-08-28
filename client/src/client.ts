@@ -1,22 +1,22 @@
 import {
+  AbstractSyncableObject,
+  AbstractSyncableObjectFactory,
+  AbstractUserSyncableObject,
   BuiltInChange,
-  Change,
   ChangePacket,
   ChangePacketUID,
   ChangePlant,
   Context,
   GeneralChange,
   GeneralSyncableRef,
+  IChange,
+  ISyncable,
   InitialData,
   SnapshotData,
-  Syncable,
   SyncableId,
   SyncableManager,
-  SyncableObject,
-  SyncableObjectFactory,
   SyncableRef,
   SyncingData,
-  UserSyncableObject,
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
@@ -31,9 +31,9 @@ export interface ClientAssociateOptions {
 }
 
 export class Client<
-  TUser extends UserSyncableObject,
-  TSyncableObject extends SyncableObject,
-  TChange extends Change
+  TUser extends AbstractUserSyncableObject,
+  TSyncableObject extends AbstractSyncableObject,
+  TChange extends IChange
 > {
   readonly context: Context<TUser>;
   readonly ready: Promise<void>;
@@ -42,16 +42,16 @@ export class Client<
   private socket: ClientSocket<TUser>;
 
   private pendingChangePackets: ChangePacket[] = [];
-  private syncableSnapshotMap = new Map<SyncableId, Syncable>();
+  private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
   constructor(
     uri: string,
-    factory: SyncableObjectFactory,
+    factory: AbstractSyncableObjectFactory,
     changePlant: ChangePlant<TUser, TChange>,
   );
   constructor(
     uri: string,
-    factory: SyncableObjectFactory,
+    factory: AbstractSyncableObjectFactory,
     private changePlant: ChangePlant,
   ) {
     this.context = new Context('user');
@@ -159,7 +159,7 @@ export class Client<
     }
   }
 
-  private onUpdateCreate(syncable: Syncable, update: boolean): void {
+  private onUpdateCreate(syncable: ISyncable, update: boolean): void {
     this.manager.addSyncable(syncable, update);
 
     let snapshot = _.cloneDeep(syncable);

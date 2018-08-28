@@ -13,14 +13,14 @@ import {
 import {AccessControlRuleTester, Context} from '../context';
 
 import {AccessControlRule} from './access-control-rule-decorator';
-import {Syncable, SyncableRef} from './syncable';
+import {ISyncable, SyncableRef} from './syncable';
 import {SyncableManager} from './syncable-manager';
 
 export interface AccessControlRuleEntry {
   test: AccessControlRuleTester;
 }
 
-export interface GetAssociationOptions<T extends SyncableObject> {
+export interface GetAssociationOptions<T extends AbstractSyncableObject> {
   name?: string;
   type?: T['type'];
   securesOnly?: boolean;
@@ -40,7 +40,7 @@ type AccessRightComparableItemsDict = {
   [key in AccessRight]: AccessRightComparableItem[]
 };
 
-export abstract class SyncableObject<T extends Syncable = Syncable> {
+export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
   /** @internal */
   // tslint:disable-next-line:variable-name
   __accessControlRuleMap!: Map<
@@ -75,7 +75,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
     return this.syncable._secures || [];
   }
 
-  getRequisiteAssociations<T extends SyncableObject>({
+  getRequisiteAssociations<T extends AbstractSyncableObject>({
     name,
     type,
     securesOnly = false,
@@ -155,7 +155,10 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   }
 
   @AccessControlRule('basic')
-  protected testBasic(_target: SyncableObject, _context: Context): boolean {
+  protected testBasic(
+    _target: AbstractSyncableObject,
+    _context: Context,
+  ): boolean {
     return true;
   }
 
@@ -232,7 +235,7 @@ export abstract class SyncableObject<T extends Syncable = Syncable> {
   }
 
   private testAccessControlEntry(
-    target: SyncableObject,
+    target: AbstractSyncableObject,
     entry: AccessControlEntry,
     context: Context,
   ): boolean {

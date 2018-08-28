@@ -8,20 +8,22 @@ import {
 } from '../access-control';
 import {SyncableCreationRef} from '../change';
 
-import {SyncableObject} from './syncable-object';
+import {AbstractSyncableObject} from './syncable-object';
 
 export type SyncableId<Type extends string = string> = Nominal<
   string,
   [Type, 'syncable-id']
 >;
 
-export interface SyncableRef<T extends SyncableObject = SyncableObject> {
+export interface SyncableRef<
+  T extends AbstractSyncableObject = AbstractSyncableObject
+> {
   id: T['id'];
   type: T['type'];
 }
 
 export interface SyncableAssociation<
-  T extends SyncableObject = SyncableObject
+  T extends AbstractSyncableObject = AbstractSyncableObject
 > {
   ref: SyncableRef<T>;
   name?: string;
@@ -29,7 +31,7 @@ export interface SyncableAssociation<
   secures?: boolean;
 }
 
-export interface Syncable<Type extends string = string> {
+export interface ISyncable<Type extends string = string> {
   _id: SyncableId<Type>;
   _type: Type;
   _timestamp: number;
@@ -67,8 +69,10 @@ export interface Syncable<Type extends string = string> {
 ///////////////
 
 export type SyncableIdType<
-  T extends Syncable | SyncableObject
-> = T extends Syncable ? T['_id'] : T extends SyncableObject ? T['id'] : never;
+  T extends ISyncable | AbstractSyncableObject
+> = T extends ISyncable
+  ? T['_id']
+  : T extends AbstractSyncableObject ? T['id'] : never;
 
 export type SyncableObjectType<T extends SyncableRef> = T extends SyncableRef<
   infer TSyncableObject
@@ -84,7 +88,7 @@ export type SyncableType<T extends SyncableRef> = T extends SyncableCreationRef<
     ? TSyncableObject['syncable']
     : never;
 
-export function createSyncableCreationRef<T extends SyncableObject>(
+export function createSyncableCreationRef<T extends AbstractSyncableObject>(
   type: T['type'],
 ): SyncableCreationRef<T> {
   return {
@@ -94,9 +98,9 @@ export function createSyncableCreationRef<T extends SyncableObject>(
   };
 }
 
-export function createSyncable<T extends SyncableObject>(
+export function createSyncable<T extends AbstractSyncableObject>(
   type: T['type'] | SyncableCreationRef<T>,
-  data: OmitValueOfKey<T['syncable'], keyof Syncable>,
+  data: OmitValueOfKey<T['syncable'], keyof ISyncable>,
 ): T['syncable'] {
   let id: T['id'];
 

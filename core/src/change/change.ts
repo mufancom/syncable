@@ -1,27 +1,28 @@
 import {Dict, Nominal} from 'tslang';
 
-import {SyncableObject, SyncableRef} from '../syncable';
+import {AbstractSyncableObject, SyncableRef} from '../syncable';
 
 export type ChangePacketUID = Nominal<string, 'change-uid'>;
 
-export interface SyncableCreationRef<T extends SyncableObject = SyncableObject>
-  extends SyncableRef<T> {
+export interface SyncableCreationRef<
+  T extends AbstractSyncableObject = AbstractSyncableObject
+> extends SyncableRef<T> {
   creation: true;
 }
 
 export type GeneralSyncableRef = SyncableRef | SyncableCreationRef;
 
-export interface Change<
-  Type extends string = string,
-  RefDict extends object = object,
-  Options extends object = object
+export interface IChange<
+  TType extends string = string,
+  TRefDict extends object = object,
+  TOptions extends object = object
 > {
-  type: Type;
-  refs: RefDict;
-  options: Options;
+  type: TType;
+  refs: TRefDict;
+  options: TOptions;
 }
 
-export type GeneralChange = Change<
+export type GeneralChange = IChange<
   string,
   Dict<SyncableRef | SyncableCreationRef>,
   Dict<any>

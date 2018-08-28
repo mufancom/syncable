@@ -4,19 +4,19 @@ import {Dict, KeyOfValueWithType, ValueWithType} from 'tslang';
 
 import {Context} from '../context';
 import {
-  Syncable,
-  SyncableObject,
+  AbstractSyncableObject,
+  AbstractUserSyncableObject,
+  ISyncable,
   SyncableRef,
   SyncableType,
-  UserSyncableObject,
 } from '../syncable';
 
 import {builtInChangePlantBlueprint} from './built-in-changes';
 import {
-  Change,
   ChangePacket,
   ChangePacketUID,
   GeneralChange,
+  IChange,
   SyncableCreationRef,
 } from './change';
 
@@ -35,8 +35,8 @@ export type RefDictToObjectOrCreationRefDict<
   : never;
 
 export type ChangeToObjectOrCreationRefDict<
-  T extends Change
-> = T extends Change<string, infer TRefDict>
+  T extends IChange
+> = T extends IChange<string, infer TRefDict>
   ? RefDictToObjectOrCreationRefDict<TRefDict>
   : never;
 
@@ -52,7 +52,7 @@ export type RefDictToSyncableDict<T extends object> = T extends object
     }
   : never;
 
-export type ChangeToSyncableDict<T extends Change> = T extends Change<
+export type ChangeToSyncableDict<T extends IChange> = T extends IChange<
   string,
   infer TRefDict
 >
@@ -64,27 +64,27 @@ export type RefDictToCreation<T extends object> = ValueWithType<
   SyncableCreationRef
 >;
 
-export type ChangeToCreation<T extends Change> = T extends Change<
+export type ChangeToCreation<T extends IChange> = T extends IChange<
   string,
   infer TRefDict
 >
   ? SyncableType<ValueWithType<TRefDict, SyncableCreationRef>>
   : never;
 
-export interface ChangePlantProcessorOutput<TChange extends Change> {
+export interface ChangePlantProcessorOutput<TChange extends IChange> {
   creations?: ChangeToCreation<TChange>[];
   removals?: (keyof ChangeToSyncableDict<TChange>)[];
 }
 
 export interface ChangePlantProcessingResultUpdateItem {
   diffs: deepDiff.IDiff[];
-  snapshot: Syncable;
+  snapshot: ISyncable;
 }
 
 export interface ChangePlantProcessingResult {
   uid: ChangePacketUID;
   updates: Dict<ChangePlantProcessingResultUpdateItem>;
-  creations: Syncable[];
+  creations: ISyncable[];
   removals: SyncableRef[];
 }
 
@@ -94,16 +94,16 @@ export interface ChangePlantProcessingResultWithTimestamp
 }
 
 export interface ChangePlantProcessorOptions<
-  TUser extends UserSyncableObject = UserSyncableObject,
-  TChange extends Change = GeneralChange
+  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TChange extends IChange = GeneralChange
 > {
   context: Context<TUser>;
   options: TChange['options'];
 }
 
 export type ChangePlantProcessor<
-  TUser extends UserSyncableObject = UserSyncableObject,
-  TChange extends Change = GeneralChange
+  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TChange extends IChange = GeneralChange
 > = (
   syncables: ChangeToSyncableDict<TChange>,
   objects: ChangeToObjectOrCreationRefDict<TChange>,
@@ -111,8 +111,8 @@ export type ChangePlantProcessor<
 ) => ChangePlantProcessorOutput<TChange> | void;
 
 export type ChangePlantBlueprint<
-  TUser extends UserSyncableObject,
-  TChange extends Change
+  TUser extends AbstractUserSyncableObject,
+  TChange extends IChange
 > = {
   [K in TChange['type']]: ChangePlantProcessor<
     TUser,
@@ -121,40 +121,47 @@ export type ChangePlantBlueprint<
 };
 
 export class ChangePlant<
-  TUser extends UserSyncableObject = UserSyncableObject,
-  TChange extends Change = GeneralChange
+  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TChange extends IChange = GeneralChange
 > {
   constructor(private blueprint: ChangePlantBlueprint<TUser, TChange>) {}
 
   process(
     packet: ChangePacket,
-    syncableObjectOrCreationRefDict: Dict<SyncableObject | SyncableCreationRef>,
+    syncableObjectOrCreationRefDict: Dict<
+      AbstractSyncableObject | SyncableCreationRef
+    >,
     context: Context<TUser>,
   ): ChangePlantProcessingResult;
   process(
     packet: ChangePacket,
-    syncableObjectOrCreationRefDict: Dict<SyncableObject | SyncableCreationRef>,
+    syncableObjectOrCreationRefDict: Dict<
+      AbstractSyncableObject | SyncableCreationRef
+    >,
     context: Context<TUser>,
     timestamp: number,
   ): ChangePlantProcessingResultWithTimestamp;
   process(
     {uid, type, options}: ChangePacket,
-    syncableObjectOrCreationRefDict: Dict<SyncableObject | SyncableCreationRef>,
+    syncableObjectOrCreationRefDict: Dict<
+      AbstractSyncableObject | SyncableCreationRef
+    >,
     context: Context,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
     let processor = ((builtInChangePlantBlueprint as any)[type] ||
-      (this.blueprint as any)[type]) as ChangePlantProcessor<TUser, Change>;
+      (this.blueprint as any)[type]) as ChangePlantProcessor<TUser, IChange>;
 
     let syncableObjectEntries = Array.from(
       Object.entries(syncableObjectOrCreationRefDict),
-    ).filter((entry: [string, SyncableObject | SyncableCreationRef]): entry is [
-      string,
-      SyncableObject
-    ] => {
-      let [, object] = entry;
-      return object instanceof SyncableObject;
-    });
+    ).filter(
+      (
+        entry: [string, AbstractSyncableObject | SyncableCreationRef],
+      ): entry is [string, AbstractSyncableObject] => {
+        let [, object] = entry;
+        return object instanceof AbstractSyncableObject;
+      },
+    );
 
     let syncableKeys = syncableObjectEntries.map(([key]) => key);
 
@@ -163,7 +170,7 @@ export class ChangePlant<
         dict[name] = object.syncable;
         return dict;
       },
-      {} as Dict<Syncable>,
+      {} as Dict<ISyncable>,
     );
 
     let syncableObjectDict = syncableObjectEntries.reduce(
@@ -171,7 +178,7 @@ export class ChangePlant<
         dict[name] = object;
         return dict;
       },
-      {} as Dict<SyncableObject>,
+      {} as Dict<AbstractSyncableObject>,
     );
 
     let clonedSyncableDict = _.mapValues(syncableDict, syncable =>
@@ -191,7 +198,7 @@ export class ChangePlant<
       ) || {};
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};
-    let creations: Syncable[] | undefined;
+    let creations: ISyncable[] | undefined;
     let removals: SyncableRef[] | undefined;
 
     for (let key of syncableKeys) {
