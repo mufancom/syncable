@@ -33,12 +33,12 @@ export interface ConnectionSession<TViewQuery> {
   viewQuery: TViewQuery | undefined;
 }
 
-export interface GroupClock {
+export interface IGroupClock {
   next(): Promise<number>;
 }
 
 interface GroupInfo {
-  clock: GroupClock;
+  clock: IGroupClock;
   manager: SyncableManager;
   connectionSet: Set<Connection>;
   loadingPromise: Promise<void>;
@@ -94,7 +94,7 @@ export abstract class AbstractServer<
     return clock.next();
   }
 
-  protected abstract createGroupClock(group: string): GroupClock;
+  protected abstract createGroupClock(group: string): IGroupClock;
 
   protected abstract resolveSession(
     socket: ConnectionSocket,
