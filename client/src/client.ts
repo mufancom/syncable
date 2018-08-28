@@ -30,6 +30,10 @@ export interface ClientAssociateOptions {
   secures?: boolean;
 }
 
+export interface ClientOptions {
+  path?: string;
+}
+
 export class Client<
   TUser extends AbstractUserSyncableObject,
   TSyncableObject extends AbstractSyncableObject,
@@ -48,16 +52,18 @@ export class Client<
     uri: string,
     factory: AbstractSyncableObjectFactory,
     changePlant: ChangePlant<TUser, TChange>,
+    options?: ClientOptions,
   );
   constructor(
     uri: string,
     factory: AbstractSyncableObjectFactory,
     private changePlant: ChangePlant,
+    {path}: ClientOptions = {},
   ) {
     this.context = new Context('user');
     this.manager = new SyncableManager(factory);
 
-    let socket = (this.socket = createClientSocket<TUser>(uri));
+    let socket = (this.socket = createClientSocket<TUser>(uri, path));
 
     this.ready = new Promise<void>(resolve => {
       socket.on('initialize', data => {

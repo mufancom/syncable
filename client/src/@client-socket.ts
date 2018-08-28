@@ -21,6 +21,7 @@ export interface ClientSocket<TUser extends AbstractUserSyncableObject>
 
 export function createClientSocket<TUser extends AbstractUserSyncableObject>(
   uri: string,
+  path: string | undefined,
 ): ClientSocket<TUser> {
-  return io(uri, {transports: ['websocket']}) as ClientSocket<TUser>;
+  return io(uri, {path, transports: ['websocket']}) as ClientSocket<TUser>;
 }
