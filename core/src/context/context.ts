@@ -17,21 +17,14 @@ export type AccessControlRuleTester = (
 export class Context<TUser extends UserSyncableObject = UserSyncableObject> {
   @observable user!: TUser;
 
-  private _permissions: PermissionType<TUser>[];
-
-  constructor(user?: TUser, permissions: PermissionType<TUser>[] = []) {
+  constructor(user?: TUser) {
     if (user) {
       this.user = user;
     }
-
-    this._permissions = permissions;
   }
 
   get permissions(): PermissionType<TUser>[] {
-    return [
-      ...this._permissions,
-      ...(this.user.permissions as PermissionType<TUser>[]),
-    ];
+    return [...(this.user.permissions as PermissionType<TUser>[])];
   }
 
   initialize(user: TUser): void {
