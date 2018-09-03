@@ -24,3 +24,5 @@ let httpServer = createServer();
 httpServer.listen(8080);
 
 let server = new MFServer(httpServer, factory, changePlant);
+
+server.on('error', console.error);

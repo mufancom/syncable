@@ -74,13 +74,11 @@ export type SyncableIdType<
   ? T['_id']
   : T extends AbstractSyncableObject ? T['id'] : never;
 
-export type SyncableObjectType<T extends SyncableRef> = T extends SyncableRef<
-  infer TSyncableObject
->
+export type SyncableObjectType<T> = T extends SyncableRef<infer TSyncableObject>
   ? TSyncableObject
   : never;
 
-export type SyncableType<T extends SyncableRef> = T extends SyncableCreationRef<
+export type SyncableType<T> = T extends SyncableCreationRef<
   infer TSyncableObject
 >
   ? TSyncableObject['syncable']

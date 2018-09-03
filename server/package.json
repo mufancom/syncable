@@ -31,7 +31,7 @@
   "dependencies": {
     "lodash": "^4.17.10",
     "socket.io": "^2.1.1",
-    "tslang": "^0.1.4",
+    "tslang": "^0.1.5",
     "uuid": "^3.3.2",
     "villa": "^0.3.1"
   },

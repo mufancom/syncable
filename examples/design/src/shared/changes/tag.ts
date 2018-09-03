@@ -41,11 +41,11 @@ export const tagChangePlantBlueprint: ChangePlantBlueprint<
   User,
   MFTagChange
 > = {
-  'tag:tag'({tag}) {
+  'tag:tag'({}) {
     return {};
   },
-  'tag:create'({}, {}, {options: {name}}) {
-    let tag = createSyncable<Tag>('tag', {
+  'tag:create'({}, {tag: tagRef}, {options: {name}}) {
+    let tag = createSyncable<Tag>(tagRef, {
       name,
       derivations: [],
     });
