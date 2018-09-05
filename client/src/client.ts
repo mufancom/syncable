@@ -84,8 +84,12 @@ export class Client<
 
   getObjects(): TSyncableObject[];
   getObjects<T extends TSyncableObject>(type: T['type']): T[];
-  getObjects(type?: TSyncableObject['type']): TSyncableObject[] {
+  getObjects(type?: string): TSyncableObject[] {
     return this.manager.getSyncableObjects(type) as TSyncableObject[];
+  }
+
+  requireObject<T extends TSyncableObject>(ref: SyncableRef<T>): T {
+    return this.manager.requireSyncableObject(ref) as T;
   }
 
   associate(
