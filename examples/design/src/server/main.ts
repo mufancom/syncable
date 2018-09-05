@@ -1,5 +1,3 @@
-// tslint:disable:import-groups
-
 import {createServer} from 'http';
 
 import 'source-map-support/register';
