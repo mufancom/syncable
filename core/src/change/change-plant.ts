@@ -10,6 +10,7 @@ import {
   SyncableRef,
   SyncableType,
 } from '../syncable';
+import {getSyncableRef} from '../utils';
 
 import {builtInChangePlantBlueprint} from './built-in-changes';
 import {
@@ -59,6 +60,13 @@ export type ChangeToSyncableDict<T extends IChange> = T extends IChange<
   ? RefDictToSyncableDict<TRefDict>
   : never;
 
+export type ChangeToSyncable<T extends IChange> = T extends IChange<
+  string,
+  infer TRefDict
+>
+  ? ValueWithType<RefDictToSyncableDict<TRefDict>, any>
+  : never;
+
 export type RefDictToCreation<T extends object> = ValueWithType<
   T,
   SyncableCreationRef
@@ -93,7 +101,7 @@ export type ChangePlantProcessorCreateOperation<TChange extends IChange> = (
 ) => void;
 
 export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
-  removal: keyof ChangeToSyncableDict<TChange>,
+  removal: keyof ChangeToSyncableDict<TChange> | ChangeToSyncable<TChange>,
 ) => void;
 
 export interface ChangePlantProcessorExtra<
@@ -193,7 +201,9 @@ export class ChangePlant<
     let creations: ISyncable[] = [];
     let removals: SyncableRef[] = [];
 
-    let create = (creation: ChangeToCreation<TChange>): void => {
+    let create: ChangePlantProcessorCreateOperation<
+      GeneralChange
+    > = creation => {
       let _creation = creation as ISyncable;
 
       if (timestamp !== undefined) {
@@ -203,12 +213,20 @@ export class ChangePlant<
       creations.push(_creation);
     };
 
-    let remove = (removal: keyof ChangeToSyncableDict<TChange>): void => {
-      let object = syncableObjectDict[removal as never];
+    let remove: ChangePlantProcessorRemoveOperation<
+      GeneralChange
+    > = removal => {
+      if (typeof removal === 'string' || typeof removal === 'number') {
+        let object = syncableObjectDict[removal];
 
-      object.validateAccessRights(['full'], context);
+        object.validateAccessRights(['full'], context);
 
-      removals.push(object.ref);
+        removals.push(object.ref);
+      } else {
+        let syncableRef = getSyncableRef(removal);
+
+        removals.push(syncableRef);
+      }
     };
 
     processor(
@@ -219,8 +237,8 @@ export class ChangePlant<
       {
         context,
         options,
-        create,
-        remove,
+        create: create as ChangePlantProcessorCreateOperation<TChange>,
+        remove: remove as ChangePlantProcessorRemoveOperation<TChange>,
       } as ChangePlantProcessorExtra<TUser, TChange>,
     );
 
