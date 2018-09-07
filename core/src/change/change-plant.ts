@@ -10,7 +10,6 @@ import {
   SyncableRef,
   SyncableType,
 } from '../syncable';
-import {getSyncableRef} from '../utils';
 
 import {builtInChangePlantBlueprint} from './built-in-changes';
 import {
@@ -101,7 +100,9 @@ export type ChangePlantProcessorCreateOperation<TChange extends IChange> = (
 ) => void;
 
 export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
-  removal: keyof ChangeToSyncableDict<TChange> | ChangeToSyncable<TChange>,
+  removal:
+    | Extract<keyof ChangeToSyncableDict<TChange>, string>
+    | ChangeToSyncable<TChange>,
 ) => void;
 
 export interface ChangePlantProcessorExtra<
@@ -186,9 +187,14 @@ export class ChangePlant<
       {} as Dict<ISyncable>,
     );
 
+    let syncableObjectMap = new Map<ISyncable, AbstractSyncableObject>();
+
     let syncableObjectDict = syncableObjectEntries.reduce(
       (dict, [name, object]) => {
+        syncableObjectMap.set(object.syncable, object);
+
         dict[name] = object;
+
         return dict;
       },
       {} as Dict<AbstractSyncableObject>,
@@ -216,17 +222,17 @@ export class ChangePlant<
     let remove: ChangePlantProcessorRemoveOperation<
       GeneralChange
     > = removal => {
-      if (typeof removal === 'string' || typeof removal === 'number') {
-        let object = syncableObjectDict[removal];
+      let object;
 
-        object.validateAccessRights(['full'], context);
-
-        removals.push(object.ref);
+      if (typeof removal === 'string') {
+        object = syncableObjectDict[removal];
       } else {
-        let syncableRef = getSyncableRef(removal);
-
-        removals.push(syncableRef);
+        object = syncableObjectMap.get(removal)!;
       }
+
+      object.validateAccessRights(['full'], context);
+
+      removals.push(object.ref);
     };
 
     processor(

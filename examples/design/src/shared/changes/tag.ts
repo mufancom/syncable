@@ -60,6 +60,6 @@ export const tagChangePlantBlueprint: ChangePlantBlueprint<
     create(tag);
   },
   'tag:remove'({tag}, {}, {remove}) {
-    remove('tag');
+    remove(tag);
   },
 };
