@@ -59,6 +59,13 @@ export type ChangeToSyncableDict<T extends IChange> = T extends IChange<
   ? RefDictToSyncableDict<TRefDict>
   : never;
 
+export type ChangeToSyncable<T extends IChange> = T extends IChange<
+  string,
+  infer TRefDict
+>
+  ? ValueWithType<RefDictToSyncableDict<TRefDict>, any>
+  : never;
+
 export type RefDictToCreation<T extends object> = ValueWithType<
   T,
   SyncableCreationRef
@@ -70,11 +77,6 @@ export type ChangeToCreation<T extends IChange> = T extends IChange<
 >
   ? SyncableType<ValueWithType<TRefDict, SyncableCreationRef>>
   : never;
-
-export interface ChangePlantProcessorOutput<TChange extends IChange> {
-  creations?: ChangeToCreation<TChange>[];
-  removals?: (keyof ChangeToSyncableDict<TChange>)[];
-}
 
 export interface ChangePlantProcessingResultUpdateItem {
   diffs: deepDiff.IDiff[];
@@ -93,12 +95,24 @@ export interface ChangePlantProcessingResultWithTimestamp
   timestamp: number;
 }
 
-export interface ChangePlantProcessorOptions<
+export type ChangePlantProcessorCreateOperation<TChange extends IChange> = (
+  creation: ChangeToCreation<TChange>,
+) => void;
+
+export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
+  removal:
+    | Extract<keyof ChangeToSyncableDict<TChange>, string>
+    | ChangeToSyncable<TChange>,
+) => void;
+
+export interface ChangePlantProcessorExtra<
   TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
   TChange extends IChange = GeneralChange
 > {
   context: Context<TUser>;
   options: TChange['options'];
+  create: ChangePlantProcessorCreateOperation<TChange>;
+  remove: ChangePlantProcessorRemoveOperation<TChange>;
 }
 
 export type ChangePlantProcessor<
@@ -107,8 +121,8 @@ export type ChangePlantProcessor<
 > = (
   syncables: ChangeToSyncableDict<TChange>,
   objects: ChangeToObjectOrCreationRefDict<TChange>,
-  data: ChangePlantProcessorOptions<TUser, TChange>,
-) => ChangePlantProcessorOutput<TChange> | void;
+  data: ChangePlantProcessorExtra<TUser, TChange>,
+) => void;
 
 export type ChangePlantBlueprint<
   TUser extends AbstractUserSyncableObject,
@@ -173,9 +187,14 @@ export class ChangePlant<
       {} as Dict<ISyncable>,
     );
 
+    let syncableObjectMap = new Map<ISyncable, AbstractSyncableObject>();
+
     let syncableObjectDict = syncableObjectEntries.reduce(
       (dict, [name, object]) => {
+        syncableObjectMap.set(object.syncable, object);
+
         dict[name] = object;
+
         return dict;
       },
       {} as Dict<AbstractSyncableObject>,
@@ -185,21 +204,51 @@ export class ChangePlant<
       _.cloneDeep(syncable),
     );
 
-    let result =
-      processor(
-        clonedSyncableDict,
-        syncableObjectOrCreationRefDict as ChangeToObjectOrCreationRefDict<
-          GeneralChange
-        >,
-        {
-          context,
-          options,
-        } as ChangePlantProcessorOptions<TUser, TChange>,
-      ) || {};
+    let creations: ISyncable[] = [];
+    let removals: SyncableRef[] = [];
+
+    let create: ChangePlantProcessorCreateOperation<
+      GeneralChange
+    > = creation => {
+      let _creation = creation as ISyncable;
+
+      if (timestamp !== undefined) {
+        _creation._timestamp = timestamp;
+      }
+
+      creations.push(_creation);
+    };
+
+    let remove: ChangePlantProcessorRemoveOperation<
+      GeneralChange
+    > = removal => {
+      let object;
+
+      if (typeof removal === 'string') {
+        object = syncableObjectDict[removal];
+      } else {
+        object = syncableObjectMap.get(removal)!;
+      }
+
+      object.validateAccessRights(['full'], context);
+
+      removals.push(object.ref);
+    };
+
+    processor(
+      clonedSyncableDict,
+      syncableObjectOrCreationRefDict as ChangeToObjectOrCreationRefDict<
+        GeneralChange
+      >,
+      {
+        context,
+        options,
+        create: create as ChangePlantProcessorCreateOperation<TChange>,
+        remove: remove as ChangePlantProcessorRemoveOperation<TChange>,
+      } as ChangePlantProcessorExtra<TUser, TChange>,
+    );
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};
-    let creations: ISyncable[] | undefined;
-    let removals: SyncableRef[] | undefined;
 
     for (let key of syncableKeys) {
       let latestSyncable = syncableDict[key];
@@ -241,24 +290,6 @@ export class ChangePlant<
 
       updateDict[key] = {diffs, snapshot: updatedSyncableClone};
     }
-
-    creations = result.creations || [];
-
-    if (timestamp !== undefined) {
-      for (let creation of creations) {
-        creation._timestamp = timestamp;
-      }
-    }
-
-    removals = result.removals
-      ? result.removals.map(key => {
-          let object = syncableObjectDict[key];
-
-          object.validateAccessRights(['full'], context);
-
-          return object.ref;
-        })
-      : [];
 
     return {
       uid,

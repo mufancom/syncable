@@ -8,7 +8,7 @@ import {
 
 import {Tag, User} from '../syncables';
 
-export type MFTagChange = TagTagChange | TagCreateChange;
+export type MFTagChange = TagTagChange | TagCreateChange | TagRemoveChange;
 
 export interface TagTagChangeOptions {
   foo: boolean;
@@ -37,6 +37,13 @@ export interface TagCreateChange
       TagCreateChangeOptions
     > {}
 
+export interface TagRemoveChangeRefDict {
+  tag: SyncableRef<Tag>;
+}
+
+export interface TagRemoveChange
+  extends IChange<'tag:remove', TagRemoveChangeRefDict, {}> {}
+
 export const tagChangePlantBlueprint: ChangePlantBlueprint<
   User,
   MFTagChange
@@ -44,14 +51,15 @@ export const tagChangePlantBlueprint: ChangePlantBlueprint<
   'tag:tag'({}) {
     return {};
   },
-  'tag:create'({}, {tag: tagRef}, {options: {name}}) {
+  'tag:create'({}, {tag: tagRef}, {create, options: {name}}) {
     let tag = createSyncable<Tag>(tagRef, {
       name,
       derivations: [],
     });
 
-    return {
-      creations: [tag],
-    };
+    create(tag);
+  },
+  'tag:remove'({tag}, {}, {remove}) {
+    remove(tag);
   },
 };

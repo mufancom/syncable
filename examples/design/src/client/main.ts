@@ -41,4 +41,8 @@ autorun(() => {
   for (let tag of tags) {
     client.associate(user, tag, {requisite: true, name: 'tag'});
   }
+
+  for (let tag of tags) {
+    client.update({type: 'tag:remove', refs: {tag}, options: {}});
+  }
 })().catch(console.error);
