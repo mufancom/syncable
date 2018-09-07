@@ -187,11 +187,11 @@ export class ChangePlant<
       {} as Dict<ISyncable>,
     );
 
-    let syncableObjectMap = new Map<ISyncable, AbstractSyncableObject>();
+    let syncableObjectMap = new Map<string, AbstractSyncableObject>();
 
     let syncableObjectDict = syncableObjectEntries.reduce(
       (dict, [name, object]) => {
-        syncableObjectMap.set(object.syncable, object);
+        syncableObjectMap.set(object.syncable._id, object);
 
         dict[name] = object;
 
@@ -227,7 +227,7 @@ export class ChangePlant<
       if (typeof removal === 'string') {
         object = syncableObjectDict[removal];
       } else {
-        object = syncableObjectMap.get(removal)!;
+        object = syncableObjectMap.get(removal._id)!;
       }
 
       object.validateAccessRights(['full'], context);

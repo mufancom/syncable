@@ -3,13 +3,14 @@
 import 'source-map-support/register';
 
 import {Client} from '@syncable/client';
-import {ChangePlant} from '@syncable/core';
+import {ChangePlant, SyncableRef} from '@syncable/core';
 import {autorun} from 'mobx';
 
 import {
   MFChange,
   MFSyncableObject,
   MFSyncableObjectFactory,
+  Tag,
   User,
   mfChangePlantBlueprint,
 } from '../shared';
@@ -43,6 +44,11 @@ autorun(() => {
   }
 
   for (let tag of tags) {
-    client.update({type: 'tag:remove', refs: {tag}, options: {}});
+    // tag.ref: SyncableRef<Tag>
+    client.update({
+      type: 'tag:remove',
+      refs: {tag: tag.ref as SyncableRef<Tag>},
+      options: {},
+    });
   }
 })().catch(console.error);
