@@ -3290,9 +3290,9 @@ mixin-deep@^1.2.0:
   dependencies:
     minimist "0.0.8"
 
-mobx@^5.0.4:
-  version "5.0.4"
-  resolved "http://registry.npm.taobao.org/mobx/download/mobx-5.0.4.tgz#3f0faa74d4214b012d957f6a559e2e3e1aae421e"
+mobx@^5.1.0:
+  version "5.1.0"
+  resolved "http://registry.npm.taobao.org/mobx/download/mobx-5.1.0.tgz#ae772ca8eb0c1dd93341ffce375f44a80050014d"
 
 mock-require@^2.0.2:
   version "2.0.2"
