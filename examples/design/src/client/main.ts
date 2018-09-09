@@ -3,7 +3,7 @@
 import 'source-map-support/register';
 
 import {Client} from '@syncable/client';
-import {ChangePlant, SyncableRef} from '@syncable/core';
+import {ChangePlant} from '@syncable/core';
 import {autorun} from 'mobx';
 
 import {
@@ -37,17 +37,16 @@ autorun(() => {
   await client.ready;
 
   let user = client.user;
-  let tags = client.getObjects('tag');
+  let tags = client.getObjects<Tag>('tag');
 
   for (let tag of tags) {
     client.associate(user, tag, {requisite: true, name: 'tag'});
   }
 
   for (let tag of tags) {
-    // tag.ref: SyncableRef<Tag>
     client.update({
       type: 'tag:remove',
-      refs: {tag: tag.ref as SyncableRef<Tag>},
+      refs: {tag: tag.ref},
       options: {},
     });
   }
