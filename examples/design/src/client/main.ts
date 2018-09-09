@@ -10,6 +10,7 @@ import {
   MFChange,
   MFSyncableObject,
   MFSyncableObjectFactory,
+  Tag,
   User,
   mfChangePlantBlueprint,
 } from '../shared';
@@ -36,13 +37,17 @@ autorun(() => {
   await client.ready;
 
   let user = client.user;
-  let tags = client.getObjects('tag');
+  let tags = client.getObjects<Tag>('tag');
 
   for (let tag of tags) {
     client.associate(user, tag, {requisite: true, name: 'tag'});
   }
 
   for (let tag of tags) {
-    client.update({type: 'tag:remove', refs: {tag}, options: {}});
+    client.update({
+      type: 'tag:remove',
+      refs: {tag: tag.ref},
+      options: {},
+    });
   }
 })().catch(console.error);
