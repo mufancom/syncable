@@ -7,6 +7,7 @@ import {
   AbstractSyncableObject,
   AbstractUserSyncableObject,
   ISyncable,
+  SyncableId,
   SyncableRef,
   SyncableType,
 } from '../syncable';
@@ -187,7 +188,7 @@ export class ChangePlant<
       {} as Dict<ISyncable>,
     );
 
-    let syncableObjectMap = new Map<string, AbstractSyncableObject>();
+    let syncableObjectMap = new Map<SyncableId, AbstractSyncableObject>();
 
     let syncableObjectDict = syncableObjectEntries.reduce(
       (dict, [name, object]) => {
