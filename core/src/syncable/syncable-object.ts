@@ -48,7 +48,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
     AccessControlRuleEntry
   >;
 
-  constructor(readonly syncable: T, protected manager: SyncableManager) {}
+  constructor(readonly syncable: T, private manager: SyncableManager) {}
 
   get id(): T['_id'] {
     return this.syncable._id;
@@ -65,6 +65,10 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
       id,
       type,
     };
+  }
+
+  require<T extends AbstractSyncableObject>(ref: SyncableRef<T>): T {
+    return this.manager.requireSyncableObject(ref);
   }
 
   getGrantingPermissions(): Permission[] {
