@@ -76,7 +76,9 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
   }
 
   getSecuringACL(): SecuringAccessControlEntry[] {
-    return this.syncable._secures || [];
+    return (this.syncable._secures || []).filter(
+      entry => entry.type === 'deny',
+    );
   }
 
   getRequisiteAssociations<T extends AbstractSyncableObject>({

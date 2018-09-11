@@ -24,6 +24,7 @@ export interface AccessControlEntry<TOptions extends object = object> {
 export interface SecuringAccessControlEntry<TOptions extends object = object>
   extends AccessControlEntry<TOptions> {
   match?: string[];
+  type: 'deny';
 }
 
 export function getAccessControlEntryPriority(
