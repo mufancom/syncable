@@ -98,7 +98,7 @@ export function createSyncableCreationRef<T extends AbstractSyncableObject>(
 
 export function createSyncable<T extends AbstractSyncableObject>(
   type: T['type'] | SyncableCreationRef<T>,
-  data: OmitValueOfKey<T['syncable'], keyof ISyncable>,
+  data: OmitValueOfKey<T['syncable'], '_id' | '_type' | '_timestamp'>,
 ): T['syncable'] {
   let id: T['id'];
 
