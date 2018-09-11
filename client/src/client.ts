@@ -83,7 +83,7 @@ export class Client<
   }
 
   getObjects(): TSyncableObject[];
-  getObjects<T extends TSyncableObject>(type: T['type']): T[];
+  getObjects<T extends TSyncableObject>(type: T['syncable']['_type']): T[];
   getObjects(type?: string): TSyncableObject[] {
     return this.manager.getSyncableObjects(type) as TSyncableObject[];
   }

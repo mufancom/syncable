@@ -82,6 +82,18 @@ export class SyncableManager {
     return syncableMap && syncableMap.get(id);
   }
 
+  requireSyncable<T extends AbstractSyncableObject>(
+    ref: SyncableRef<T>,
+  ): T['syncable'] {
+    let syncable = this.getSyncable(ref);
+
+    if (!syncable) {
+      throw new Error(`Syncable "${JSON.stringify(ref)}" not added to context`);
+    }
+
+    return syncable;
+  }
+
   /**
    * Add a syncable, please notice that it won't change the reference of the
    * originally stored syncable. Instead, differences will be applied to it.
