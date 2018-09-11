@@ -108,7 +108,8 @@ export abstract class AbstractServer<
   protected abstract loadSyncables(group: string): Promise<ISyncable[]>;
 
   protected abstract saveSyncables(
-    syncables: ISyncable[],
+    updates: ISyncable[],
+    creations: ISyncable[],
     removals: SyncableRef[],
   ): Promise<void>;
 
@@ -229,12 +230,9 @@ export abstract class AbstractServer<
     return v.lock(group, async () => {
       let {updates: updateDict, creations, removals} = result;
 
-      let syncables = [
-        ...Object.values(updateDict).map(update => update.snapshot),
-        ...creations,
-      ];
+      let updates = Object.values(updateDict).map(update => update.snapshot);
 
-      await this.saveSyncables(syncables, removals);
+      await this.saveSyncables(updates, creations, removals);
 
       let {connectionSet} = this.groupInfoMap.get(group)!;
 
