@@ -88,6 +88,10 @@ export class Client<
     return this.manager.getSyncableObjects(type) as TSyncableObject[];
   }
 
+  getObject<T extends TSyncableObject>(ref: SyncableRef<T>): T | undefined {
+    return this.manager.getSyncableObject(ref) as T;
+  }
+
   requireObject<T extends TSyncableObject>(ref: SyncableRef<T>): T {
     return this.manager.requireSyncableObject(ref) as T;
   }

@@ -82,18 +82,6 @@ export class SyncableManager {
     return syncableMap && syncableMap.get(id);
   }
 
-  requireSyncable<T extends AbstractSyncableObject>(
-    ref: SyncableRef<T>,
-  ): T['syncable'] {
-    let syncable = this.getSyncable(ref);
-
-    if (!syncable) {
-      throw new Error(`Syncable "${JSON.stringify(ref)}" not added to context`);
-    }
-
-    return syncable;
-  }
-
   /**
    * Add a syncable, please notice that it won't change the reference of the
    * originally stored syncable. Instead, differences will be applied to it.
@@ -204,9 +192,9 @@ export class SyncableManager {
     return set ? Array.from(set) : [];
   }
 
-  requireSyncableObject<T extends AbstractSyncableObject>(
+  getSyncableObject<T extends AbstractSyncableObject>(
     ref: SyncableRef<T>,
-  ): T {
+  ): T | undefined {
     let {type, id} = ref;
 
     let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
@@ -226,11 +214,27 @@ export class SyncableManager {
       typeToIdToSyncableObjectMapMap.set(type, syncableObjectMap);
     }
 
-    let syncable = this.requireSyncable(ref);
+    let syncable = this.getSyncable(ref);
+
+    if (!syncable) {
+      return undefined;
+    }
 
     object = this.factory.create(syncable, this) as T;
 
     syncableObjectMap.set(id, object);
+
+    return object;
+  }
+
+  requireSyncableObject<T extends AbstractSyncableObject>(
+    ref: SyncableRef<T>,
+  ): T {
+    let object = this.getSyncableObject(ref);
+
+    if (!object) {
+      throw new Error(`Syncable "${JSON.stringify(ref)}" not added to context`);
+    }
 
     return object;
   }
