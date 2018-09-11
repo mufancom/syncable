@@ -22,7 +22,7 @@ export interface AccessControlRuleEntry {
 
 export interface GetAssociationOptions<T extends AbstractSyncableObject> {
   name?: string;
-  type?: T['type'];
+  type?: T['syncable']['_type'];
   securesOnly?: boolean;
 }
 
@@ -52,10 +52,6 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
 
   get id(): T['_id'] {
     return this.syncable._id;
-  }
-
-  get type(): T['_type'] {
-    return this.syncable._type;
   }
 
   get ref(): SyncableRef<this> {
@@ -209,7 +205,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
       for (let entry of securingACL) {
         let {type, match, grantable, rights} = entry;
 
-        if (match && !match.includes(association.type)) {
+        if (match && !match.includes(association.ref.type)) {
           continue;
         }
 

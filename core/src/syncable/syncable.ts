@@ -18,8 +18,8 @@ export type SyncableId<Type extends string = string> = Nominal<
 export interface SyncableRef<
   T extends AbstractSyncableObject = AbstractSyncableObject
 > {
-  id: T['id'];
-  type: T['type'];
+  id: T['syncable']['_id'];
+  type: T['syncable']['_type'];
 }
 
 export interface SyncableAssociation<
@@ -87,7 +87,7 @@ export type SyncableType<T> = T extends SyncableCreationRef<
     : never;
 
 export function createSyncableCreationRef<T extends AbstractSyncableObject>(
-  type: T['type'],
+  type: T['syncable']['_type'],
 ): SyncableCreationRef<T> {
   return {
     type,
@@ -99,7 +99,7 @@ export function createSyncableCreationRef<T extends AbstractSyncableObject>(
 export type CreateSyncableExcludingKey = '_id' | '_type' | '_timestamp';
 
 export function createSyncable<T extends AbstractSyncableObject>(
-  type: T['type'] | SyncableCreationRef<T>,
+  type: T['syncable']['_type'] | SyncableCreationRef<T>,
   data: OmitValueOfKey<T['syncable'], CreateSyncableExcludingKey>,
 ): T['syncable'] {
   let id: T['id'];
