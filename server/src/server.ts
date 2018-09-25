@@ -73,7 +73,10 @@ export abstract class AbstractServer<
 
   abstract getViewQueryFilter(query: TViewQuery): ViewQueryFilter;
 
-  async update(group: string, change: TChange | BuiltInChange): Promise<void> {
+  async update(
+    group: string,
+    change: TChange | BuiltInChange,
+  ): Promise<ChangePlantProcessingResultWithTimestamp> {
     await this.initializeGroup(group);
 
     let packet: ChangePacket = {
@@ -81,7 +84,7 @@ export abstract class AbstractServer<
       ...(change as GeneralChange),
     };
 
-    await this._applyChangePacket(group, packet, this.context);
+    return this._applyChangePacket(group, packet, this.context);
   }
 
   applyChangePacket(
@@ -176,7 +179,7 @@ export abstract class AbstractServer<
     group: string,
     packet: ChangePacket,
     context: Context<TUser>,
-  ): Promise<void> {
+  ): Promise<ChangePlantProcessingResultWithTimestamp> {
     let info = this.groupInfoMap.get(group);
 
     if (!info) {
@@ -221,6 +224,8 @@ export abstract class AbstractServer<
     }
 
     await this.saveAndBroadcastChangeResult(group, result);
+
+    return result;
   }
 
   private async saveAndBroadcastChangeResult(
