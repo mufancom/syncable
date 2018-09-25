@@ -48,7 +48,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
     AccessControlRuleEntry
   >;
 
-  constructor(readonly syncable: T, private manager: SyncableManager) {}
+  constructor(readonly syncable: T, private _manager?: SyncableManager) {}
 
   get id(): T['_id'] {
     return this.syncable._id;
@@ -61,6 +61,16 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
       id,
       type,
     };
+  }
+
+  private get manager(): SyncableManager {
+    let manager = this._manager;
+
+    if (!manager) {
+      throw new Error('The operation requires `manager` to present');
+    }
+
+    return manager;
   }
 
   require<T extends AbstractSyncableObject>(ref: SyncableRef<T>): T {
