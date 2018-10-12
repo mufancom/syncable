@@ -1,0 +1,62 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`should create task 1`] = `
+Object {
+  "creations": Array [
+    Object {
+      "_id": "task-id",
+      "_timestamp": 0,
+      "_type": "task",
+      "brief": "hello, create.",
+    },
+  ],
+  "removals": Array [],
+  "timestamp": undefined,
+  "uid": "change-packet-id",
+  "updates": Object {},
+}
+`;
+
+exports[`should remove task 1`] = `
+Object {
+  "creations": Array [],
+  "removals": Array [
+    Object {
+      "id": "task-id",
+      "type": "task",
+    },
+  ],
+  "timestamp": undefined,
+  "uid": "change-packet-id",
+  "updates": Object {},
+}
+`;
+
+exports[`should update task brief 1`] = `
+Object {
+  "creations": Array [],
+  "removals": Array [],
+  "timestamp": undefined,
+  "uid": "change-packet-id",
+  "updates": Object {
+    "task": Object {
+      "diffs": Array [
+        DiffEdit {
+          "kind": "E",
+          "lhs": "hello, world.",
+          "path": Array [
+            "brief",
+          ],
+          "rhs": "hello, jest.",
+        },
+      ],
+      "snapshot": Object {
+        "_id": "task-id",
+        "_timestamp": 0,
+        "_type": "task",
+        "brief": "hello, jest.",
+      },
+    },
+  },
+}
+`;

@@ -18,3 +18,4 @@ bld/
 # Testing files
 
 _*
+!__snapshots__*
