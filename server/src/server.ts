@@ -54,9 +54,9 @@ export abstract class AbstractServer<
   private context = new Context<TUser>('server');
 
   constructor(
+    server: io.Server,
     readonly factory: AbstractSyncableObjectFactory,
     readonly changePlant: ChangePlant<TUser, TChange>,
-    server: io.Server,
   ) {
     super();
 

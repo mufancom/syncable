@@ -45,29 +45,29 @@ export class Client<
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
   constructor(
-    socket: ClientSocket<TUser>,
+    socket: SocketIOClient.Socket,
     factory: AbstractSyncableObjectFactory,
     changePlant: ChangePlant<TUser, TChange>,
   );
   constructor(
-    socket: ClientSocket<TUser>,
+    socket: SocketIOClient.Socket,
     factory: AbstractSyncableObjectFactory,
     private changePlant: ChangePlant,
   ) {
     this.context = new Context('user');
     this.manager = new SyncableManager(factory);
 
-    this.socket = socket;
+    this.socket = socket as ClientSocket<TUser>;
 
     this.ready = new Promise<void>(resolve => {
-      socket.on('initialize', data => {
+      this.socket.on('initialize', data => {
         this.manager.clear();
         this.onInitialize(data);
         resolve();
       });
     });
 
-    socket.on('sync', data => {
+    this.socket.on('sync', data => {
       this.onSync(data);
     });
   }
