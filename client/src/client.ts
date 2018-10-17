@@ -22,16 +22,12 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import uuid from 'uuid';
 
-import {ClientSocket, createClientSocket} from './@client-socket';
+import {ClientSocket} from './@client-socket';
 
 export interface ClientAssociateOptions {
   name?: string;
   requisite?: boolean;
   secures?: boolean;
-}
-
-export interface ClientOptions {
-  path?: string;
 }
 
 export class Client<
@@ -49,31 +45,29 @@ export class Client<
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
   constructor(
-    uri: string,
+    socket: SocketIOClient.Socket,
     factory: AbstractSyncableObjectFactory,
     changePlant: ChangePlant<TUser, TChange>,
-    options?: ClientOptions,
   );
   constructor(
-    uri: string,
+    socket: SocketIOClient.Socket,
     factory: AbstractSyncableObjectFactory,
     private changePlant: ChangePlant,
-    {path}: ClientOptions = {},
   ) {
     this.context = new Context('user');
     this.manager = new SyncableManager(factory);
 
-    let socket = (this.socket = createClientSocket<TUser>(uri, path));
+    this.socket = socket as ClientSocket<TUser>;
 
     this.ready = new Promise<void>(resolve => {
-      socket.on('initialize', data => {
+      this.socket.on('syncable:initialize', data => {
         this.manager.clear();
         this.onInitialize(data);
         resolve();
       });
     });
 
-    socket.on('sync', data => {
+    this.socket.on('syncable:sync', data => {
       this.onSync(data);
     });
   }
@@ -250,6 +244,6 @@ export class Client<
   private pushChangePacket(packet: ChangePacket): void {
     this.pendingChangePackets.push(packet);
 
-    this.socket.emit('change', packet);
+    this.socket.emit('syncable:change', packet);
   }
 }

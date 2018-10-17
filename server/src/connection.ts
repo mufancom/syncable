@@ -20,11 +20,11 @@ import {observable} from 'mobx';
 import {AbstractServer, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
-  on(event: 'view-query', listener: (query: unknown) => void): this;
-  on(event: 'change', listener: (packet: ChangePacket) => void): this;
+  on(event: 'syncable:view-query', listener: (query: unknown) => void): this;
+  on(event: 'syncable:change', listener: (packet: ChangePacket) => void): this;
 
-  emit(event: 'initialize', data: InitialData): boolean;
-  emit(event: 'sync', data: SyncingData): boolean;
+  emit(event: 'syncable:initialize', data: InitialData): boolean;
+  emit(event: 'syncable:sync', data: SyncingData): boolean;
 }
 
 export class Connection {
@@ -46,10 +46,10 @@ export class Connection {
     let manager = this.manager;
 
     socket
-      .on('change', packet => {
+      .on('syncable:change', packet => {
         this.update(packet);
       })
-      .on('view-query', query => {
+      .on('syncable:view-query', query => {
         this.updateViewQuery(query);
       });
 
@@ -61,7 +61,7 @@ export class Connection {
 
     let snapshotData = this.snapshot(userRef);
 
-    socket.emit('initialize', {userRef, ...snapshotData});
+    socket.emit('syncable:initialize', {userRef, ...snapshotData});
   }
 
   // TODO: ability limit iteration within a subset of syncables to improve
@@ -165,7 +165,7 @@ export class Connection {
 
     let source: UpdateSource = {uid, timestamp};
 
-    socket.emit('sync', {source, updates, ...snapshotData});
+    socket.emit('syncable:sync', {source, updates, ...snapshotData});
   }
 
   @observable private filter: ViewQueryFilter = () => false;
@@ -179,7 +179,7 @@ export class Connection {
 
     if (snapshot) {
       let snapshotData = this.snapshot();
-      this.socket.emit('sync', {...snapshotData});
+      this.socket.emit('syncable:sync', {...snapshotData});
     }
   }
 }
