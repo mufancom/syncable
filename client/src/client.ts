@@ -60,14 +60,14 @@ export class Client<
     this.socket = socket as ClientSocket<TUser>;
 
     this.ready = new Promise<void>(resolve => {
-      this.socket.on('initialize', data => {
+      this.socket.on('syncable:initialize', data => {
         this.manager.clear();
         this.onInitialize(data);
         resolve();
       });
     });
 
-    this.socket.on('sync', data => {
+    this.socket.on('syncable:sync', data => {
       this.onSync(data);
     });
   }
@@ -244,6 +244,6 @@ export class Client<
   private pushChangePacket(packet: ChangePacket): void {
     this.pendingChangePackets.push(packet);
 
-    this.socket.emit('change', packet);
+    this.socket.emit('syncable:change', packet);
   }
 }
