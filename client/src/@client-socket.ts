@@ -4,7 +4,6 @@ import {
   InitialData,
   SyncingData,
 } from '@syncable/core';
-import io from 'socket.io-client';
 
 export interface ClientSocket<TUser extends AbstractUserSyncableObject>
   extends SocketIOClient.Socket {
@@ -17,11 +16,4 @@ export interface ClientSocket<TUser extends AbstractUserSyncableObject>
   emit(event: 'change', packet: ChangePacket): this;
 
   emit(event: 'request', request: Request): this;
-}
-
-export function createClientSocket<TUser extends AbstractUserSyncableObject>(
-  uri: string,
-  path: string | undefined,
-): ClientSocket<TUser> {
-  return io(uri, {path, transports: ['websocket']}) as ClientSocket<TUser>;
 }

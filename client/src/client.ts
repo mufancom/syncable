@@ -22,16 +22,12 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import uuid from 'uuid';
 
-import {ClientSocket, createClientSocket} from './@client-socket';
+import {ClientSocket} from './@client-socket';
 
 export interface ClientAssociateOptions {
   name?: string;
   requisite?: boolean;
   secures?: boolean;
-}
-
-export interface ClientOptions {
-  path?: string;
 }
 
 export class Client<
@@ -49,21 +45,19 @@ export class Client<
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
   constructor(
-    uri: string,
+    socket: ClientSocket<TUser>,
     factory: AbstractSyncableObjectFactory,
     changePlant: ChangePlant<TUser, TChange>,
-    options?: ClientOptions,
   );
   constructor(
-    uri: string,
+    socket: ClientSocket<TUser>,
     factory: AbstractSyncableObjectFactory,
     private changePlant: ChangePlant,
-    {path}: ClientOptions = {},
   ) {
     this.context = new Context('user');
     this.manager = new SyncableManager(factory);
 
-    let socket = (this.socket = createClientSocket<TUser>(uri, path));
+    this.socket = socket;
 
     this.ready = new Promise<void>(resolve => {
       socket.on('initialize', data => {

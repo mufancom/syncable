@@ -1,5 +1,4 @@
 import {EventEmitter} from 'events';
-import {Server as HTTPServer} from 'http';
 
 import {
   AbstractSyncableObject,
@@ -44,10 +43,6 @@ interface GroupInfo {
   loadingPromise: Promise<void>;
 }
 
-export interface AbstractServerOptions {
-  path?: string;
-}
-
 export abstract class AbstractServer<
   TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
   TChange extends IChange = IChange,
@@ -59,14 +54,13 @@ export abstract class AbstractServer<
   private context = new Context<TUser>('server');
 
   constructor(
-    httpServer: HTTPServer,
     readonly factory: AbstractSyncableObjectFactory,
     readonly changePlant: ChangePlant<TUser, TChange>,
-    {path}: AbstractServerOptions = {},
+    server: io.Server,
   ) {
     super();
 
-    this.server = io(httpServer, {path});
+    this.server = server;
 
     this.initialize().catch(this.error);
   }
