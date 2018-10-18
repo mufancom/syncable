@@ -117,12 +117,8 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
   ): AccessRight[] {
     let accessRightsDict = this.getAccessRightComparableItemsDict(context);
 
-    if (!accessRightsDict) {
-      return [...ACCESS_RIGHTS];
-    }
-
-    return ACCESS_RIGHTS.filter(right => {
-      let items = accessRightsDict![right];
+    let result = ACCESS_RIGHTS.filter(right => {
+      let items = accessRightsDict[right];
 
       for (let {type, grantable} of items) {
         if (type !== 'allow') {
@@ -136,6 +132,8 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
 
       return false;
     });
+
+    return result;
   }
 
   testAccessRights(
@@ -176,7 +174,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
 
   private getAccessRightComparableItemsDict(
     context: Context,
-  ): AccessRightComparableItemsDict | undefined {
+  ): AccessRightComparableItemsDict {
     let dict: AccessRightComparableItemsDict = {
       read: [],
       write: [],
@@ -185,22 +183,32 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
 
     let acl = this.syncable._acl || [];
 
-    let hasNonEmptyACL = !!acl.length;
+    if (acl.length) {
+      for (let entry of acl) {
+        if (!this.testAccessControlEntry(this, entry, context)) {
+          continue;
+        }
 
-    for (let entry of acl) {
-      if (!this.testAccessControlEntry(this, entry, context)) {
-        continue;
+        let {type, grantable, rights} = entry;
+
+        let item: AccessRightComparableItem = {
+          type,
+          grantable,
+          priority: getAccessControlEntryPriority(entry, false),
+        };
+
+        for (let right of rights) {
+          dict[right].push(item);
+        }
       }
-
-      let {type, grantable, rights} = entry;
-
+    } else {
       let item: AccessRightComparableItem = {
-        type,
-        grantable,
-        priority: getAccessControlEntryPriority(entry, false),
+        type: 'allow',
+        grantable: true,
+        priority: 0,
       };
 
-      for (let right of rights) {
+      for (let right of ACCESS_RIGHTS) {
         dict[right].push(item);
       }
     }
@@ -208,16 +216,12 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
     let associations = this.getRequisiteAssociations();
 
     for (let association of associations) {
-      let securingACL = association.getSecuringACL();
-
-      hasNonEmptyACL = hasNonEmptyACL || !!securingACL.length;
+      let securingACL = association
+        .getSecuringACL()
+        .filter(({match}) => !match || match.includes(this.ref.type));
 
       for (let entry of securingACL) {
-        let {type, match, grantable, rights} = entry;
-
-        if (match && !match.includes(association.ref.type)) {
-          continue;
-        }
+        let {type, grantable, rights} = entry;
 
         if (!association.testAccessControlEntry(this, entry, context)) {
           continue;
@@ -235,12 +239,8 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
       }
     }
 
-    if (!hasNonEmptyACL) {
-      return undefined;
-    }
-
     for (let right of ACCESS_RIGHTS) {
-      dict[right].sort((x, y) => y.priority - x.priority);
+      dict[right] = _.sortBy(dict[right], item => -item.priority);
     }
 
     return dict;
@@ -259,6 +259,6 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
       throw new Error(`Unknown access control rule "${ruleName}"`);
     }
 
-    return rule.test(target, context, options);
+    return rule.test.call(this, target, context, options);
   }
 }

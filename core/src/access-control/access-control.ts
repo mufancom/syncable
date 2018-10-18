@@ -23,6 +23,9 @@ export interface AccessControlEntry<TOptions extends object = object> {
 
 export interface SecuringAccessControlEntry<TOptions extends object = object>
   extends AccessControlEntry<TOptions> {
+  /**
+   * Type of syncable to be secured.
+   */
   match?: string[];
   type: 'deny';
 }
@@ -33,8 +36,8 @@ export function getAccessControlEntryPriority(
 ): number {
   return (
     // tslint:disable-next-line:no-bitwise
-    (explicit ? 0b1000 : 0) &
-    (securing ? 0b0100 : 0) &
+    (explicit ? 0b1000 : 0) |
+    (securing ? 0b0100 : 0) |
     (type === 'deny' ? 0b0010 : 0)
   );
 }
