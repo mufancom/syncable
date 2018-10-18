@@ -30,16 +30,20 @@ export interface ClientAssociateOptions {
   secures?: boolean;
 }
 
+export interface ClientGenericParams {
+  user: AbstractUserSyncableObject;
+  syncableObject: AbstractSyncableObject;
+  change: IChange;
+}
+
 export class Client<
-  TUser extends AbstractUserSyncableObject,
-  TSyncableObject extends AbstractSyncableObject,
-  TChange extends IChange
+  TGenericParams extends ClientGenericParams = ClientGenericParams
 > {
-  readonly context: Context<TUser>;
+  readonly context: Context<TGenericParams['user']>;
   readonly ready: Promise<void>;
 
   private manager: SyncableManager;
-  private socket: ClientSocket<TUser>;
+  private socket: ClientSocket<TGenericParams['user']>;
 
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
@@ -47,7 +51,7 @@ export class Client<
   constructor(
     socket: SocketIOClient.Socket,
     factory: AbstractSyncableObjectFactory,
-    changePlant: ChangePlant<TUser, TChange>,
+    changePlant: ChangePlant<TGenericParams['user'], TGenericParams['change']>,
   );
   constructor(
     socket: SocketIOClient.Socket,
@@ -57,7 +61,7 @@ export class Client<
     this.context = new Context('user');
     this.manager = new SyncableManager(factory);
 
-    this.socket = socket as ClientSocket<TUser>;
+    this.socket = socket as ClientSocket<TGenericParams['user']>;
 
     this.ready = new Promise<void>(resolve => {
       this.socket.on('syncable:initialize', data => {
@@ -72,32 +76,40 @@ export class Client<
     });
   }
 
-  get user(): TUser {
+  get user(): TGenericParams['user'] {
     return this.context.user;
   }
 
-  getObjects(): TSyncableObject[];
-  getObjects<T extends TSyncableObject>(type: T['syncable']['_type']): T[];
-  getObjects(type?: string): TSyncableObject[] {
-    return this.manager.getSyncableObjects(type) as TSyncableObject[];
+  getObjects(): TGenericParams['syncableObject'][];
+  getObjects<T extends TGenericParams['syncableObject']>(
+    type: T['syncable']['_type'],
+  ): T[];
+  getObjects(type?: string): TGenericParams['syncableObject'][] {
+    return this.manager.getSyncableObjects(
+      type,
+    ) as TGenericParams['syncableObject'][];
   }
 
-  getObject<T extends TSyncableObject>(ref: SyncableRef<T>): T | undefined {
+  getObject<T extends TGenericParams['syncableObject']>(
+    ref: SyncableRef<T>,
+  ): T | undefined {
     return this.manager.getSyncableObject(ref) as T;
   }
 
-  requireObject<T extends TSyncableObject>(ref: SyncableRef<T>): T {
+  requireObject<T extends TGenericParams['syncableObject']>(
+    ref: SyncableRef<T>,
+  ): T {
     return this.manager.requireSyncableObject(ref) as T;
   }
 
   associate(
-    target: TSyncableObject,
-    source: TSyncableObject,
+    target: TGenericParams['syncableObject'],
+    source: TGenericParams['syncableObject'],
     options?: ClientAssociateOptions,
   ): void;
   associate(
-    {ref: target}: TSyncableObject,
-    {ref: source}: TSyncableObject,
+    {ref: target}: TGenericParams['syncableObject'],
+    {ref: source}: TGenericParams['syncableObject'],
     {name, secures = false, requisite = secures}: ClientAssociateOptions = {},
   ): void {
     this.update({
@@ -107,10 +119,13 @@ export class Client<
     });
   }
 
-  unassociate(target: TSyncableObject, source: TSyncableObject): void;
   unassociate(
-    {ref: target}: TSyncableObject,
-    {ref: source}: TSyncableObject,
+    target: TGenericParams['syncableObject'],
+    source: TGenericParams['syncableObject'],
+  ): void;
+  unassociate(
+    {ref: target}: TGenericParams['syncableObject'],
+    {ref: source}: TGenericParams['syncableObject'],
   ): void {
     this.update({
       type: '$unassociate',
@@ -119,7 +134,7 @@ export class Client<
     });
   }
 
-  update(change: TChange | BuiltInChange): void {
+  update(change: TGenericParams['change'] | BuiltInChange): void {
     let packet: ChangePacket = {
       uid: uuid() as ChangePacketUID,
       ...(change as GeneralChange),
@@ -129,7 +144,10 @@ export class Client<
     this.pushChangePacket(packet);
   }
 
-  private onInitialize({userRef, ...data}: InitialData<TUser>): void {
+  private onInitialize({
+    userRef,
+    ...data
+  }: InitialData<TGenericParams['user']>): void {
     this.onSnapshotData(data, false);
 
     let user = this.manager.requireSyncableObject(userRef);

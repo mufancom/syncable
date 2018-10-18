@@ -17,7 +17,7 @@ import {
 import _ from 'lodash';
 import {observable} from 'mobx';
 
-import {AbstractServer, ViewQueryFilter} from './server';
+import {AbstractServer, ServerGenericParams, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'syncable:view-query', listener: (query: unknown) => void): this;
@@ -27,14 +27,14 @@ export interface ConnectionSocket extends SocketIO.Socket {
   emit(event: 'syncable:sync', data: SyncingData): boolean;
 }
 
-export class Connection {
+export class Connection<TServerGenericParams extends ServerGenericParams> {
   private context!: Context;
   private snapshotIdSet = new Set<SyncableId>();
 
   constructor(
     readonly group: string,
     private socket: ConnectionSocket,
-    private server: AbstractServer,
+    private server: AbstractServer<TServerGenericParams>,
     private manager: SyncableManager,
   ) {}
 

@@ -18,13 +18,15 @@ import {
   SyncableRef,
 } from '@syncable/core';
 import _ from 'lodash';
-import io from 'socket.io';
+import {Server as SocketServer} from 'socket.io';
 import uuid from 'uuid';
 import * as v from 'villa';
 
 import {Connection, ConnectionSocket} from './connection';
 
-export type ViewQueryFilter = (object: AbstractSyncableObject) => boolean;
+export type ViewQueryFilter<
+  T extends AbstractSyncableObject = AbstractSyncableObject
+> = (object: T) => boolean;
 
 export interface ConnectionSession<TViewQuery> {
   group: string;
@@ -36,27 +38,35 @@ export interface IGroupClock {
   next(): Promise<number>;
 }
 
-interface GroupInfo {
+interface GroupInfo<TServerGenerics extends ServerGenericParams> {
   clock: IGroupClock;
   manager: SyncableManager;
-  connectionSet: Set<Connection>;
+  connectionSet: Set<Connection<TServerGenerics>>;
   loadingPromise: Promise<void>;
 }
 
-export abstract class AbstractServer<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
-  TChange extends IChange = IChange,
-  TViewQuery extends unknown = unknown
-> extends EventEmitter {
-  private server: io.Server;
-  private groupInfoMap = new Map<string, GroupInfo>();
+export interface ServerGenericParams {
+  user: AbstractUserSyncableObject;
+  syncableObject: AbstractSyncableObject;
+  change: IChange;
+  viewQuery: unknown;
+}
 
-  private context = new Context<TUser>('server');
+export abstract class AbstractServer<
+  TGenericParams extends ServerGenericParams
+> extends EventEmitter {
+  private server: SocketServer;
+  private groupInfoMap = new Map<string, GroupInfo<TGenericParams>>();
+
+  private context = new Context<TGenericParams['user']>('server');
 
   constructor(
-    server: io.Server,
+    server: SocketServer,
     readonly factory: AbstractSyncableObjectFactory,
-    readonly changePlant: ChangePlant<TUser, TChange>,
+    readonly changePlant: ChangePlant<
+      TGenericParams['user'],
+      TGenericParams['change']
+    >,
   ) {
     super();
 
@@ -65,11 +75,13 @@ export abstract class AbstractServer<
     this.initialize().catch(this.error);
   }
 
-  abstract getViewQueryFilter(query: TViewQuery): ViewQueryFilter;
+  abstract getViewQueryFilter(
+    query: TGenericParams['viewQuery'],
+  ): ViewQueryFilter<TGenericParams['syncableObject']>;
 
   async update(
     group: string,
-    change: TChange | BuiltInChange,
+    change: TGenericParams['change'] | BuiltInChange,
   ): Promise<ChangePlantProcessingResultWithTimestamp> {
     await this.initializeGroup(group);
 
@@ -84,7 +96,7 @@ export abstract class AbstractServer<
   applyChangePacket(
     group: string,
     packet: ChangePacket,
-    context: Context<TUser>,
+    context: Context<TGenericParams['user']>,
   ): void {
     this._applyChangePacket(group, packet, context).catch(error =>
       this.emit('error', error),
@@ -100,7 +112,7 @@ export abstract class AbstractServer<
 
   protected abstract resolveSession(
     socket: ConnectionSocket,
-  ): Promise<ConnectionSession<TViewQuery>>;
+  ): Promise<ConnectionSession<TGenericParams['viewQuery']>>;
 
   protected abstract loadSyncables(group: string): Promise<ISyncable[]>;
 
@@ -126,14 +138,21 @@ export abstract class AbstractServer<
 
     let groupInfo = await this.initializeGroup(group);
 
-    let connection = new Connection(group, socket, this, groupInfo.manager);
+    let connection = new Connection<TGenericParams>(
+      group,
+      socket,
+      this,
+      groupInfo.manager,
+    );
 
     groupInfo.connectionSet.add(connection);
 
     connection.initialize(userRef, viewQuery).catch(console.error);
   }
 
-  private async initializeGroup(group: string): Promise<GroupInfo> {
+  private async initializeGroup(
+    group: string,
+  ): Promise<GroupInfo<TGenericParams>> {
     let groupInfoMap = this.groupInfoMap;
 
     let groupInfo = groupInfoMap.get(group);
@@ -172,7 +191,7 @@ export abstract class AbstractServer<
   private async _applyChangePacket(
     group: string,
     packet: ChangePacket,
-    context: Context<TUser>,
+    context: Context<TGenericParams['user']>,
   ): Promise<ChangePlantProcessingResultWithTimestamp> {
     let info = this.groupInfoMap.get(group);
 
