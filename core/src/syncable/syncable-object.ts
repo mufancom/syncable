@@ -216,9 +216,40 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
     let associations = this.getRequisiteAssociations();
 
     for (let association of associations) {
-      let securingACL = association
-        .getSecuringACL()
-        .filter(({match}) => !match || match.includes(this.ref.type));
+      let securingACL = association.getSecuringACL().filter(({match}) => {
+        let refType = this.ref.type;
+
+        if (!match || (match instanceof Array && !match.length)) {
+          return true;
+        }
+
+        if (Array.isArray(match)) {
+          let matches = match;
+          let matched = true;
+
+          for (let match of matches) {
+            if (typeof match === 'string') {
+              if (new RegExp(match).test(refType)) {
+                matched = true;
+              }
+            } else {
+              if (new RegExp(match.not).test(refType)) {
+                matched = false;
+              }
+            }
+          }
+
+          return matched;
+        } else {
+          if (typeof match === 'string') {
+            return new RegExp(match).test(refType);
+          } else {
+            return new RegExp(match.not).test(refType);
+          }
+        }
+
+        // return !match || match.includes(this.ref.type);
+      });
 
       for (let entry of securingACL) {
         let {type, grantable, rights} = entry;

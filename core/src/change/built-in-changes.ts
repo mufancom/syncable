@@ -1,6 +1,9 @@
 import _ from 'lodash';
 
-import {AccessControlEntry} from '../access-control';
+import {
+  AccessControlEntry,
+  SecuringAccessControlEntry,
+} from '../access-control';
 import {
   AbstractUserSyncableObject,
   ISyncable,
@@ -62,7 +65,8 @@ export interface SetAccessControlEntriesChangeRefDict {
 }
 
 export interface SetAccessControlEntriesChangeOptions {
-  entries: AccessControlEntry[];
+  entries?: AccessControlEntry[];
+  securingEntries?: SecuringAccessControlEntry[];
 }
 
 export type SetAccessControlEntriesChange = IChange<
@@ -80,7 +84,8 @@ export interface UnsetAccessControlEntriesChangeRefDict {
 }
 
 export interface UnsetAccessControlEntriesChangeOptions {
-  names: string[];
+  names?: string[];
+  securingNames?: string[];
 }
 
 export type UnsetAccessControlEntriesChange = IChange<
@@ -163,42 +168,70 @@ export const builtInChangePlantBlueprint: ChangePlantBlueprint<
   '$set-access-control-entries'(
     {target},
     {target: targetObject},
-    {context, options: {entries}},
+    {context, options: {entries, securingEntries}},
   ) {
     targetObject.validateAccessRights(['full'], context);
 
-    let acl = target._acl;
+    if (entries) {
+      let acl = target._acl;
 
-    if (!acl) {
-      acl = target._acl = [];
+      if (!acl) {
+        acl = target._acl = [];
+      }
+
+      let entryMap = new Map(
+        acl.map((entry): [string, AccessControlEntry] => [entry.name, entry]),
+      );
+
+      for (let entry of entries) {
+        entryMap.set(entry.name, entry);
+      }
+
+      target._acl = Array.from(entryMap.values());
     }
 
-    let entryMap = new Map(
-      acl.map((entry): [string, AccessControlEntry] => [entry.name, entry]),
-    );
+    if (securingEntries) {
+      let secures = target._secures;
 
-    for (let entry of entries) {
-      entryMap.set(entry.name, entry);
+      if (!secures) {
+        secures = target._secures = [];
+      }
+
+      let securingEntryMap = new Map(
+        secures.map((entry): [string, SecuringAccessControlEntry] => [
+          entry.name,
+          entry,
+        ]),
+      );
+
+      for (let entry of securingEntries) {
+        securingEntryMap.set(entry.name, entry);
+      }
+
+      target._secures = Array.from(securingEntryMap.values());
     }
-
-    target._acl = Array.from(entryMap.values());
   },
   '$unset-access-control-entries'(
     {target},
     {target: targetObject},
-    {context, options: {names}},
+    {context, options: {names, securingNames}},
   ) {
     targetObject.validateAccessRights(['full'], context);
 
     let acl = target._acl;
+    let secures = target._secures;
+    let nameSet = new Set(names);
+    let securingNameSet = new Set(securingNames);
 
-    if (!acl) {
-      return;
+    if (acl) {
+      target._acl = acl.filter(entry => !nameSet.has(entry.name));
     }
 
-    let nameSet = new Set(names);
-
-    target._acl = acl.filter(entry => !nameSet.has(entry.name));
+    if (secures) {
+      target._secures = secures.filter(
+        entry => !securingNameSet.has(entry.name),
+      );
+    }
   },
 };
 
