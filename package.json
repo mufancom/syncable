@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "link-global": "yarn workspace @syncable/core link && yarn workspace @syncable/server link && yarn workspace @syncable/client link",
-    "lerna:publish": "lerna publish --canary --npm-tag latest --registry=https://registry.npmjs.org"
+    "lerna:publish": "lerna publish --canary --preid wip --npm-tag latest --registry=https://registry.npmjs.org"
   },
   "devDependencies": {
     "@magicspace/configs": "^0.1.44",
