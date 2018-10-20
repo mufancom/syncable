@@ -28,7 +28,7 @@ import {Tag, User} from '../shared';
   });
 
   userSyncable._associations = [
-    {name: 'tag', requisite: true, ref: getSyncableRef(adminTagSyncable)},
+    {name: 'tag', ref: getSyncableRef(adminTagSyncable)},
   ];
 
   let syncables = [userSyncable, adminTagSyncable, irrelevantTagSyncable];

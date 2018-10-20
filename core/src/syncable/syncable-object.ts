@@ -20,7 +20,7 @@ export interface AccessControlRuleEntry {
   test: AccessControlRuleTester;
 }
 
-export interface GetAssociationOptions<T extends AbstractSyncableObject> {
+export interface GetAssociationOptions<T extends ISyncableObject> {
   name?: string;
   type?: T['syncable']['_type'];
   securesOnly?: boolean;
@@ -40,7 +40,7 @@ type AccessRightComparableItemsDict = {
   [key in AccessRight]: AccessRightComparableItem[]
 };
 
-export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
+abstract class SyncableObject<T extends ISyncable = ISyncable> {
   /** @internal */
   // tslint:disable-next-line:variable-name
   __accessControlRuleMap!: Map<
@@ -73,7 +73,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
     return manager;
   }
 
-  require<T extends AbstractSyncableObject>(ref: SyncableRef<T>): T {
+  require<T extends ISyncableObject>(ref: SyncableRef<T>): T {
     return this.manager.requireSyncableObject(ref);
   }
 
@@ -87,7 +87,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
     );
   }
 
-  getRequisiteAssociations<T extends AbstractSyncableObject>({
+  getRequisiteAssociations<T extends ISyncableObject>({
     name,
     type,
     securesOnly = false,
@@ -103,7 +103,6 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
     return associations
       .filter(
         association =>
-          association.requisite &&
           (!name || association.name === name) &&
           (!type || association.ref.type === type) &&
           (!securesOnly || association.secures),
@@ -165,10 +164,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
   }
 
   @AccessControlRule('basic')
-  protected testBasic(
-    _target: AbstractSyncableObject,
-    _context: Context,
-  ): boolean {
+  protected testBasic(_target: ISyncableObject, _context: Context): boolean {
     return true;
   }
 
@@ -213,7 +209,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
       }
     }
 
-    let associations = this.getRequisiteAssociations();
+    let associations = this.getRequisiteAssociations({securesOnly: true});
 
     for (let association of associations) {
       let securingACL = association
@@ -247,7 +243,7 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
   }
 
   private testAccessControlEntry(
-    target: AbstractSyncableObject,
+    target: ISyncableObject,
     entry: AccessControlEntry,
     context: Context,
   ): boolean {
@@ -262,3 +258,8 @@ export abstract class AbstractSyncableObject<T extends ISyncable = ISyncable> {
     return rule.test.call(this, target, context, options);
   }
 }
+
+export interface ISyncableObject<T extends ISyncable = ISyncable>
+  extends SyncableObject<T> {}
+
+export const AbstractSyncableObject = SyncableObject;

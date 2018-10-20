@@ -1,5 +1,3 @@
-import {Server as HTTPServer} from 'http';
-
 import {
   ChangePlant,
   ISyncable,
@@ -13,9 +11,11 @@ import {
   ViewQueryFilter,
 } from '@syncable/server';
 import {MongoClient} from 'mongodb';
+import {Server as SocketServer} from 'socket.io';
 
 import {
   MFChange,
+  MFSyncableObject,
   MFSyncableObjectFactory,
   MFViewQuery,
   User,
@@ -54,17 +54,22 @@ export class MFGroupClock {
   }
 }
 
-export class MFServer extends AbstractServer<User, MFChange, MFViewQuery> {
+export class MFServer extends AbstractServer<{
+  user: User;
+  syncableObject: MFSyncableObject;
+  change: MFChange;
+  viewQuery: MFViewQuery;
+}> {
   private dbClientPromise = MongoClient.connect('mongodb://localhost:27017', {
     useNewUrlParser: true,
   });
 
   constructor(
-    httpServer: HTTPServer,
+    socketServer: SocketServer,
     factory: MFSyncableObjectFactory,
     changePlant: ChangePlant<User, MFChange>,
   ) {
-    super(httpServer, factory, changePlant);
+    super(socketServer, factory, changePlant);
   }
 
   getViewQueryFilter(_query: MFViewQuery): ViewQueryFilter {
@@ -105,7 +110,8 @@ export class MFServer extends AbstractServer<User, MFChange, MFViewQuery> {
   }
 
   protected async saveSyncables(
-    syncables: ISyncable[],
+    updates: ISyncable[],
+    creations: ISyncable[],
     removals: SyncableRef[],
   ): Promise<void> {
     let dbClient = await this.dbClientPromise;
@@ -114,12 +120,18 @@ export class MFServer extends AbstractServer<User, MFChange, MFViewQuery> {
       .db(DB_NAME)
       .collection<ISyncable>(SYNCABLES_COLLECTION_NAME)
       .bulkWrite([
-        ...syncables.map(syncable => {
+        ...updates.map(syncable => {
           return {
             updateOne: {
               filter: {_id: syncable._id},
               update: {$set: syncable},
-              upsert: true,
+            },
+          };
+        }),
+        ...creations.map(syncable => {
+          return {
+            insertOne: {
+              document: syncable,
             },
           };
         }),

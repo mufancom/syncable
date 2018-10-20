@@ -8,26 +8,23 @@ import {
 } from '../access-control';
 import {SyncableCreationRef} from '../change';
 
-import {AbstractSyncableObject} from './syncable-object';
+import {ISyncableObject} from './syncable-object';
 
 export type SyncableId<Type extends string = string> = Nominal<
   string,
   [Type, 'syncable-id']
 >;
 
-export interface SyncableRef<
-  T extends AbstractSyncableObject = AbstractSyncableObject
-> {
+export interface SyncableRef<T extends ISyncableObject = ISyncableObject> {
   id: T['syncable']['_id'];
   type: T['syncable']['_type'];
 }
 
 export interface SyncableAssociation<
-  T extends AbstractSyncableObject = AbstractSyncableObject
+  T extends ISyncableObject = ISyncableObject
 > {
   ref: SyncableRef<T>;
   name?: string;
-  requisite?: boolean;
   secures?: boolean;
 }
 
@@ -69,10 +66,10 @@ export interface ISyncable<Type extends string = string> {
 ///////////////
 
 export type SyncableIdType<
-  T extends ISyncable | AbstractSyncableObject
+  T extends ISyncable | ISyncableObject
 > = T extends ISyncable
   ? T['_id']
-  : T extends AbstractSyncableObject ? T['id'] : never;
+  : T extends ISyncableObject ? T['id'] : never;
 
 export type SyncableObjectType<T> = T extends SyncableRef<infer TSyncableObject>
   ? TSyncableObject
@@ -86,7 +83,7 @@ export type SyncableType<T> = T extends SyncableCreationRef<
     ? TSyncableObject['syncable']
     : never;
 
-export function createSyncableCreationRef<T extends AbstractSyncableObject>(
+export function createSyncableCreationRef<T extends ISyncableObject>(
   type: T['syncable']['_type'],
 ): SyncableCreationRef<T> {
   return {
@@ -98,7 +95,7 @@ export function createSyncableCreationRef<T extends AbstractSyncableObject>(
 
 export type CreateSyncableExcludingKey = '_id' | '_type' | '_timestamp';
 
-export function createSyncable<T extends AbstractSyncableObject>(
+export function createSyncable<T extends ISyncableObject>(
   type: T['syncable']['_type'] | SyncableCreationRef<T>,
   data: OmitValueOfKey<T['syncable'], CreateSyncableExcludingKey>,
 ): T['syncable'] {

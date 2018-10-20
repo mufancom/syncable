@@ -1,5 +1,5 @@
 import {
-  ChangePacketUID,
+  ChangePacketId,
   ChangePlant,
   Context,
   SyncableCreationRef,
@@ -29,7 +29,7 @@ let task = new Task(taskSyncable);
 test('should update task brief', () => {
   let result = plant.process(
     {
-      uid: 'change-packet-id' as ChangePacketUID,
+      id: 'change-packet-id' as ChangePacketId,
       type: 'task:update-brief',
       refs: {
         task: getSyncableRef(taskSyncable),
@@ -56,7 +56,7 @@ test('should create task', () => {
 
   let result = plant.process(
     {
-      uid: 'change-packet-id' as ChangePacketUID,
+      id: 'change-packet-id' as ChangePacketId,
       type: 'task:create',
       refs: {
         task: taskRef,
@@ -77,7 +77,7 @@ test('should create task', () => {
 test('should remove task', () => {
   let result = plant.process(
     {
-      uid: 'change-packet-id' as ChangePacketUID,
+      id: 'change-packet-id' as ChangePacketId,
       type: 'task:remove',
       refs: {
         task: getSyncableRef(taskSyncable),

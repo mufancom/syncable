@@ -100,6 +100,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/socket.io@^1.4.38":
+  version "1.4.38"
+  resolved "http://registry.npm.taobao.org/@types/socket.io/download/@types/socket.io-1.4.38.tgz#ee1e16d66242a153e1e27aad5a99e0513c39a0ae"
+  integrity sha1-7h4W1mJCoVPh4nqtWpngUTw5oK4=
+  dependencies:
+    "@types/node" "*"
+
 "@types/uuid@^3.4.3":
   version "3.4.3"
   resolved "http://registry.npm.taobao.org/@types/uuid/download/@types/uuid-3.4.3.tgz#121ace265f5569ce40f4f6d0ff78a338c732a754"

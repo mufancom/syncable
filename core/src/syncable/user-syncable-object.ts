@@ -3,7 +3,7 @@ import {Permission} from '../access-control';
 import {ISyncable} from './syncable';
 import {AbstractSyncableObject} from './syncable-object';
 
-export abstract class AbstractUserSyncableObject<
+abstract class UserSyncableObject<
   T extends ISyncable = ISyncable,
   TPermission extends Permission = Permission
 > extends AbstractSyncableObject<T> {
@@ -19,3 +19,10 @@ export abstract class AbstractUserSyncableObject<
       );
   }
 }
+
+export interface IUserSyncableObject<
+  T extends ISyncable = ISyncable,
+  TPermission extends Permission = Permission
+> extends UserSyncableObject<T, TPermission> {}
+
+export const AbstractUserSyncableObject = UserSyncableObject;

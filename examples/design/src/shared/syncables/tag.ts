@@ -3,6 +3,7 @@ import {
   AccessControlRule,
   Context,
   ISyncable,
+  ISyncableObject,
   SyncableIdType,
 } from '@syncable/core';
 import _ from 'lodash';
@@ -44,7 +45,7 @@ export class Tag extends AbstractSyncableObject<TagSyncable> {
 
   @AccessControlRule()
   protected 'require-mutual-association'(
-    _target: AbstractSyncableObject,
+    _target: ISyncableObject,
     context: Context,
     {acceptDerivation = true}: TagMutualAssociationOptions = {},
   ): boolean {

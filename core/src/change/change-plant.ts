@@ -5,8 +5,9 @@ import {Dict, KeyOfValueWithType, ValueWithType} from 'tslang';
 import {Context} from '../context';
 import {
   AbstractSyncableObject,
-  AbstractUserSyncableObject,
   ISyncable,
+  ISyncableObject,
+  IUserSyncableObject,
   SyncableId,
   SyncableRef,
   SyncableType,
@@ -15,7 +16,7 @@ import {
 import {builtInChangePlantBlueprint} from './built-in-changes';
 import {
   ChangePacket,
-  ChangePacketUID,
+  ChangePacketId,
   GeneralChange,
   IChange,
   SyncableCreationRef,
@@ -85,7 +86,7 @@ export interface ChangePlantProcessingResultUpdateItem {
 }
 
 export interface ChangePlantProcessingResult {
-  uid: ChangePacketUID;
+  id: ChangePacketId;
   updates: Dict<ChangePlantProcessingResultUpdateItem>;
   creations: ISyncable[];
   removals: SyncableRef[];
@@ -107,7 +108,7 @@ export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
 ) => void;
 
 export interface ChangePlantProcessorExtra<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
 > {
   context: Context<TUser>;
@@ -117,7 +118,7 @@ export interface ChangePlantProcessorExtra<
 }
 
 export type ChangePlantProcessor<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
 > = (
   syncables: ChangeToSyncableDict<TChange>,
@@ -126,7 +127,7 @@ export type ChangePlantProcessor<
 ) => void;
 
 export type ChangePlantBlueprint<
-  TUser extends AbstractUserSyncableObject,
+  TUser extends IUserSyncableObject,
   TChange extends IChange
 > = {
   [K in TChange['type']]: ChangePlantProcessor<
@@ -136,7 +137,7 @@ export type ChangePlantBlueprint<
 };
 
 export class ChangePlant<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
 > {
   constructor(private blueprint: ChangePlantBlueprint<TUser, TChange>) {}
@@ -144,22 +145,22 @@ export class ChangePlant<
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      AbstractSyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef
     >,
     context: Context<TUser>,
   ): ChangePlantProcessingResult;
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      AbstractSyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef
     >,
     context: Context<TUser>,
     timestamp: number,
   ): ChangePlantProcessingResultWithTimestamp;
   process(
-    {uid, type, options}: ChangePacket,
+    {id, type, options}: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      AbstractSyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef
     >,
     context: Context,
     timestamp?: number,
@@ -171,8 +172,8 @@ export class ChangePlant<
       Object.entries(syncableObjectOrCreationRefDict),
     ).filter(
       (
-        entry: [string, AbstractSyncableObject | SyncableCreationRef],
-      ): entry is [string, AbstractSyncableObject] => {
+        entry: [string, ISyncableObject | SyncableCreationRef],
+      ): entry is [string, ISyncableObject] => {
         let [, object] = entry;
         return object instanceof AbstractSyncableObject;
       },
@@ -188,7 +189,7 @@ export class ChangePlant<
       {} as Dict<ISyncable>,
     );
 
-    let syncableObjectMap = new Map<SyncableId, AbstractSyncableObject>();
+    let syncableObjectMap = new Map<SyncableId, ISyncableObject>();
 
     let syncableObjectDict = syncableObjectEntries.reduce(
       (dict, [name, object]) => {
@@ -198,7 +199,7 @@ export class ChangePlant<
 
         return dict;
       },
-      {} as Dict<AbstractSyncableObject>,
+      {} as Dict<ISyncableObject>,
     );
 
     let clonedSyncableDict = _.mapValues(syncableDict, syncable =>
@@ -293,7 +294,7 @@ export class ChangePlant<
     }
 
     return {
-      uid,
+      id,
       timestamp,
       updates: updateDict,
       creations: creations || [],

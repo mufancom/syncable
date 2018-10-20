@@ -1,5 +1,5 @@
-import {ChangePacketUID} from './change';
-import {AbstractUserSyncableObject, ISyncable, SyncableRef} from './syncable';
+import {ChangePacketId} from './change';
+import {ISyncable, IUserSyncableObject, SyncableRef} from './syncable';
 
 export interface SyncingDataUpdateEntry {
   ref: SyncableRef;
@@ -12,7 +12,7 @@ export interface SnapshotData {
 }
 
 export interface InitialData<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject
+  TUser extends IUserSyncableObject = IUserSyncableObject
 > extends SnapshotData {
   userRef: SyncableRef<TUser>;
 }
@@ -25,6 +25,6 @@ export interface UpdateData extends SnapshotData {
 export type SyncingData = SnapshotData | UpdateData;
 
 export interface UpdateSource {
-  uid: ChangePacketUID;
+  id: ChangePacketId;
   timestamp: number;
 }

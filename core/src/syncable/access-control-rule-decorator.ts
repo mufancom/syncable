@@ -1,10 +1,10 @@
 import {AccessControlEntryRuleName} from '../access-control';
 import {AccessControlRuleTester} from '../context';
 
-import {AbstractSyncableObject} from './syncable-object';
+import {ISyncableObject} from './syncable-object';
 
 export type AccessControlRuleDecorator = (
-  target: AbstractSyncableObject,
+  target: ISyncableObject,
   name: string,
   descriptor: TypedPropertyDescriptor<AccessControlRuleTester>,
 ) => void;

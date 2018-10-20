@@ -3,6 +3,7 @@ import {createServer} from 'http';
 import 'source-map-support/register';
 
 import {ChangePlant} from '@syncable/core';
+import socketIO from 'socket.io';
 
 import {
   MFChange,
@@ -21,6 +22,8 @@ let httpServer = createServer();
 
 httpServer.listen(8080);
 
-let server = new MFServer(httpServer, factory, changePlant);
+let socketServer = socketIO(httpServer);
+
+let server = new MFServer(socketServer, factory, changePlant);
 
 server.on('error', console.error);

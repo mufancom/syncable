@@ -2,8 +2,8 @@ import _ from 'lodash';
 
 import {AccessControlEntry} from '../access-control';
 import {
-  AbstractUserSyncableObject,
   ISyncable,
+  IUserSyncableObject,
   SyncableAssociation,
   SyncableRef,
 } from '../syncable';
@@ -29,7 +29,6 @@ export interface AssociateChangeRefDict {
 
 export interface AssociateChangeOptions {
   name?: string;
-  requisite: boolean;
   secures: boolean;
 }
 
@@ -90,13 +89,13 @@ export type UnsetAccessControlEntriesChange = IChange<
 >;
 
 export const builtInChangePlantBlueprint: ChangePlantBlueprint<
-  AbstractUserSyncableObject,
+  IUserSyncableObject,
   BuiltInChange
 > = {
   $associate(
     {target, source},
     {target: targetObject},
-    {context, options: {name, requisite, secures}},
+    {context, options: {name, secures}},
   ) {
     let associations = target._associations;
 
@@ -114,7 +113,6 @@ export const builtInChangePlantBlueprint: ChangePlantBlueprint<
     let updatedAssociation: SyncableAssociation = {
       ref: getSyncableRef(source),
       name,
-      requisite: requisite || undefined,
       secures: secures || undefined,
     };
 

@@ -2,10 +2,10 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {ObservableMap, observable} from 'mobx';
 
-import {AbstractSyncableObjectFactory} from '../context';
+import {ISyncableObjectFactory} from '../context';
 
 import {ISyncable, SyncableId, SyncableRef} from './syncable';
-import {AbstractSyncableObject} from './syncable-object';
+import {ISyncableObject} from './syncable-object';
 
 export class SyncableManager {
   private typeToIdToSyncableMapMap = observable.map<
@@ -15,7 +15,7 @@ export class SyncableManager {
 
   private typeToIdToSyncableObjectMapMap = observable.map<
     string,
-    ObservableMap<SyncableId, AbstractSyncableObject>
+    ObservableMap<SyncableId, ISyncableObject>
   >();
 
   private associatedTargetSyncableSetMap = new Map<
@@ -23,7 +23,7 @@ export class SyncableManager {
     Set<ISyncable>
   >();
 
-  constructor(private factory: AbstractSyncableObjectFactory) {}
+  constructor(private factory: ISyncableObjectFactory) {}
 
   getSyncables(type?: string): ISyncable[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
@@ -45,7 +45,7 @@ export class SyncableManager {
     }
   }
 
-  getSyncableObjects(type?: string): AbstractSyncableObject[] {
+  getSyncableObjects(type?: string): ISyncableObject[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
 
     if (type) {
@@ -74,7 +74,7 @@ export class SyncableManager {
     return !!syncableMap && syncableMap.has(id);
   }
 
-  getSyncable<T extends AbstractSyncableObject>({
+  getSyncable<T extends ISyncableObject>({
     type,
     id,
   }: SyncableRef<T>): T['syncable'] | undefined {
@@ -82,7 +82,7 @@ export class SyncableManager {
     return syncableMap && syncableMap.get(id);
   }
 
-  requireSyncable<T extends AbstractSyncableObject>(
+  requireSyncable<T extends ISyncableObject>(
     ref: SyncableRef<T>,
   ): T['syncable'] {
     let syncable = this.getSyncable(ref);
@@ -204,7 +204,7 @@ export class SyncableManager {
     return set ? Array.from(set) : [];
   }
 
-  getSyncableObject<T extends AbstractSyncableObject>(
+  getSyncableObject<T extends ISyncableObject>(
     ref: SyncableRef<T>,
   ): T | undefined {
     let {type, id} = ref;
@@ -239,9 +239,7 @@ export class SyncableManager {
     return object;
   }
 
-  requireSyncableObject<T extends AbstractSyncableObject>(
-    ref: SyncableRef<T>,
-  ): T {
+  requireSyncableObject<T extends ISyncableObject>(ref: SyncableRef<T>): T {
     let object = this.getSyncableObject(ref);
 
     if (!object) {

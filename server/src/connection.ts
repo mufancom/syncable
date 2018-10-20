@@ -1,9 +1,9 @@
 import {
-  AbstractUserSyncableObject,
   ChangePacket,
   ChangePlantProcessingResultWithTimestamp,
   Context,
   ISyncable,
+  IUserSyncableObject,
   InitialData,
   SnapshotData,
   SyncableId,
@@ -17,7 +17,7 @@ import {
 import _ from 'lodash';
 import {observable} from 'mobx';
 
-import {AbstractServer, ServerGenericParams, ViewQueryFilter} from './server';
+import {IServer, ServerGenericParams, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'syncable:view-query', listener: (query: unknown) => void): this;
@@ -34,12 +34,12 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   constructor(
     readonly group: string,
     private socket: ConnectionSocket,
-    private server: AbstractServer<TServerGenericParams>,
+    private server: IServer<TServerGenericParams>,
     private manager: SyncableManager,
   ) {}
 
   async initialize(
-    userRef: SyncableRef<AbstractUserSyncableObject>,
+    userRef: SyncableRef<IUserSyncableObject>,
     viewQuery: unknown,
   ): Promise<void> {
     let socket = this.socket;
@@ -66,7 +66,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
   // TODO: ability limit iteration within a subset of syncables to improve
   // performance.
-  snapshot(userRef?: SyncableRef<AbstractUserSyncableObject>): SnapshotData {
+  snapshot(userRef?: SyncableRef<IUserSyncableObject>): SnapshotData {
     let manager = this.manager;
     let context = this.context;
 
@@ -127,9 +127,9 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       }
 
       if (associations) {
-        for (let {requisite = false, ref} of associations) {
+        for (let {ref} of associations) {
           let syncable = manager.requireSyncable(ref);
-          ensureAssociationsAndDoSnapshot(syncable, requisite);
+          ensureAssociationsAndDoSnapshot(syncable, true);
         }
       }
 
@@ -139,7 +139,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   }
 
   handleChangeResult({
-    uid,
+    id,
     timestamp,
     updates: updateDict,
   }: ChangePlantProcessingResultWithTimestamp): void {
@@ -163,7 +163,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       }
     }
 
-    let source: UpdateSource = {uid, timestamp};
+    let source: UpdateSource = {id, timestamp};
 
     socket.emit('syncable:sync', {source, updates, ...snapshotData});
   }

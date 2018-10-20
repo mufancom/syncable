@@ -12,7 +12,7 @@ Object {
   ],
   "removals": Array [],
   "timestamp": undefined,
-  "uid": "change-packet-id",
+  "id": "change-packet-id",
   "updates": Object {},
 }
 `;
@@ -27,7 +27,7 @@ Object {
     },
   ],
   "timestamp": undefined,
-  "uid": "change-packet-id",
+  "id": "change-packet-id",
   "updates": Object {},
 }
 `;
@@ -37,7 +37,7 @@ Object {
   "creations": Array [],
   "removals": Array [],
   "timestamp": undefined,
-  "uid": "change-packet-id",
+  "id": "change-packet-id",
   "updates": Object {
     "task": Object {
       "diffs": Array [

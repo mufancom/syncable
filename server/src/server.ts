@@ -1,12 +1,9 @@
 import {EventEmitter} from 'events';
 
 import {
-  AbstractSyncableObject,
-  AbstractSyncableObjectFactory,
-  AbstractUserSyncableObject,
   BuiltInChange,
   ChangePacket,
-  ChangePacketUID,
+  ChangePacketId,
   ChangePlant,
   ChangePlantProcessingResultWithTimestamp,
   Context,
@@ -14,6 +11,9 @@ import {
   GeneralSyncableRef,
   IChange,
   ISyncable,
+  ISyncableObject,
+  ISyncableObjectFactory,
+  IUserSyncableObject,
   SyncableManager,
   SyncableRef,
 } from '@syncable/core';
@@ -24,13 +24,13 @@ import * as v from 'villa';
 
 import {Connection, ConnectionSocket} from './connection';
 
-export type ViewQueryFilter<
-  T extends AbstractSyncableObject = AbstractSyncableObject
-> = (object: T) => boolean;
+export type ViewQueryFilter<T extends ISyncableObject = ISyncableObject> = (
+  object: T,
+) => boolean;
 
 export interface ConnectionSession<TViewQuery> {
   group: string;
-  userRef: SyncableRef<AbstractUserSyncableObject>;
+  userRef: SyncableRef<IUserSyncableObject>;
   viewQuery: TViewQuery | undefined;
 }
 
@@ -46,13 +46,13 @@ interface GroupInfo<TServerGenerics extends ServerGenericParams> {
 }
 
 export interface ServerGenericParams {
-  user: AbstractUserSyncableObject;
-  syncableObject: AbstractSyncableObject;
+  user: IUserSyncableObject;
+  syncableObject: ISyncableObject;
   change: IChange;
   viewQuery: unknown;
 }
 
-export abstract class AbstractServer<
+abstract class Server<
   TGenericParams extends ServerGenericParams
 > extends EventEmitter {
   private server: SocketServer;
@@ -62,7 +62,7 @@ export abstract class AbstractServer<
 
   constructor(
     server: SocketServer,
-    readonly factory: AbstractSyncableObjectFactory,
+    readonly factory: ISyncableObjectFactory,
     readonly changePlant: ChangePlant<
       TGenericParams['user'],
       TGenericParams['change']
@@ -86,7 +86,7 @@ export abstract class AbstractServer<
     await this.initializeGroup(group);
 
     let packet: ChangePacket = {
-      uid: uuid() as ChangePacketUID,
+      id: uuid() as ChangePacketId,
       ...(change as GeneralChange),
     };
 
@@ -260,3 +260,8 @@ export abstract class AbstractServer<
     });
   }
 }
+
+export interface IServer<TGenericParams extends ServerGenericParams>
+  extends Server<TGenericParams> {}
+
+export const AbstractServer = Server;

@@ -1,16 +1,16 @@
 import {
-  AbstractSyncableObject,
-  AbstractSyncableObjectFactory,
-  AbstractUserSyncableObject,
   BuiltInChange,
   ChangePacket,
-  ChangePacketUID,
+  ChangePacketId,
   ChangePlant,
   Context,
   GeneralChange,
   GeneralSyncableRef,
   IChange,
   ISyncable,
+  ISyncableObject,
+  ISyncableObjectFactory,
+  IUserSyncableObject,
   InitialData,
   SnapshotData,
   SyncableId,
@@ -26,13 +26,12 @@ import {ClientSocket} from './@client-socket';
 
 export interface ClientAssociateOptions {
   name?: string;
-  requisite?: boolean;
   secures?: boolean;
 }
 
 export interface ClientGenericParams {
-  user: AbstractUserSyncableObject;
-  syncableObject: AbstractSyncableObject;
+  user: IUserSyncableObject;
+  syncableObject: ISyncableObject;
   change: IChange;
 }
 
@@ -50,12 +49,12 @@ export class Client<
 
   constructor(
     socket: SocketIOClient.Socket,
-    factory: AbstractSyncableObjectFactory,
+    factory: ISyncableObjectFactory,
     changePlant: ChangePlant<TGenericParams['user'], TGenericParams['change']>,
   );
   constructor(
     socket: SocketIOClient.Socket,
-    factory: AbstractSyncableObjectFactory,
+    factory: ISyncableObjectFactory,
     private changePlant: ChangePlant,
   ) {
     this.context = new Context('user');
@@ -81,19 +80,23 @@ export class Client<
   }
 
   getObjects(): TGenericParams['syncableObject'][];
-  getObjects<T extends TGenericParams['syncableObject']>(
-    type: T['syncable']['_type'],
-  ): T[];
+  getObjects<
+    TType extends TGenericParams['syncableObject']['syncable']['_type']
+  >(
+    type: TType,
+  ): Extract<TGenericParams['syncableObject'], {syncable: {_type: TType}}>[];
   getObjects(type?: string): TGenericParams['syncableObject'][] {
     return this.manager.getSyncableObjects(
       type,
     ) as TGenericParams['syncableObject'][];
   }
 
-  getObject<T extends TGenericParams['syncableObject']>(
-    ref: SyncableRef<T>,
-  ): T | undefined {
-    return this.manager.getSyncableObject(ref) as T;
+  getObject<TRef extends TGenericParams['syncableObject']['ref']>(
+    ref: TRef,
+  ): Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined {
+    return this.manager.getSyncableObject(ref as SyncableRef) as
+      | Extract<TGenericParams['syncableObject'], {ref: TRef}>
+      | undefined;
   }
 
   requireObject<T extends TGenericParams['syncableObject']>(
@@ -110,12 +113,12 @@ export class Client<
   associate(
     {ref: target}: TGenericParams['syncableObject'],
     {ref: source}: TGenericParams['syncableObject'],
-    {name, secures = false, requisite = secures}: ClientAssociateOptions = {},
+    {name, secures = false}: ClientAssociateOptions = {},
   ): void {
     this.update({
       type: '$associate',
       refs: {target, source},
-      options: {name, requisite, secures},
+      options: {name, secures},
     });
   }
 
@@ -136,7 +139,7 @@ export class Client<
 
   update(change: TGenericParams['change'] | BuiltInChange): void {
     let packet: ChangePacket = {
-      uid: uuid() as ChangePacketUID,
+      id: uuid() as ChangePacketId,
       ...(change as GeneralChange),
     };
 
@@ -156,7 +159,7 @@ export class Client<
 
   private onSync(data: SyncingData): void {
     if ('source' in data) {
-      let matched = this.shiftChangePacket(data.source.uid);
+      let matched = this.shiftChangePacket(data.source.id);
 
       this.onSnapshotData(data, matched);
 
@@ -208,10 +211,10 @@ export class Client<
     this.manager.updateSyncable(snapshot);
   }
 
-  private shiftChangePacket(uid: ChangePacketUID): boolean {
+  private shiftChangePacket(id: ChangePacketId): boolean {
     let packets = this.pendingChangePackets;
 
-    let index = packets.findIndex(packet => packet.uid === uid);
+    let index = packets.findIndex(packet => packet.id === id);
 
     if (index < 0) {
       return false;
@@ -223,7 +226,7 @@ export class Client<
     }
 
     throw new Error(
-      `Change packet UID "${uid}" does not match the first pending packet`,
+      `Change packet UID "${id}" does not match the first pending packet`,
     );
   }
 
