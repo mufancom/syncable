@@ -66,10 +66,10 @@ export class MFServer extends AbstractServer<{
 
   constructor(
     socketServer: SocketServer,
-    factory: MFSyncableObjectProvider,
+    provider: MFSyncableObjectProvider,
     changePlant: ChangePlant<User, MFChange>,
   ) {
-    super(socketServer, factory, changePlant);
+    super(socketServer, provider, changePlant);
   }
 
   getViewQueryFilter(_query: MFViewQuery): ViewQueryFilter {

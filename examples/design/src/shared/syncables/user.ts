@@ -2,30 +2,24 @@ import {
   AbstractUserSyncableObject,
   ISyncable,
   SyncableIdType,
+  SyncableRef,
 } from '@syncable/core';
 
 import {Tag} from './tag';
 
 export interface UserSyncable extends ISyncable<'user'> {
   name: string;
+  tags: SyncableRef<Tag>[];
 }
 
 export type UserId = SyncableIdType<UserSyncable>;
 
-export type MFPermission = 'server' | 'sms';
-
-export class User extends AbstractUserSyncableObject<
-  UserSyncable,
-  MFPermission
-> {
+export class User extends AbstractUserSyncableObject<UserSyncable> {
   get name(): string {
     return this.syncable.name;
   }
 
   get tags(): Tag[] {
-    return this.getRequisiteAssociations({
-      name: 'tag',
-      type: 'tag',
-    });
+    return this.syncable.tags.map(ref => this.require(ref));
   }
 }

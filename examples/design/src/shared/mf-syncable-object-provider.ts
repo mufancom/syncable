@@ -1,4 +1,8 @@
-import {AbstractSyncableObjectProvider, SyncableManager} from '@syncable/core';
+import {
+  AbstractSyncableObjectProvider,
+  SyncableAssociation,
+  SyncableManager,
+} from '@syncable/core';
 
 import {MFSyncable, MFSyncableObject, Tag, User} from './syncables';
 
@@ -11,6 +15,20 @@ export class MFSyncableObjectProvider extends AbstractSyncableObjectProvider {
         return new User(syncable, manager);
       default:
         throw new TypeError(`Unsupported syncable type "${syncable._type}"`);
+    }
+  }
+
+  resolveAssociations(syncable: MFSyncable): SyncableAssociation[] {
+    switch (syncable._type) {
+      case 'task':
+        return syncable.tags.map(ref => {
+          return {
+            ref,
+            secures: true,
+          };
+        });
+      default:
+        return [];
     }
   }
 }

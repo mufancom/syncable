@@ -2,7 +2,8 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {Dict, KeyOfValueWithType, ValueWithType} from 'tslang';
 
-import {Context} from '../context';
+import {AccessRight} from '../access-control';
+import {Context, ISyncableObjectProvider} from '../context';
 import {
   AbstractSyncableObject,
   ISyncable,
@@ -13,7 +14,6 @@ import {
   SyncableType,
 } from '../syncable';
 
-import {builtInChangePlantBlueprint} from './built-in-changes';
 import {
   ChangePacket,
   ChangePacketId,
@@ -140,7 +140,10 @@ export class ChangePlant<
   TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
 > {
-  constructor(private blueprint: ChangePlantBlueprint<TUser, TChange>) {}
+  constructor(
+    private blueprint: ChangePlantBlueprint<TUser, TChange>,
+    private provider: ISyncableObjectProvider,
+  ) {}
 
   process(
     packet: ChangePacket,
@@ -165,8 +168,12 @@ export class ChangePlant<
     context: Context,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
-    let processor = ((builtInChangePlantBlueprint as any)[type] ||
-      (this.blueprint as any)[type]) as ChangePlantProcessor<TUser, IChange>;
+    let processor = (this.blueprint as any)[type] as ChangePlantProcessor<
+      TUser,
+      IChange
+    >;
+
+    let provider = this.provider;
 
     let syncableObjectEntries = Array.from(
       Object.entries(syncableObjectOrCreationRefDict),
@@ -270,24 +277,44 @@ export class ChangePlant<
         continue;
       }
 
-      let requireWriteRight = false;
+      let requiredRightSet = new Set<AccessRight>();
+
+      let latestAssociations = provider
+        .resolveAssociations(latestSyncable)
+        .filter(association => association.secures);
+      let updatedAssociations = provider
+        .resolveAssociations(updatedSyncableClone)
+        .filter(association => association.secures);
+
+      let securingAssociationChanged = !!_.xorBy(
+        latestAssociations,
+        updatedAssociations,
+        ({ref: {type, id}}) => `${type}-${id}`,
+      ).length;
+
+      if (securingAssociationChanged) {
+        requiredRightSet.add('full');
+      }
 
       for (let diff of diffs) {
         let propertyName = diff.path[0];
 
-        if (/^[^$]/.test(type)) {
-          if (/^_(?!timestamp)$/.test(propertyName)) {
-            throw new Error(
-              `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
-            );
-          }
+        if (propertyName === '_id' || propertyName === '_type') {
+          throw new Error('Invalid operation');
+        }
+
+        if (/^_(?!timestamp)$/.test(propertyName)) {
+          requiredRightSet.add('full');
         } else {
-          requireWriteRight = true;
+          requiredRightSet.add('write');
         }
       }
 
-      if (requireWriteRight) {
-        syncableObjectDict[key].validateAccessRights(['write'], context);
+      if (requiredRightSet.size) {
+        syncableObjectDict[key].validateAccessRights(
+          Array.from(requiredRightSet),
+          context,
+        );
       }
 
       updateDict[key] = {diffs, snapshot: updatedSyncableClone};

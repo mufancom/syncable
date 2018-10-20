@@ -8,6 +8,8 @@ import {
 } from '@syncable/core';
 import _ from 'lodash';
 
+import {User} from './user';
+
 export interface TagMutualAssociationOptions {
   acceptDerivation?: boolean;
 }
@@ -46,13 +48,10 @@ export class Tag extends AbstractSyncableObject<TagSyncable> {
   @AccessControlRule()
   protected 'require-mutual-association'(
     _target: ISyncableObject,
-    context: Context,
+    context: Context<User>,
     {acceptDerivation = true}: TagMutualAssociationOptions = {},
   ): boolean {
-    let tags = context.getRequisiteAssociations<Tag>({
-      name: 'tag',
-      type: 'tag',
-    });
+    let tags = context.user.tags;
 
     return tags.some(tag => tag.is(this, acceptDerivation));
   }

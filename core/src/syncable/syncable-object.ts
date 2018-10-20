@@ -6,7 +6,6 @@ import {
   AccessControlEntryRuleName,
   AccessControlEntryType,
   AccessRight,
-  Permission,
   SecuringAccessControlEntry,
   getAccessControlEntryPriority,
 } from '../access-control';
@@ -18,12 +17,6 @@ import {SyncableManager} from './syncable-manager';
 
 export interface AccessControlRuleEntry {
   test: AccessControlRuleTester;
-}
-
-export interface GetAssociationOptions<T extends ISyncableObject> {
-  name?: string;
-  type?: T['syncable']['_type'];
-  securesOnly?: boolean;
 }
 
 export interface GetAccessRightsOptions {
@@ -77,37 +70,17 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return this.manager.requireSyncableObject(ref);
   }
 
-  getGrantingPermissions(): Permission[] {
-    return this.syncable._grants || [];
+  getAssociatedObjects(securesOnly?: boolean): ISyncableObject[] {
+    return this.manager.requireAssociatedSyncableObjects(
+      this.syncable,
+      securesOnly,
+    );
   }
 
   getSecuringACL(): SecuringAccessControlEntry[] {
     return (this.syncable._secures || []).filter(
       entry => entry.type === 'deny',
     );
-  }
-
-  getRequisiteAssociations<T extends ISyncableObject>({
-    name,
-    type,
-    securesOnly = false,
-  }: GetAssociationOptions<T> = {}): T[] {
-    let associations = this.syncable._associations;
-
-    if (!associations) {
-      return [];
-    }
-
-    let manager = this.manager;
-
-    return associations
-      .filter(
-        association =>
-          (!name || association.name === name) &&
-          (!type || association.ref.type === type) &&
-          (!securesOnly || association.secures),
-      )
-      .map(association => manager.requireSyncableObject(association.ref) as T);
   }
 
   getAccessRights(
@@ -209,17 +182,20 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       }
     }
 
-    let associations = this.getRequisiteAssociations({securesOnly: true});
+    let associatedObjects = this.manager.requireAssociatedSyncableObjects(
+      this.syncable,
+      true,
+    );
 
-    for (let association of associations) {
-      let securingACL = association
+    for (let associatedObject of associatedObjects) {
+      let securingACL = associatedObject
         .getSecuringACL()
         .filter(({match}) => !match || match.includes(this.ref.type));
 
       for (let entry of securingACL) {
         let {type, grantable, rights} = entry;
 
-        if (!association.testAccessControlEntry(this, entry, context)) {
+        if (!associatedObject.testAccessControlEntry(this, entry, context)) {
           continue;
         }
 

@@ -1,5 +1,4 @@
 import {
-  BuiltInChange,
   ChangePacket,
   ChangePacketId,
   ChangePlant,
@@ -49,16 +48,16 @@ export class Client<
 
   constructor(
     socket: SocketIOClient.Socket,
-    factory: ISyncableObjectProvider,
+    provider: ISyncableObjectProvider,
     changePlant: ChangePlant<TGenericParams['user'], TGenericParams['change']>,
   );
   constructor(
     socket: SocketIOClient.Socket,
-    factory: ISyncableObjectProvider,
+    provider: ISyncableObjectProvider,
     private changePlant: ChangePlant,
   ) {
     this.context = new Context('user');
-    this.manager = new SyncableManager(factory);
+    this.manager = new SyncableManager(provider);
 
     this.socket = socket as ClientSocket<TGenericParams['user']>;
 
@@ -137,7 +136,7 @@ export class Client<
     });
   }
 
-  update(change: TGenericParams['change'] | BuiltInChange): void {
+  update(change: TGenericParams['change']): void {
     let packet: ChangePacket = {
       id: uuid() as ChangePacketId,
       ...(change as GeneralChange),

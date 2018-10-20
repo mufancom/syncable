@@ -13,14 +13,17 @@ import {
   mfChangePlantBlueprint,
 } from '../shared';
 
-let factory = new MFSyncableObjectProvider();
-let changePlant = new ChangePlant<User, MFChange>(mfChangePlantBlueprint);
+let provider = new MFSyncableObjectProvider();
+let changePlant = new ChangePlant<User, MFChange>(
+  mfChangePlantBlueprint,
+  provider,
+);
 
 let client = new Client<{
   user: User;
   syncableObject: MFSyncableObject;
   change: MFChange;
-}>(socketIO('ws://localhost:8080'), factory, changePlant);
+}>(socketIO('ws://localhost:8080'), provider, changePlant);
 
 autorun(() => {
   let user = client.user;

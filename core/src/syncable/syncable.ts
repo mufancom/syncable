@@ -3,7 +3,6 @@ import uuid from 'uuid';
 
 import {
   AccessControlEntry,
-  Permission,
   SecuringAccessControlEntry,
 } from '../access-control';
 import {SyncableCreationRef} from '../change';
@@ -24,7 +23,6 @@ export interface SyncableAssociation<
   T extends ISyncableObject = ISyncableObject
 > {
   ref: SyncableRef<T>;
-  name?: string;
   secures?: boolean;
 }
 
@@ -34,20 +32,15 @@ export interface ISyncable<Type extends string = string> {
   _timestamp: number;
 
   /**
-   * Object associations of this object.
-   */
-  _associations?: SyncableAssociation[];
-
-  /**
    * Permissions of this object, only applied if this object is a user that
    * will be attached to a context.
    */
-  _permissions?: Permission[];
+  // _permissions?: Permission[];
 
   /**
    * Permissions that this object can grants a user.
    */
-  _grants?: Permission[];
+  // _grants?: Permission[];
 
   /**
    * Specific access control list of this object.

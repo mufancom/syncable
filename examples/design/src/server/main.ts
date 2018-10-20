@@ -14,9 +14,12 @@ import {
 
 import {MFServer} from './mf-server';
 
-let factory = new MFSyncableObjectProvider();
+let provider = new MFSyncableObjectProvider();
 
-let changePlant = new ChangePlant<User, MFChange>(mfChangePlantBlueprint);
+let changePlant = new ChangePlant<User, MFChange>(
+  mfChangePlantBlueprint,
+  provider,
+);
 
 let httpServer = createServer();
 
@@ -24,6 +27,6 @@ httpServer.listen(8080);
 
 let socketServer = socketIO(httpServer);
 
-let server = new MFServer(socketServer, factory, changePlant);
+let server = new MFServer(socketServer, provider, changePlant);
 
 server.on('error', console.error);

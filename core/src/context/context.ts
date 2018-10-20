@@ -1,16 +1,11 @@
 import _ from 'lodash';
 import {observable} from 'mobx';
 
-import {PermissionType} from '../access-control';
-import {
-  GetAssociationOptions,
-  ISyncableObject,
-  IUserSyncableObject,
-} from '../syncable';
+import {ISyncableObject, IUserSyncableObject} from '../syncable';
 
 export type AccessControlRuleTester = (
   target: ISyncableObject,
-  context: Context,
+  context: Context<any>,
   options?: object,
 ) => boolean;
 
@@ -33,29 +28,7 @@ export class Context<TUser extends IUserSyncableObject = IUserSyncableObject> {
     }
   }
 
-  get permissions(): PermissionType<TUser>[] {
-    return [...(this.user.permissions as PermissionType<TUser>[])];
-  }
-
   initialize(user: TUser): void {
     this.user = user;
-  }
-
-  testPermissions(permissions: PermissionType<TUser>[]): boolean {
-    return _.difference(permissions, this.permissions).length === 0;
-  }
-
-  validatePermissions(permissions: PermissionType<TUser>[]): void {
-    if (this.testPermissions(permissions)) {
-      return;
-    }
-
-    throw new Error('Permission denied');
-  }
-
-  getRequisiteAssociations<T extends ISyncableObject>(
-    options: GetAssociationOptions<T> = {},
-  ): T[] {
-    return this.user.getRequisiteAssociations<T>(options);
   }
 }

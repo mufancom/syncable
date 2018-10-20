@@ -102,7 +102,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
       ensuredSyncableSet.add(syncable);
 
-      let {_id: id, _associations: associations} = syncable;
+      let {_id: id} = syncable;
 
       let ref = getSyncableRef(syncable);
       let object = manager.requireSyncableObject(ref);
@@ -126,11 +126,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
         return;
       }
 
-      if (associations) {
-        for (let {ref} of associations) {
-          let syncable = manager.requireSyncable(ref);
-          ensureAssociationsAndDoSnapshot(syncable, true);
-        }
+      let associations = manager.requireAssociatedSyncableObjects(syncable);
+
+      for (let {ref} of associations) {
+        let syncable = manager.requireSyncable(ref);
+        ensureAssociationsAndDoSnapshot(syncable, true);
       }
 
       snapshotIdSet.add(id);

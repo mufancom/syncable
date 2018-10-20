@@ -1,7 +1,6 @@
 import {EventEmitter} from 'events';
 
 import {
-  BuiltInChange,
   ChangePacket,
   ChangePacketId,
   ChangePlant,
@@ -62,7 +61,7 @@ abstract class Server<
 
   constructor(
     server: SocketServer,
-    readonly factory: ISyncableObjectProvider,
+    readonly provider: ISyncableObjectProvider,
     readonly changePlant: ChangePlant<
       TGenericParams['user'],
       TGenericParams['change']
@@ -81,7 +80,7 @@ abstract class Server<
 
   async update(
     group: string,
-    change: TGenericParams['change'] | BuiltInChange,
+    change: TGenericParams['change'],
   ): Promise<ChangePlantProcessingResultWithTimestamp> {
     await this.initializeGroup(group);
 
@@ -159,7 +158,7 @@ abstract class Server<
 
     if (!groupInfo) {
       let clock = this.createGroupClock(group);
-      let manager = new SyncableManager(this.factory);
+      let manager = new SyncableManager(this.provider);
       let loadingPromise = this.loadAndAddSyncables(group, manager);
 
       groupInfo = {

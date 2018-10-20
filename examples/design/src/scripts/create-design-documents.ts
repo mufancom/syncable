@@ -13,10 +13,6 @@ import {Tag, User} from '../shared';
 
   await syncablesCollection.drop();
 
-  let userSyncable = createSyncable<User>('user', {
-    name: 'vilicvane',
-  });
-
   let adminTagSyncable = createSyncable<Tag>('tag', {
     name: 'admin',
     derivations: [],
@@ -27,9 +23,10 @@ import {Tag, User} from '../shared';
     derivations: [],
   });
 
-  userSyncable._associations = [
-    {name: 'tag', ref: getSyncableRef(adminTagSyncable)},
-  ];
+  let userSyncable = createSyncable<User>('user', {
+    name: 'vilicvane',
+    tags: [getSyncableRef(adminTagSyncable)],
+  });
 
   let syncables = [userSyncable, adminTagSyncable, irrelevantTagSyncable];
 
