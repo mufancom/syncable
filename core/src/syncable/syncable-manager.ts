@@ -2,7 +2,7 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {ObservableMap, observable} from 'mobx';
 
-import {ISyncableObjectFactory} from '../context';
+import {ISyncableObjectProvider} from '../context';
 
 import {ISyncable, SyncableId, SyncableRef} from './syncable';
 import {ISyncableObject} from './syncable-object';
@@ -23,7 +23,7 @@ export class SyncableManager {
     Set<ISyncable>
   >();
 
-  constructor(private factory: ISyncableObjectFactory) {}
+  constructor(private factory: ISyncableObjectProvider) {}
 
   getSyncables(type?: string): ISyncable[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;

@@ -8,12 +8,12 @@ import socketIO from 'socket.io-client';
 import {
   MFChange,
   MFSyncableObject,
-  MFSyncableObjectFactory,
+  MFSyncableObjectProvider,
   User,
   mfChangePlantBlueprint,
 } from '../shared';
 
-let factory = new MFSyncableObjectFactory();
+let factory = new MFSyncableObjectProvider();
 let changePlant = new ChangePlant<User, MFChange>(mfChangePlantBlueprint);
 
 let client = new Client<{

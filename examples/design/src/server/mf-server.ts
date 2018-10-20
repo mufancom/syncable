@@ -16,7 +16,7 @@ import {Server as SocketServer} from 'socket.io';
 import {
   MFChange,
   MFSyncableObject,
-  MFSyncableObjectFactory,
+  MFSyncableObjectProvider,
   MFViewQuery,
   User,
   UserSyncable,
@@ -66,7 +66,7 @@ export class MFServer extends AbstractServer<{
 
   constructor(
     socketServer: SocketServer,
-    factory: MFSyncableObjectFactory,
+    factory: MFSyncableObjectProvider,
     changePlant: ChangePlant<User, MFChange>,
   ) {
     super(socketServer, factory, changePlant);

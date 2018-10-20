@@ -12,7 +12,7 @@ import {
   IChange,
   ISyncable,
   ISyncableObject,
-  ISyncableObjectFactory,
+  ISyncableObjectProvider,
   IUserSyncableObject,
   SyncableManager,
   SyncableRef,
@@ -62,7 +62,7 @@ abstract class Server<
 
   constructor(
     server: SocketServer,
-    readonly factory: ISyncableObjectFactory,
+    readonly factory: ISyncableObjectProvider,
     readonly changePlant: ChangePlant<
       TGenericParams['user'],
       TGenericParams['change']

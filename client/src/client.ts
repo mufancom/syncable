@@ -9,7 +9,7 @@ import {
   IChange,
   ISyncable,
   ISyncableObject,
-  ISyncableObjectFactory,
+  ISyncableObjectProvider,
   IUserSyncableObject,
   InitialData,
   SnapshotData,
@@ -49,12 +49,12 @@ export class Client<
 
   constructor(
     socket: SocketIOClient.Socket,
-    factory: ISyncableObjectFactory,
+    factory: ISyncableObjectProvider,
     changePlant: ChangePlant<TGenericParams['user'], TGenericParams['change']>,
   );
   constructor(
     socket: SocketIOClient.Socket,
-    factory: ISyncableObjectFactory,
+    factory: ISyncableObjectProvider,
     private changePlant: ChangePlant,
   ) {
     this.context = new Context('user');

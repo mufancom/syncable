@@ -7,14 +7,14 @@ import socketIO from 'socket.io';
 
 import {
   MFChange,
-  MFSyncableObjectFactory,
+  MFSyncableObjectProvider,
   User,
   mfChangePlantBlueprint,
 } from '../shared';
 
 import {MFServer} from './mf-server';
 
-let factory = new MFSyncableObjectFactory();
+let factory = new MFSyncableObjectProvider();
 
 let changePlant = new ChangePlant<User, MFChange>(mfChangePlantBlueprint);
 
