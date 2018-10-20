@@ -2,16 +2,53 @@ import {
   ChangePacketId,
   ChangePlant,
   Context,
+  ISyncableObjectProvider,
   SyncableCreationRef,
+  SyncableManager,
   createSyncable,
   getSyncableRef,
 } from '../bld';
 
-import {Task, TaskId, User, changePlantBlueprint} from './change-plant';
+import {
+  Syncable,
+  Tag,
+  Task,
+  TaskId,
+  User,
+  UserId,
+  changePlantBlueprint,
+} from './change-plant';
 
 let context = new Context<User>('server');
 
-let plant = new ChangePlant(changePlantBlueprint);
+let provider: ISyncableObjectProvider = {
+  create(syncable: Syncable, manager) {
+    switch (syncable._type) {
+      case 'user':
+        return new User(syncable, manager);
+      case 'task':
+        return new Task(syncable, manager);
+      case 'tag':
+        return new Tag(syncable, manager);
+    }
+  },
+  resolveAssociations() {
+    return [];
+  },
+};
+
+let plant = new ChangePlant(changePlantBlueprint, provider);
+
+let manager = new SyncableManager(provider);
+
+let userSyncable = createSyncable<User>(
+  {
+    creation: true,
+    type: 'user',
+    id: 'user-id' as UserId,
+  },
+  {},
+);
 
 let taskSyncable = createSyncable<Task>(
   {
@@ -24,7 +61,8 @@ let taskSyncable = createSyncable<Task>(
   },
 );
 
-let task = new Task(taskSyncable);
+manager.addSyncable(userSyncable);
+manager.addSyncable(taskSyncable);
 
 test('should update task brief', () => {
   let result = plant.process(
@@ -39,7 +77,7 @@ test('should update task brief', () => {
       },
     },
     {
-      task,
+      task: manager.requireSyncableObject(getSyncableRef(taskSyncable)),
     },
     context,
   );
@@ -85,7 +123,7 @@ test('should remove task', () => {
       options: {},
     },
     {
-      task,
+      task: manager.requireSyncableObject(getSyncableRef(taskSyncable)),
     },
     context,
   );

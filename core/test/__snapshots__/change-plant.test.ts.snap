@@ -10,9 +10,9 @@ Object {
       "brief": "hello, create.",
     },
   ],
+  "id": "change-packet-id",
   "removals": Array [],
   "timestamp": undefined,
-  "id": "change-packet-id",
   "updates": Object {},
 }
 `;
@@ -20,6 +20,7 @@ Object {
 exports[`should remove task 1`] = `
 Object {
   "creations": Array [],
+  "id": "change-packet-id",
   "removals": Array [
     Object {
       "id": "task-id",
@@ -27,7 +28,6 @@ Object {
     },
   ],
   "timestamp": undefined,
-  "id": "change-packet-id",
   "updates": Object {},
 }
 `;
@@ -35,9 +35,9 @@ Object {
 exports[`should update task brief 1`] = `
 Object {
   "creations": Array [],
+  "id": "change-packet-id",
   "removals": Array [],
   "timestamp": undefined,
-  "id": "change-packet-id",
   "updates": Object {
     "task": Object {
       "diffs": Array [
