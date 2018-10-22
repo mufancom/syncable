@@ -2,10 +2,15 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {ObservableMap, observable} from 'mobx';
 
-import {AbstractSyncableObjectFactory} from '../context';
+import {ISyncableObjectProvider} from '../context';
 
-import {ISyncable, SyncableId, SyncableRef} from './syncable';
-import {AbstractSyncableObject} from './syncable-object';
+import {
+  ISyncable,
+  SyncableAssociation,
+  SyncableId,
+  SyncableRef,
+} from './syncable';
+import {ISyncableObject} from './syncable-object';
 
 export class SyncableManager {
   private typeToIdToSyncableMapMap = observable.map<
@@ -15,7 +20,7 @@ export class SyncableManager {
 
   private typeToIdToSyncableObjectMapMap = observable.map<
     string,
-    ObservableMap<SyncableId, AbstractSyncableObject>
+    ObservableMap<SyncableId, ISyncableObject>
   >();
 
   private associatedTargetSyncableSetMap = new Map<
@@ -23,7 +28,7 @@ export class SyncableManager {
     Set<ISyncable>
   >();
 
-  constructor(private factory: AbstractSyncableObjectFactory) {}
+  constructor(readonly provider: ISyncableObjectProvider) {}
 
   getSyncables(type?: string): ISyncable[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
@@ -45,7 +50,7 @@ export class SyncableManager {
     }
   }
 
-  getSyncableObjects(type?: string): AbstractSyncableObject[] {
+  getSyncableObjects(type?: string): ISyncableObject[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
 
     if (type) {
@@ -74,7 +79,7 @@ export class SyncableManager {
     return !!syncableMap && syncableMap.has(id);
   }
 
-  getSyncable<T extends AbstractSyncableObject>({
+  getSyncable<T extends ISyncableObject>({
     type,
     id,
   }: SyncableRef<T>): T['syncable'] | undefined {
@@ -82,7 +87,7 @@ export class SyncableManager {
     return syncableMap && syncableMap.get(id);
   }
 
-  requireSyncable<T extends AbstractSyncableObject>(
+  requireSyncable<T extends ISyncableObject>(
     ref: SyncableRef<T>,
   ): T['syncable'] {
     let syncable = this.getSyncable(ref);
@@ -122,9 +127,9 @@ export class SyncableManager {
 
     syncableMap.set(id, syncable);
 
-    let associationIds = (snapshot._associations || []).map(
-      association => association.ref.id,
-    );
+    let associationIds = this.provider
+      .resolveAssociations(snapshot)
+      .map(association => association.ref.id);
 
     this.addAssociatedTargetSyncable(syncable, associationIds);
   }
@@ -146,12 +151,14 @@ export class SyncableManager {
       throw new Error(`Syncable with ID "${id}" does not exists in context`);
     }
 
-    let previousAssociationIds = (syncable._associations || []).map(
-      association => association.ref.id,
-    );
-    let nextAssociationIds = (snapshot._associations || []).map(
-      association => association.ref.id,
-    );
+    let provider = this.provider;
+
+    let previousAssociationIds = provider
+      .resolveAssociations(syncable)
+      .map(association => association.ref.id);
+    let nextAssociationIds = provider
+      .resolveAssociations(snapshot)
+      .map(association => association.ref.id);
 
     DeepDiff.applyDiff(syncable, snapshot, undefined!);
 
@@ -189,9 +196,9 @@ export class SyncableManager {
       syncableObjectMap.delete(id);
     }
 
-    let associationIds = (syncable._associations || []).map(
-      association => association.ref.id,
-    );
+    let associationIds = this.provider
+      .resolveAssociations(syncable)
+      .map(association => association.ref.id);
 
     this.removeAssociatedTargetSyncable(syncable, associationIds);
   }
@@ -204,7 +211,16 @@ export class SyncableManager {
     return set ? Array.from(set) : [];
   }
 
-  getSyncableObject<T extends AbstractSyncableObject>(
+  requireAssociatedSyncables(
+    syncable: ISyncable,
+    securesOnly?: boolean,
+  ): ISyncable[] {
+    return this.getAssociations(syncable, securesOnly).map(association =>
+      this.requireSyncable(association.ref),
+    );
+  }
+
+  getSyncableObject<T extends ISyncableObject>(
     ref: SyncableRef<T>,
   ): T | undefined {
     let {type, id} = ref;
@@ -232,16 +248,14 @@ export class SyncableManager {
       return undefined;
     }
 
-    object = this.factory.create(syncable, this) as T;
+    object = this.provider.create(syncable, this) as T;
 
     syncableObjectMap.set(id, object);
 
     return object;
   }
 
-  requireSyncableObject<T extends AbstractSyncableObject>(
-    ref: SyncableRef<T>,
-  ): T {
+  requireSyncableObject<T extends ISyncableObject>(ref: SyncableRef<T>): T {
     let object = this.getSyncableObject(ref);
 
     if (!object) {
@@ -249,6 +263,15 @@ export class SyncableManager {
     }
 
     return object;
+  }
+
+  requireAssociatedSyncableObjects(
+    syncable: ISyncable,
+    securesOnly?: boolean,
+  ): ISyncableObject[] {
+    return this.getAssociations(syncable, securesOnly).map(association =>
+      this.requireSyncableObject(association.ref),
+    );
   }
 
   clear(): void {
@@ -263,6 +286,19 @@ export class SyncableManager {
         map.clear();
       }
     }
+  }
+
+  private getAssociations(
+    syncable: ISyncable,
+    securesOnly = false,
+  ): SyncableAssociation[] {
+    let associations = this.provider.resolveAssociations(syncable);
+
+    if (securesOnly) {
+      associations = associations.filter(association => association.secures);
+    }
+
+    return associations;
   }
 
   private addAssociatedTargetSyncable(

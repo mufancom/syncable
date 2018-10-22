@@ -1,6 +1,6 @@
 {
   "name": "@syncable/core",
-  "version": "2.0.0-wip.0",
+  "version": "2.0.0-wip.1",
   "publishConfig": {
     "access": "public"
   },
@@ -12,7 +12,7 @@
   "keywords": [
     "syncable"
   ],
-  "author": "Makeflow Inc.",
+  "author": "Chengdu Mufan Technology Co., Ltd.",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/makeflow/syncable/issues"

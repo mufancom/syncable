@@ -1,12 +1,8 @@
 import {EventEmitter} from 'events';
 
 import {
-  AbstractSyncableObject,
-  AbstractSyncableObjectFactory,
-  AbstractUserSyncableObject,
-  BuiltInChange,
   ChangePacket,
-  ChangePacketUID,
+  ChangePacketId,
   ChangePlant,
   ChangePlantProcessingResultWithTimestamp,
   Context,
@@ -14,21 +10,26 @@ import {
   GeneralSyncableRef,
   IChange,
   ISyncable,
+  ISyncableObject,
+  ISyncableObjectProvider,
+  IUserSyncableObject,
   SyncableManager,
   SyncableRef,
 } from '@syncable/core';
 import _ from 'lodash';
-import io from 'socket.io';
+import {Server as SocketServer} from 'socket.io';
 import uuid from 'uuid';
 import * as v from 'villa';
 
 import {Connection, ConnectionSocket} from './connection';
 
-export type ViewQueryFilter = (object: AbstractSyncableObject) => boolean;
+export type ViewQueryFilter<T extends ISyncableObject = ISyncableObject> = (
+  object: T,
+) => boolean;
 
 export interface ConnectionSession<TViewQuery> {
   group: string;
-  userRef: SyncableRef<AbstractUserSyncableObject>;
+  userRef: SyncableRef<IUserSyncableObject>;
   viewQuery: TViewQuery | undefined;
 }
 
@@ -36,27 +37,35 @@ export interface IGroupClock {
   next(): Promise<number>;
 }
 
-interface GroupInfo {
+interface GroupInfo<TServerGenerics extends ServerGenericParams> {
   clock: IGroupClock;
   manager: SyncableManager;
-  connectionSet: Set<Connection>;
+  connectionSet: Set<Connection<TServerGenerics>>;
   loadingPromise: Promise<void>;
 }
 
-export abstract class AbstractServer<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
-  TChange extends IChange = IChange,
-  TViewQuery extends unknown = unknown
-> extends EventEmitter {
-  private server: io.Server;
-  private groupInfoMap = new Map<string, GroupInfo>();
+export interface ServerGenericParams {
+  user: IUserSyncableObject;
+  syncableObject: ISyncableObject;
+  change: IChange;
+  viewQuery: unknown;
+}
 
-  private context = new Context<TUser>('server');
+abstract class Server<
+  TGenericParams extends ServerGenericParams
+> extends EventEmitter {
+  private server: SocketServer;
+  private groupInfoMap = new Map<string, GroupInfo<TGenericParams>>();
+
+  private context = new Context<TGenericParams['user']>('server');
 
   constructor(
-    server: io.Server,
-    readonly factory: AbstractSyncableObjectFactory,
-    readonly changePlant: ChangePlant<TUser, TChange>,
+    server: SocketServer,
+    readonly provider: ISyncableObjectProvider,
+    readonly changePlant: ChangePlant<
+      TGenericParams['user'],
+      TGenericParams['change']
+    >,
   ) {
     super();
 
@@ -65,16 +74,18 @@ export abstract class AbstractServer<
     this.initialize().catch(this.error);
   }
 
-  abstract getViewQueryFilter(query: TViewQuery): ViewQueryFilter;
+  abstract getViewQueryFilter(
+    query: TGenericParams['viewQuery'],
+  ): ViewQueryFilter<TGenericParams['syncableObject']>;
 
   async update(
     group: string,
-    change: TChange | BuiltInChange,
+    change: TGenericParams['change'],
   ): Promise<ChangePlantProcessingResultWithTimestamp> {
     await this.initializeGroup(group);
 
     let packet: ChangePacket = {
-      uid: uuid() as ChangePacketUID,
+      id: uuid() as ChangePacketId,
       ...(change as GeneralChange),
     };
 
@@ -84,7 +95,7 @@ export abstract class AbstractServer<
   applyChangePacket(
     group: string,
     packet: ChangePacket,
-    context: Context<TUser>,
+    context: Context<TGenericParams['user']>,
   ): void {
     this._applyChangePacket(group, packet, context).catch(error =>
       this.emit('error', error),
@@ -100,7 +111,7 @@ export abstract class AbstractServer<
 
   protected abstract resolveSession(
     socket: ConnectionSocket,
-  ): Promise<ConnectionSession<TViewQuery>>;
+  ): Promise<ConnectionSession<TGenericParams['viewQuery']>>;
 
   protected abstract loadSyncables(group: string): Promise<ISyncable[]>;
 
@@ -126,21 +137,28 @@ export abstract class AbstractServer<
 
     let groupInfo = await this.initializeGroup(group);
 
-    let connection = new Connection(group, socket, this, groupInfo.manager);
+    let connection = new Connection<TGenericParams>(
+      group,
+      socket,
+      this,
+      groupInfo.manager,
+    );
 
     groupInfo.connectionSet.add(connection);
 
     connection.initialize(userRef, viewQuery).catch(console.error);
   }
 
-  private async initializeGroup(group: string): Promise<GroupInfo> {
+  private async initializeGroup(
+    group: string,
+  ): Promise<GroupInfo<TGenericParams>> {
     let groupInfoMap = this.groupInfoMap;
 
     let groupInfo = groupInfoMap.get(group);
 
     if (!groupInfo) {
       let clock = this.createGroupClock(group);
-      let manager = new SyncableManager(this.factory);
+      let manager = new SyncableManager(this.provider);
       let loadingPromise = this.loadAndAddSyncables(group, manager);
 
       groupInfo = {
@@ -172,7 +190,7 @@ export abstract class AbstractServer<
   private async _applyChangePacket(
     group: string,
     packet: ChangePacket,
-    context: Context<TUser>,
+    context: Context<TGenericParams['user']>,
   ): Promise<ChangePlantProcessingResultWithTimestamp> {
     let info = this.groupInfoMap.get(group);
 
@@ -241,3 +259,8 @@ export abstract class AbstractServer<
     });
   }
 }
+
+export interface IServer<TGenericParams extends ServerGenericParams>
+  extends Server<TGenericParams> {}
+
+export const AbstractServer = Server;

@@ -1,11 +1,11 @@
 import {
-  AbstractUserSyncableObject,
   ChangePacket,
+  IUserSyncableObject,
   InitialData,
   SyncingData,
 } from '@syncable/core';
 
-export interface ClientSocket<TUser extends AbstractUserSyncableObject>
+export interface ClientSocket<TUser extends IUserSyncableObject>
   extends SocketIOClient.Socket {
   on(event: 'syncable:reconnect', listener: (attempt: number) => void): this;
 

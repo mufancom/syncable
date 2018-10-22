@@ -5,6 +5,8 @@ import {
   SyncableId,
 } from '../../bld';
 
+export type Syncable = UserSyncable | TaskSyncable | TagSyncable;
+
 export type UserId = SyncableId<'user'>;
 
 export interface UserSyncable extends ISyncable<'user'> {}

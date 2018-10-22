@@ -1,2 +1,2 @@
 export * from './context';
-export * from './syncable-object-factor';
+export * from './syncable-object-provider';

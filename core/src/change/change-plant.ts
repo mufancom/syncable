@@ -2,20 +2,21 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {Dict, KeyOfValueWithType, ValueWithType} from 'tslang';
 
-import {Context} from '../context';
+import {AccessRight} from '../access-control';
+import {Context, ISyncableObjectProvider} from '../context';
 import {
   AbstractSyncableObject,
-  AbstractUserSyncableObject,
   ISyncable,
+  ISyncableObject,
+  IUserSyncableObject,
   SyncableId,
   SyncableRef,
   SyncableType,
 } from '../syncable';
 
-import {builtInChangePlantBlueprint} from './built-in-changes';
 import {
   ChangePacket,
-  ChangePacketUID,
+  ChangePacketId,
   GeneralChange,
   IChange,
   SyncableCreationRef,
@@ -85,7 +86,7 @@ export interface ChangePlantProcessingResultUpdateItem {
 }
 
 export interface ChangePlantProcessingResult {
-  uid: ChangePacketUID;
+  id: ChangePacketId;
   updates: Dict<ChangePlantProcessingResultUpdateItem>;
   creations: ISyncable[];
   removals: SyncableRef[];
@@ -107,7 +108,7 @@ export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
 ) => void;
 
 export interface ChangePlantProcessorExtra<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
 > {
   context: Context<TUser>;
@@ -117,7 +118,7 @@ export interface ChangePlantProcessorExtra<
 }
 
 export type ChangePlantProcessor<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
 > = (
   syncables: ChangeToSyncableDict<TChange>,
@@ -126,7 +127,7 @@ export type ChangePlantProcessor<
 ) => void;
 
 export type ChangePlantBlueprint<
-  TUser extends AbstractUserSyncableObject,
+  TUser extends IUserSyncableObject,
   TChange extends IChange
 > = {
   [K in TChange['type']]: ChangePlantProcessor<
@@ -136,43 +137,50 @@ export type ChangePlantBlueprint<
 };
 
 export class ChangePlant<
-  TUser extends AbstractUserSyncableObject = AbstractUserSyncableObject,
+  TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
 > {
-  constructor(private blueprint: ChangePlantBlueprint<TUser, TChange>) {}
+  constructor(
+    private blueprint: ChangePlantBlueprint<TUser, TChange>,
+    private provider: ISyncableObjectProvider,
+  ) {}
 
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      AbstractSyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef
     >,
     context: Context<TUser>,
   ): ChangePlantProcessingResult;
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      AbstractSyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef
     >,
     context: Context<TUser>,
     timestamp: number,
   ): ChangePlantProcessingResultWithTimestamp;
   process(
-    {uid, type, options}: ChangePacket,
+    {id, type, options}: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      AbstractSyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef
     >,
     context: Context,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
-    let processor = ((builtInChangePlantBlueprint as any)[type] ||
-      (this.blueprint as any)[type]) as ChangePlantProcessor<TUser, IChange>;
+    let processor = (this.blueprint as any)[type] as ChangePlantProcessor<
+      TUser,
+      IChange
+    >;
+
+    let provider = this.provider;
 
     let syncableObjectEntries = Array.from(
       Object.entries(syncableObjectOrCreationRefDict),
     ).filter(
       (
-        entry: [string, AbstractSyncableObject | SyncableCreationRef],
-      ): entry is [string, AbstractSyncableObject] => {
+        entry: [string, ISyncableObject | SyncableCreationRef],
+      ): entry is [string, ISyncableObject] => {
         let [, object] = entry;
         return object instanceof AbstractSyncableObject;
       },
@@ -188,7 +196,7 @@ export class ChangePlant<
       {} as Dict<ISyncable>,
     );
 
-    let syncableObjectMap = new Map<SyncableId, AbstractSyncableObject>();
+    let syncableObjectMap = new Map<SyncableId, ISyncableObject>();
 
     let syncableObjectDict = syncableObjectEntries.reduce(
       (dict, [name, object]) => {
@@ -198,7 +206,7 @@ export class ChangePlant<
 
         return dict;
       },
-      {} as Dict<AbstractSyncableObject>,
+      {} as Dict<ISyncableObject>,
     );
 
     let clonedSyncableDict = _.mapValues(syncableDict, syncable =>
@@ -269,31 +277,51 @@ export class ChangePlant<
         continue;
       }
 
-      let requireWriteRight = false;
+      let requiredRightSet = new Set<AccessRight>();
+
+      let latestAssociations = provider
+        .resolveAssociations(latestSyncable)
+        .filter(association => association.secures);
+      let updatedAssociations = provider
+        .resolveAssociations(updatedSyncableClone)
+        .filter(association => association.secures);
+
+      let securingAssociationChanged = !!_.xorBy(
+        latestAssociations,
+        updatedAssociations,
+        ({ref: {type, id}}) => `${type}-${id}`,
+      ).length;
+
+      if (securingAssociationChanged) {
+        requiredRightSet.add('full');
+      }
 
       for (let diff of diffs) {
         let propertyName = diff.path[0];
 
-        if (/^[^$]/.test(type)) {
-          if (/^_(?!timestamp)$/.test(propertyName)) {
-            throw new Error(
-              `Invalid operation, use built-in change for built-in property \`${propertyName}\``,
-            );
-          }
+        if (propertyName === '_id' || propertyName === '_type') {
+          throw new Error('Invalid operation');
+        }
+
+        if (/^_(?!timestamp)$/.test(propertyName)) {
+          requiredRightSet.add('full');
         } else {
-          requireWriteRight = true;
+          requiredRightSet.add('write');
         }
       }
 
-      if (requireWriteRight) {
-        syncableObjectDict[key].validateAccessRights(['write'], context);
+      if (requiredRightSet.size) {
+        syncableObjectDict[key].validateAccessRights(
+          Array.from(requiredRightSet),
+          context,
+        );
       }
 
       updateDict[key] = {diffs, snapshot: updatedSyncableClone};
     }
 
     return {
-      uid,
+      id,
       timestamp,
       updates: updateDict,
       creations: creations || [],

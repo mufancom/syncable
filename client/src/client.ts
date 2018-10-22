@@ -1,16 +1,15 @@
 import {
-  AbstractSyncableObject,
-  AbstractSyncableObjectFactory,
-  AbstractUserSyncableObject,
-  BuiltInChange,
   ChangePacket,
-  ChangePacketUID,
+  ChangePacketId,
   ChangePlant,
   Context,
   GeneralChange,
   GeneralSyncableRef,
   IChange,
   ISyncable,
+  ISyncableObject,
+  ISyncableObjectProvider,
+  IUserSyncableObject,
   InitialData,
   SnapshotData,
   SyncableId,
@@ -26,38 +25,41 @@ import {ClientSocket} from './@client-socket';
 
 export interface ClientAssociateOptions {
   name?: string;
-  requisite?: boolean;
   secures?: boolean;
 }
 
+export interface ClientGenericParams {
+  user: IUserSyncableObject;
+  syncableObject: ISyncableObject;
+  change: IChange;
+}
+
 export class Client<
-  TUser extends AbstractUserSyncableObject,
-  TSyncableObject extends AbstractSyncableObject,
-  TChange extends IChange
+  TGenericParams extends ClientGenericParams = ClientGenericParams
 > {
-  readonly context: Context<TUser>;
+  readonly context: Context<TGenericParams['user']>;
   readonly ready: Promise<void>;
 
   private manager: SyncableManager;
-  private socket: ClientSocket<TUser>;
+  private socket: ClientSocket<TGenericParams['user']>;
 
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
   constructor(
     socket: SocketIOClient.Socket,
-    factory: AbstractSyncableObjectFactory,
-    changePlant: ChangePlant<TUser, TChange>,
+    provider: ISyncableObjectProvider,
+    changePlant: ChangePlant<TGenericParams['user'], TGenericParams['change']>,
   );
   constructor(
     socket: SocketIOClient.Socket,
-    factory: AbstractSyncableObjectFactory,
+    provider: ISyncableObjectProvider,
     private changePlant: ChangePlant,
   ) {
     this.context = new Context('user');
-    this.manager = new SyncableManager(factory);
+    this.manager = new SyncableManager(provider);
 
-    this.socket = socket as ClientSocket<TUser>;
+    this.socket = socket as ClientSocket<TGenericParams['user']>;
 
     this.ready = new Promise<void>(resolve => {
       this.socket.on('syncable:initialize', data => {
@@ -72,45 +74,60 @@ export class Client<
     });
   }
 
-  get user(): TUser {
+  get user(): TGenericParams['user'] {
     return this.context.user;
   }
 
-  getObjects(): TSyncableObject[];
-  getObjects<T extends TSyncableObject>(type: T['syncable']['_type']): T[];
-  getObjects(type?: string): TSyncableObject[] {
-    return this.manager.getSyncableObjects(type) as TSyncableObject[];
+  getObjects(): TGenericParams['syncableObject'][];
+  getObjects<
+    TType extends TGenericParams['syncableObject']['syncable']['_type']
+  >(
+    type: TType,
+  ): Extract<TGenericParams['syncableObject'], {syncable: {_type: TType}}>[];
+  getObjects(type?: string): TGenericParams['syncableObject'][] {
+    return this.manager.getSyncableObjects(
+      type,
+    ) as TGenericParams['syncableObject'][];
   }
 
-  getObject<T extends TSyncableObject>(ref: SyncableRef<T>): T | undefined {
-    return this.manager.getSyncableObject(ref) as T;
+  getObject<TRef extends TGenericParams['syncableObject']['ref']>(
+    ref: TRef,
+  ): Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined {
+    return this.manager.getSyncableObject(ref as SyncableRef) as
+      | Extract<TGenericParams['syncableObject'], {ref: TRef}>
+      | undefined;
   }
 
-  requireObject<T extends TSyncableObject>(ref: SyncableRef<T>): T {
+  requireObject<T extends TGenericParams['syncableObject']>(
+    ref: SyncableRef<T>,
+  ): T {
     return this.manager.requireSyncableObject(ref) as T;
   }
 
   associate(
-    target: TSyncableObject,
-    source: TSyncableObject,
+    target: TGenericParams['syncableObject'],
+    source: TGenericParams['syncableObject'],
     options?: ClientAssociateOptions,
   ): void;
   associate(
-    {ref: target}: TSyncableObject,
-    {ref: source}: TSyncableObject,
-    {name, secures = false, requisite = secures}: ClientAssociateOptions = {},
+    {ref: target}: TGenericParams['syncableObject'],
+    {ref: source}: TGenericParams['syncableObject'],
+    {name, secures = false}: ClientAssociateOptions = {},
   ): void {
     this.update({
       type: '$associate',
       refs: {target, source},
-      options: {name, requisite, secures},
+      options: {name, secures},
     });
   }
 
-  unassociate(target: TSyncableObject, source: TSyncableObject): void;
   unassociate(
-    {ref: target}: TSyncableObject,
-    {ref: source}: TSyncableObject,
+    target: TGenericParams['syncableObject'],
+    source: TGenericParams['syncableObject'],
+  ): void;
+  unassociate(
+    {ref: target}: TGenericParams['syncableObject'],
+    {ref: source}: TGenericParams['syncableObject'],
   ): void {
     this.update({
       type: '$unassociate',
@@ -119,9 +136,9 @@ export class Client<
     });
   }
 
-  update(change: TChange | BuiltInChange): void {
+  update(change: TGenericParams['change']): void {
     let packet: ChangePacket = {
-      uid: uuid() as ChangePacketUID,
+      id: uuid() as ChangePacketId,
       ...(change as GeneralChange),
     };
 
@@ -129,7 +146,10 @@ export class Client<
     this.pushChangePacket(packet);
   }
 
-  private onInitialize({userRef, ...data}: InitialData<TUser>): void {
+  private onInitialize({
+    userRef,
+    ...data
+  }: InitialData<TGenericParams['user']>): void {
     this.onSnapshotData(data, false);
 
     let user = this.manager.requireSyncableObject(userRef);
@@ -138,7 +158,7 @@ export class Client<
 
   private onSync(data: SyncingData): void {
     if ('source' in data) {
-      let matched = this.shiftChangePacket(data.source.uid);
+      let matched = this.shiftChangePacket(data.source.id);
 
       this.onSnapshotData(data, matched);
 
@@ -190,10 +210,10 @@ export class Client<
     this.manager.updateSyncable(snapshot);
   }
 
-  private shiftChangePacket(uid: ChangePacketUID): boolean {
+  private shiftChangePacket(id: ChangePacketId): boolean {
     let packets = this.pendingChangePackets;
 
-    let index = packets.findIndex(packet => packet.uid === uid);
+    let index = packets.findIndex(packet => packet.id === id);
 
     if (index < 0) {
       return false;
@@ -205,7 +225,7 @@ export class Client<
     }
 
     throw new Error(
-      `Change packet UID "${uid}" does not match the first pending packet`,
+      `Change packet UID "${id}" does not match the first pending packet`,
     );
   }
 

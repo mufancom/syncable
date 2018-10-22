@@ -1,9 +1,9 @@
 import {
-  AbstractUserSyncableObject,
   ChangePacket,
   ChangePlantProcessingResultWithTimestamp,
   Context,
   ISyncable,
+  IUserSyncableObject,
   InitialData,
   SnapshotData,
   SyncableId,
@@ -17,7 +17,7 @@ import {
 import _ from 'lodash';
 import {observable} from 'mobx';
 
-import {AbstractServer, ViewQueryFilter} from './server';
+import {IServer, ServerGenericParams, ViewQueryFilter} from './server';
 
 export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'syncable:view-query', listener: (query: unknown) => void): this;
@@ -27,19 +27,19 @@ export interface ConnectionSocket extends SocketIO.Socket {
   emit(event: 'syncable:sync', data: SyncingData): boolean;
 }
 
-export class Connection {
+export class Connection<TServerGenericParams extends ServerGenericParams> {
   private context!: Context;
   private snapshotIdSet = new Set<SyncableId>();
 
   constructor(
     readonly group: string,
     private socket: ConnectionSocket,
-    private server: AbstractServer,
+    private server: IServer<TServerGenericParams>,
     private manager: SyncableManager,
   ) {}
 
   async initialize(
-    userRef: SyncableRef<AbstractUserSyncableObject>,
+    userRef: SyncableRef<IUserSyncableObject>,
     viewQuery: unknown,
   ): Promise<void> {
     let socket = this.socket;
@@ -66,7 +66,7 @@ export class Connection {
 
   // TODO: ability limit iteration within a subset of syncables to improve
   // performance.
-  snapshot(userRef?: SyncableRef<AbstractUserSyncableObject>): SnapshotData {
+  snapshot(userRef?: SyncableRef<IUserSyncableObject>): SnapshotData {
     let manager = this.manager;
     let context = this.context;
 
@@ -102,7 +102,7 @@ export class Connection {
 
       ensuredSyncableSet.add(syncable);
 
-      let {_id: id, _associations: associations} = syncable;
+      let {_id: id} = syncable;
 
       let ref = getSyncableRef(syncable);
       let object = manager.requireSyncableObject(ref);
@@ -126,11 +126,11 @@ export class Connection {
         return;
       }
 
-      if (associations) {
-        for (let {requisite = false, ref} of associations) {
-          let syncable = manager.requireSyncable(ref);
-          ensureAssociationsAndDoSnapshot(syncable, requisite);
-        }
+      let associations = manager.requireAssociatedSyncableObjects(syncable);
+
+      for (let {ref} of associations) {
+        let syncable = manager.requireSyncable(ref);
+        ensureAssociationsAndDoSnapshot(syncable, true);
       }
 
       snapshotIdSet.add(id);
@@ -139,7 +139,7 @@ export class Connection {
   }
 
   handleChangeResult({
-    uid,
+    id,
     timestamp,
     updates: updateDict,
   }: ChangePlantProcessingResultWithTimestamp): void {
@@ -163,7 +163,7 @@ export class Connection {
       }
     }
 
-    let source: UpdateSource = {uid, timestamp};
+    let source: UpdateSource = {id, timestamp};
 
     socket.emit('syncable:sync', {source, updates, ...snapshotData});
   }

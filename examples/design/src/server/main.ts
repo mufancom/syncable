@@ -3,24 +3,30 @@ import {createServer} from 'http';
 import 'source-map-support/register';
 
 import {ChangePlant} from '@syncable/core';
+import socketIO from 'socket.io';
 
 import {
   MFChange,
-  MFSyncableObjectFactory,
+  MFSyncableObjectProvider,
   User,
   mfChangePlantBlueprint,
 } from '../shared';
 
 import {MFServer} from './mf-server';
 
-let factory = new MFSyncableObjectFactory();
+let provider = new MFSyncableObjectProvider();
 
-let changePlant = new ChangePlant<User, MFChange>(mfChangePlantBlueprint);
+let changePlant = new ChangePlant<User, MFChange>(
+  mfChangePlantBlueprint,
+  provider,
+);
 
 let httpServer = createServer();
 
 httpServer.listen(8080);
 
-let server = new MFServer(httpServer, factory, changePlant);
+let socketServer = socketIO(httpServer);
+
+let server = new MFServer(socketServer, provider, changePlant);
 
 server.on('error', console.error);
