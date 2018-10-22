@@ -14,6 +14,8 @@ import {
   SnapshotData,
   SyncableId,
   SyncableManager,
+  SyncableNotification,
+  SyncableNotificationHandler,
   SyncableRef,
   SyncingData,
 } from '@syncable/core';
@@ -45,6 +47,9 @@ export class Client<
 
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
+
+  private notificationHandlerList: SyncableNotificationHandler[] = [];
+  private notificationQueue: SyncableNotification[] = [];
 
   constructor(
     socket: SocketIOClient.Socket,
@@ -146,6 +151,18 @@ export class Client<
     this.pushChangePacket(packet);
   }
 
+  subscribeNotificationHandler(handler: SyncableNotificationHandler): void {
+    this.notificationHandlerList.push(handler);
+  }
+
+  unsubscribeNotificationHandler(handler: SyncableNotificationHandler): void {
+    let list = this.notificationHandlerList;
+
+    let index = list.lastIndexOf(handler);
+
+    list = [...list.slice(0, index), ...list.slice(index + 1, list.length)];
+  }
+
   private onInitialize({
     userRef,
     ...data
@@ -242,7 +259,12 @@ export class Client<
           : manager.requireSyncableObject(ref),
     );
 
-    let {updates: updateDict, creations, removals} = this.changePlant.process(
+    let {
+      updates: updateDict,
+      creations,
+      removals,
+      notification,
+    } = this.changePlant.process(
       packet,
       syncableObjectOrCreationRefDict,
       this.context,
@@ -258,6 +280,29 @@ export class Client<
 
     for (let syncable of creations) {
       manager.addSyncable(syncable);
+    }
+
+    if (notification) {
+      this.enqueueNotification(notification);
+    }
+  }
+
+  private enqueueNotification(notification: SyncableNotification): void {
+    let queue = this.notificationQueue;
+
+    if (queue.find(item => item.id === notification.id)) {
+      return;
+    }
+
+    queue.push(notification);
+    this.handleNotification(notification);
+  }
+
+  private handleNotification(notification: SyncableNotification): void {
+    let list = this.notificationHandlerList;
+
+    for (let handler of list) {
+      handler(notification);
     }
   }
 

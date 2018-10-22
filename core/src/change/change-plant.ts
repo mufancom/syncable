@@ -10,6 +10,8 @@ import {
   ISyncableObject,
   IUserSyncableObject,
   SyncableId,
+  SyncableNotification,
+  SyncableNotificationId,
   SyncableRef,
   SyncableType,
 } from '../syncable';
@@ -90,6 +92,7 @@ export interface ChangePlantProcessingResult {
   updates: Dict<ChangePlantProcessingResultUpdateItem>;
   creations: ISyncable[];
   removals: SyncableRef[];
+  notification: SyncableNotification | undefined;
 }
 
 export interface ChangePlantProcessingResultWithTimestamp
@@ -107,6 +110,10 @@ export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
     | ChangeToSyncable<TChange>,
 ) => void;
 
+export type ChangePlantProcessorNotifyOperation = (
+  notificationMessage: string,
+) => void;
+
 export interface ChangePlantProcessorExtra<
   TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
@@ -115,6 +122,7 @@ export interface ChangePlantProcessorExtra<
   options: TChange['options'];
   create: ChangePlantProcessorCreateOperation<TChange>;
   remove: ChangePlantProcessorRemoveOperation<TChange>;
+  notify: ChangePlantProcessorNotifyOperation;
 }
 
 export type ChangePlantProcessor<
@@ -215,6 +223,7 @@ export class ChangePlant<
 
     let creations: ISyncable[] = [];
     let removals: SyncableRef[] = [];
+    let notification: SyncableNotification | undefined = undefined;
 
     let create: ChangePlantProcessorCreateOperation<
       GeneralChange
@@ -244,6 +253,13 @@ export class ChangePlant<
       removals.push(object.ref);
     };
 
+    let notify: ChangePlantProcessorNotifyOperation = notificationMessage => {
+      notification = {
+        id: (id as string) as SyncableNotificationId,
+        message: notificationMessage,
+      };
+    };
+
     processor(
       clonedSyncableDict,
       syncableObjectOrCreationRefDict as ChangeToObjectOrCreationRefDict<
@@ -254,6 +270,7 @@ export class ChangePlant<
         options,
         create: create as ChangePlantProcessorCreateOperation<TChange>,
         remove: remove as ChangePlantProcessorRemoveOperation<TChange>,
+        notify: notify as ChangePlantProcessorNotifyOperation,
       } as ChangePlantProcessorExtra<TUser, TChange>,
     );
 
@@ -326,6 +343,7 @@ export class ChangePlant<
       updates: updateDict,
       creations: creations || [],
       removals: removals || [],
+      notification,
     };
   }
 }

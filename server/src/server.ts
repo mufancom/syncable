@@ -14,6 +14,8 @@ import {
   ISyncableObjectProvider,
   IUserSyncableObject,
   SyncableManager,
+  SyncableNotification,
+  SyncableNotificationHandler,
   SyncableRef,
 } from '@syncable/core';
 import _ from 'lodash';
@@ -58,6 +60,8 @@ abstract class Server<
   private groupInfoMap = new Map<string, GroupInfo<TGenericParams>>();
 
   private context = new Context<TGenericParams['user']>('server');
+
+  private notificationHandlerList: SyncableNotificationHandler[] = [];
 
   constructor(
     server: SocketServer,
@@ -105,6 +109,18 @@ abstract class Server<
   getNextTimestamp(group: string): Promise<number> {
     let {clock} = this.groupInfoMap.get(group)!;
     return clock.next();
+  }
+
+  subscribeNotificationHandler(handler: SyncableNotificationHandler): void {
+    this.notificationHandlerList.push(handler);
+  }
+
+  unsubscribeNotificationHandler(handler: SyncableNotificationHandler): void {
+    let list = this.notificationHandlerList;
+
+    let index = list.lastIndexOf(handler);
+
+    list = [...list.slice(0, index), ...list.slice(index + 1, list.length)];
   }
 
   protected abstract createGroupClock(group: string): IGroupClock;
@@ -187,6 +203,12 @@ abstract class Server<
     }
   }
 
+  private handleNotification(notification: SyncableNotification): void {
+    for (let handler of this.notificationHandlerList) {
+      handler(notification);
+    }
+  }
+
   private async _applyChangePacket(
     group: string,
     packet: ChangePacket,
@@ -221,7 +243,7 @@ abstract class Server<
       timestamp,
     );
 
-    let {updates: updateDict, creations, removals} = result;
+    let {updates: updateDict, creations, removals, notification} = result;
 
     for (let {snapshot} of Object.values(updateDict)) {
       manager.updateSyncable(snapshot);
@@ -233,6 +255,10 @@ abstract class Server<
 
     for (let ref of removals) {
       manager.removeSyncable(ref);
+    }
+
+    if (notification) {
+      this.handleNotification(notification);
     }
 
     await this.saveAndBroadcastChangeResult(group, result);
