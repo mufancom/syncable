@@ -19,12 +19,6 @@ export interface SyncableRef<T extends ISyncableObject = ISyncableObject> {
   type: T['syncable']['_type'];
 }
 
-// TODO: remove me.
-// export interface SyncableNotification {
-//   id: ChangePacketId;
-//   message: string;
-// }
-
 export interface SyncableAssociation<
   T extends ISyncableObject = ISyncableObject
 > {
