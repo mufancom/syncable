@@ -19,19 +19,11 @@ export interface SyncableRef<T extends ISyncableObject = ISyncableObject> {
   type: T['syncable']['_type'];
 }
 
-export type SyncableNotificationId = Nominal<
-  string,
-  'syncable-notification-id'
->;
-
-export interface SyncableNotification {
-  id: SyncableNotificationId;
-  message: string;
-}
-
-export type SyncableNotificationHandler = (
-  notification: SyncableNotification,
-) => void;
+// TODO: remove me.
+// export interface SyncableNotification {
+//   id: ChangePacketId;
+//   message: string;
+// }
 
 export interface SyncableAssociation<
   T extends ISyncableObject = ISyncableObject

@@ -1,21 +1,24 @@
+import {EventEmitter} from 'events';
+
 import {
   ChangePacket,
   ChangePacketId,
   ChangePlant,
+  ChangePlantGenericParams,
   Context,
   GeneralChange,
   GeneralSyncableRef,
   IChange,
+  INotification,
   ISyncable,
   ISyncableObject,
   ISyncableObjectProvider,
   IUserSyncableObject,
   InitialData,
+  NotificationPacket,
   SnapshotData,
   SyncableId,
   SyncableManager,
-  SyncableNotification,
-  SyncableNotificationHandler,
   SyncableRef,
   SyncingData,
 } from '@syncable/core';
@@ -34,11 +37,20 @@ export interface ClientGenericParams {
   user: IUserSyncableObject;
   syncableObject: ISyncableObject;
   change: IChange;
+  notification: INotification;
+}
+
+interface ClientChangePlantGenericParams<
+  TGenericParams extends ClientGenericParams = ClientGenericParams
+> extends ChangePlantGenericParams {
+  user: TGenericParams['user'];
+  change: TGenericParams['change'];
+  notification: TGenericParams['notification'];
 }
 
 export class Client<
   TGenericParams extends ClientGenericParams = ClientGenericParams
-> {
+> extends EventEmitter {
   readonly context: Context<TGenericParams['user']>;
   readonly ready: Promise<void>;
 
@@ -48,19 +60,18 @@ export class Client<
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
-  private notificationHandlerList: SyncableNotificationHandler[] = [];
-  private notificationQueue: SyncableNotification[] = [];
-
   constructor(
     socket: SocketIOClient.Socket,
     provider: ISyncableObjectProvider,
-    changePlant: ChangePlant<TGenericParams['user'], TGenericParams['change']>,
+    changePlant: ChangePlant<ClientChangePlantGenericParams<TGenericParams>>,
   );
   constructor(
     socket: SocketIOClient.Socket,
     provider: ISyncableObjectProvider,
     private changePlant: ChangePlant,
   ) {
+    super();
+
     this.context = new Context('user');
     this.manager = new SyncableManager(provider);
 
@@ -149,18 +160,6 @@ export class Client<
 
     this.applyChangePacket(packet);
     this.pushChangePacket(packet);
-  }
-
-  subscribeNotificationHandler(handler: SyncableNotificationHandler): void {
-    this.notificationHandlerList.push(handler);
-  }
-
-  unsubscribeNotificationHandler(handler: SyncableNotificationHandler): void {
-    let list = this.notificationHandlerList;
-
-    let index = list.lastIndexOf(handler);
-
-    list = [...list.slice(0, index), ...list.slice(index + 1, list.length)];
   }
 
   private onInitialize({
@@ -263,7 +262,7 @@ export class Client<
       updates: updateDict,
       creations,
       removals,
-      notification,
+      notificationPacket,
     } = this.changePlant.process(
       packet,
       syncableObjectOrCreationRefDict,
@@ -282,27 +281,8 @@ export class Client<
       manager.addSyncable(syncable);
     }
 
-    if (notification) {
-      this.enqueueNotification(notification);
-    }
-  }
-
-  private enqueueNotification(notification: SyncableNotification): void {
-    let queue = this.notificationQueue;
-
-    if (queue.find(item => item.id === notification.id)) {
-      return;
-    }
-
-    queue.push(notification);
-    this.handleNotification(notification);
-  }
-
-  private handleNotification(notification: SyncableNotification): void {
-    let list = this.notificationHandlerList;
-
-    for (let handler of list) {
-      handler(notification);
+    if (notificationPacket) {
+      this.emit('notify', notificationPacket);
     }
   }
 
@@ -311,4 +291,20 @@ export class Client<
 
     this.socket.emit('syncable:change', packet);
   }
+}
+
+export interface Client<
+  TGenericParams extends ClientGenericParams = ClientGenericParams
+> {
+  on(
+    event: 'notify',
+    handler: (
+      packet: NotificationPacket<TGenericParams['notification']>,
+    ) => void,
+  ): this;
+
+  emit(
+    event: 'notify',
+    packet: NotificationPacket<TGenericParams['notification']>,
+  ): boolean;
 }

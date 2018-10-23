@@ -4,18 +4,19 @@ import {
   ChangePacket,
   ChangePacketId,
   ChangePlant,
+  ChangePlantGenericParams,
   ChangePlantProcessingResultWithTimestamp,
   Context,
   GeneralChange,
   GeneralSyncableRef,
   IChange,
+  INotification,
   ISyncable,
   ISyncableObject,
   ISyncableObjectProvider,
   IUserSyncableObject,
+  NotificationPacket,
   SyncableManager,
-  SyncableNotification,
-  SyncableNotificationHandler,
   SyncableRef,
 } from '@syncable/core';
 import _ from 'lodash';
@@ -51,6 +52,31 @@ export interface ServerGenericParams {
   syncableObject: ISyncableObject;
   change: IChange;
   viewQuery: unknown;
+  notification: INotification;
+}
+
+interface ServerChangePlantGenericParams<
+  TGenericParams extends ServerGenericParams = ServerGenericParams
+> extends ChangePlantGenericParams {
+  user: TGenericParams['user'];
+  change: TGenericParams['change'];
+  notification: TGenericParams['notification'];
+}
+
+interface Server<TGenericParams extends ServerGenericParams> {
+  on(event: 'error', handler: (error: Error) => void): this;
+  on(
+    event: 'notify',
+    handler: (
+      packet: NotificationPacket<TGenericParams['notification']>,
+    ) => void,
+  ): this;
+
+  emit(event: 'error', error: Error): boolean;
+  emit(
+    event: 'notify',
+    packet: NotificationPacket<TGenericParams['notification']>,
+  ): boolean;
 }
 
 abstract class Server<
@@ -61,14 +87,11 @@ abstract class Server<
 
   private context = new Context<TGenericParams['user']>('server');
 
-  private notificationHandlerList: SyncableNotificationHandler[] = [];
-
   constructor(
     server: SocketServer,
     readonly provider: ISyncableObjectProvider,
     readonly changePlant: ChangePlant<
-      TGenericParams['user'],
-      TGenericParams['change']
+      ServerChangePlantGenericParams<TGenericParams>
     >,
   ) {
     super();
@@ -109,18 +132,6 @@ abstract class Server<
   getNextTimestamp(group: string): Promise<number> {
     let {clock} = this.groupInfoMap.get(group)!;
     return clock.next();
-  }
-
-  subscribeNotificationHandler(handler: SyncableNotificationHandler): void {
-    this.notificationHandlerList.push(handler);
-  }
-
-  unsubscribeNotificationHandler(handler: SyncableNotificationHandler): void {
-    let list = this.notificationHandlerList;
-
-    let index = list.lastIndexOf(handler);
-
-    list = [...list.slice(0, index), ...list.slice(index + 1, list.length)];
   }
 
   protected abstract createGroupClock(group: string): IGroupClock;
@@ -203,12 +214,6 @@ abstract class Server<
     }
   }
 
-  private handleNotification(notification: SyncableNotification): void {
-    for (let handler of this.notificationHandlerList) {
-      handler(notification);
-    }
-  }
-
   private async _applyChangePacket(
     group: string,
     packet: ChangePacket,
@@ -243,7 +248,7 @@ abstract class Server<
       timestamp,
     );
 
-    let {updates: updateDict, creations, removals, notification} = result;
+    let {updates: updateDict, creations, removals, notificationPacket} = result;
 
     for (let {snapshot} of Object.values(updateDict)) {
       manager.updateSyncable(snapshot);
@@ -257,8 +262,8 @@ abstract class Server<
       manager.removeSyncable(ref);
     }
 
-    if (notification) {
-      this.handleNotification(notification);
+    if (notificationPacket) {
+      this.emit('notify', notificationPacket);
     }
 
     await this.saveAndBroadcastChangeResult(group, result);
