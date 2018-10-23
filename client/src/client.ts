@@ -104,38 +104,6 @@ export class Client<
     return this.manager.requireSyncableObject(ref) as T;
   }
 
-  associate(
-    target: TGenericParams['syncableObject'],
-    source: TGenericParams['syncableObject'],
-    options?: ClientAssociateOptions,
-  ): void;
-  associate(
-    {ref: target}: TGenericParams['syncableObject'],
-    {ref: source}: TGenericParams['syncableObject'],
-    {name, secures = false}: ClientAssociateOptions = {},
-  ): void {
-    this.update({
-      type: '$associate',
-      refs: {target, source},
-      options: {name, secures},
-    });
-  }
-
-  unassociate(
-    target: TGenericParams['syncableObject'],
-    source: TGenericParams['syncableObject'],
-  ): void;
-  unassociate(
-    {ref: target}: TGenericParams['syncableObject'],
-    {ref: source}: TGenericParams['syncableObject'],
-  ): void {
-    this.update({
-      type: '$unassociate',
-      refs: {target, source},
-      options: {},
-    });
-  }
-
   update(change: TGenericParams['change']): void {
     let packet: ChangePacket = {
       id: uuid() as ChangePacketId,

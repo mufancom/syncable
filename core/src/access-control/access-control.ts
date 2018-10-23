@@ -22,19 +22,20 @@ export interface AccessControlEntry<TOptions extends object = object> {
 }
 
 export interface SecuringAccessControlEntryNegativeMatch {
-  not: string;
+  not: string | string[];
 }
 
 export type SecuringAccessControlEntryMatch =
-  | string
+  | (string | string[])
   | SecuringAccessControlEntryNegativeMatch;
 
 export interface SecuringAccessControlEntry<TOptions extends object = object>
   extends AccessControlEntry<TOptions> {
   /**
-   * Type of syncable to be secured.
+   * Type of syncable to be secured or not secured.
    */
-  match?: SecuringAccessControlEntryMatch | SecuringAccessControlEntryMatch[];
+  match?: SecuringAccessControlEntryMatch;
+
   type: 'deny';
 }
 

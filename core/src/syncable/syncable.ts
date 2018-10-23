@@ -26,9 +26,21 @@ export interface SyncableAssociation<
   secures?: boolean;
 }
 
-export interface ISyncable<Type extends string = string> {
-  _id: SyncableId<Type>;
-  _type: Type;
+export interface SyncableExtends<TType extends string = string> {
+  ref: {
+    id: SyncableId<TType>;
+    type: TType;
+  };
+  secures: boolean;
+  acl: boolean;
+}
+
+export interface ISyncable<TType extends string = string> {
+  _id: SyncableId<TType>;
+  _type: TType;
+
+  _extends?: SyncableExtends<TType>;
+
   _timestamp: number;
 
   /**

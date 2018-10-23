@@ -80,11 +80,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     if (userRef) {
       let userSyncable = manager.requireSyncable(userRef);
-      ensureAssociationsAndDoSnapshot(userSyncable, true);
+      ensureRelatedAndDoSnapshot(userSyncable, true);
     }
 
     for (let syncable of manager.getSyncables()) {
-      ensureAssociationsAndDoSnapshot(syncable, false);
+      ensureRelatedAndDoSnapshot(syncable, false);
     }
 
     return {
@@ -92,7 +92,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       removals: snapshotRemovals,
     };
 
-    function ensureAssociationsAndDoSnapshot(
+    function ensureRelatedAndDoSnapshot(
       syncable: ISyncable,
       requisite: boolean,
     ): void {
@@ -126,11 +126,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
         return;
       }
 
-      let associations = manager.requireAssociatedSyncableObjects(syncable);
+      let relatedRefs = manager.getRelatedRefs(syncable);
 
-      for (let {ref} of associations) {
+      for (let ref of relatedRefs) {
         let syncable = manager.requireSyncable(ref);
-        ensureAssociationsAndDoSnapshot(syncable, true);
+        ensureRelatedAndDoSnapshot(syncable, true);
       }
 
       snapshotIdSet.add(id);

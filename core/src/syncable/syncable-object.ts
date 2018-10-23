@@ -77,10 +77,23 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     );
   }
 
-  getSecuringACL(): SecuringAccessControlEntry[] {
-    return (this.syncable._secures || []).filter(
-      entry => entry.type === 'deny',
-    );
+  getSecuringACL(
+    nameToSecureMap: Map<string, SecuringAccessControlEntry> = new Map(),
+  ): Map<string, SecuringAccessControlEntry> {
+    let {syncable: {_extends, _secures}} = this;
+
+    (_secures || [])
+      .filter(entry => entry.type === 'deny')
+      .forEach(secure => nameToSecureMap.set(secure.name, secure));
+
+    if (_extends) {
+      return this.getSecuringACL.call(
+        this.require(_extends.ref),
+        nameToSecureMap,
+      );
+    }
+
+    return nameToSecureMap;
   }
 
   getAccessRights(
@@ -151,19 +164,36 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     };
 
     let acl = this.syncable._acl || [];
+    let aclMap = new Map<string, AccessControlEntry>();
+
+    let extended = this.syncable._extends;
+
+    if (extended && extended.acl) {
+      let {syncable: {_acl: extendedACL}} = this.require(extended.ref);
+
+      if (extendedACL) {
+        for (let ace of extendedACL) {
+          aclMap.set(ace.name, ace);
+        }
+      }
+    }
+
+    for (let ace of acl) {
+      aclMap.set(ace.name, ace);
+    }
 
     if (acl.length) {
-      for (let entry of acl) {
-        if (!this.testAccessControlEntry(this, entry, context)) {
+      for (let ace of acl) {
+        if (!this.testAccessControlEntry(this, ace, context)) {
           continue;
         }
 
-        let {type, grantable, rights} = entry;
+        let {type, grantable, rights} = ace;
 
         let item: AccessRightComparableItem = {
           type,
           grantable,
-          priority: getAccessControlEntryPriority(entry, false),
+          priority: getAccessControlEntryPriority(ace, false),
         };
 
         for (let right of rights) {
@@ -182,45 +212,40 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       }
     }
 
-    let associatedObjects = this.manager.requireAssociatedSyncableObjects(
-      this.syncable,
-      true,
-    );
+    let associatedObjects = this.getAssociatedObjects(true);
 
-    for (let association of associations) {
-      let securingACL = association.getSecuringACL().filter(({match}) => {
+    for (let associatedObject of associatedObjects) {
+      let securingACL = Array.from(
+        associatedObject.getSecuringACL(),
+        ([_name, ace]) => ace,
+      ).filter(({match}) => {
         let refType = this.ref.type;
 
-        if (!match || (match instanceof Array && !match.length)) {
+        if (!match) {
           return true;
         }
 
-        if (Array.isArray(match)) {
-          let matches = match;
-          let matched = true;
+        if (Array.isArray(match) || typeof match === 'string') {
+          let matches = _.castArray(match);
 
           for (let match of matches) {
-            if (typeof match === 'string') {
-              if (new RegExp(match).test(refType)) {
-                matched = true;
-              }
-            } else {
-              if (new RegExp(match.not).test(refType)) {
-                matched = false;
-              }
+            if (match === refType) {
+              return true;
             }
           }
 
-          return matched;
+          return false;
         } else {
-          if (typeof match === 'string') {
-            return new RegExp(match).test(refType);
-          } else {
-            return new RegExp(match.not).test(refType);
-          }
-        }
+          let negativeMatches = _.castArray(match.not);
 
-        // return !match || match.includes(this.ref.type);
+          for (const negativeMatch of negativeMatches) {
+            if (negativeMatch === refType) {
+              return false;
+            }
+          }
+
+          return true;
+        }
       });
 
       for (let entry of securingACL) {
