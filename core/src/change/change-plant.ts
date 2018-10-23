@@ -276,7 +276,10 @@ export class ChangePlant<
     let notify: ChangePlantProcessorNotifyOperation<
       TGenericParams['notification']
     > = notification => {
-      notificationPacket = _.merge({id}, notification);
+      notificationPacket = {
+        id,
+        ...(notification as INotification),
+      };
     };
 
     processor(

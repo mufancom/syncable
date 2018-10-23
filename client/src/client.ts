@@ -4,7 +4,6 @@ import {
   ChangePacket,
   ChangePacketId,
   ChangePlant,
-  ChangePlantGenericParams,
   Context,
   GeneralChange,
   GeneralSyncableRef,
@@ -40,14 +39,6 @@ export interface ClientGenericParams {
   notification: INotification;
 }
 
-interface ClientChangePlantGenericParams<
-  TGenericParams extends ClientGenericParams = ClientGenericParams
-> extends ChangePlantGenericParams {
-  user: TGenericParams['user'];
-  change: TGenericParams['change'];
-  notification: TGenericParams['notification'];
-}
-
 export class Client<
   TGenericParams extends ClientGenericParams = ClientGenericParams
 > extends EventEmitter {
@@ -63,7 +54,11 @@ export class Client<
   constructor(
     socket: SocketIOClient.Socket,
     provider: ISyncableObjectProvider,
-    changePlant: ChangePlant<ClientChangePlantGenericParams<TGenericParams>>,
+    changePlant: ChangePlant<{
+      user: TGenericParams['user'];
+      change: TGenericParams['change'];
+      notification: TGenericParams['notification'];
+    }>,
   );
   constructor(
     socket: SocketIOClient.Socket,
@@ -298,7 +293,7 @@ export interface Client<
 > {
   on(
     event: 'notify',
-    handler: (
+    listener: (
       packet: NotificationPacket<TGenericParams['notification']>,
     ) => void,
   ): this;

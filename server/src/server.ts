@@ -4,7 +4,6 @@ import {
   ChangePacket,
   ChangePacketId,
   ChangePlant,
-  ChangePlantGenericParams,
   ChangePlantProcessingResultWithTimestamp,
   Context,
   GeneralChange,
@@ -55,19 +54,11 @@ export interface ServerGenericParams {
   notification: INotification;
 }
 
-interface ServerChangePlantGenericParams<
-  TGenericParams extends ServerGenericParams = ServerGenericParams
-> extends ChangePlantGenericParams {
-  user: TGenericParams['user'];
-  change: TGenericParams['change'];
-  notification: TGenericParams['notification'];
-}
-
 interface Server<TGenericParams extends ServerGenericParams> {
-  on(event: 'error', handler: (error: Error) => void): this;
+  on(event: 'error', listener: (error: Error) => void): this;
   on(
     event: 'notify',
-    handler: (
+    listener: (
       packet: NotificationPacket<TGenericParams['notification']>,
     ) => void,
   ): this;
@@ -90,9 +81,11 @@ abstract class Server<
   constructor(
     server: SocketServer,
     readonly provider: ISyncableObjectProvider,
-    readonly changePlant: ChangePlant<
-      ServerChangePlantGenericParams<TGenericParams>
-    >,
+    readonly changePlant: ChangePlant<{
+      user: TGenericParams['user'];
+      change: TGenericParams['change'];
+      notification: TGenericParams['notification'];
+    }>,
   ) {
     super();
 
