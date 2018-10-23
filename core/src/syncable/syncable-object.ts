@@ -77,6 +77,26 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     );
   }
 
+  getACL(): AccessControlEntry[] {
+    let {_extends, _acl = []} = this.syncable;
+
+    let superACL: AccessControlEntry[] = [];
+
+    if (_extends && _extends.acl) {
+      let superObject = this.require(_extends.ref);
+      superACL = superObject.getACL();
+    }
+
+    return Array.from(
+      new Map(
+        [...superACL, ..._acl].map((entry): [string, AccessControlEntry] => [
+          entry.name,
+          entry,
+        ]),
+      ).values(),
+    );
+  }
+
   getSecuringACL(): SecuringAccessControlEntry[] {
     let {_extends, _secures = []} = this.syncable;
 
@@ -164,27 +184,10 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       full: [],
     };
 
-    let acl = this.syncable._acl || [];
-    let entryMap = new Map<string, AccessControlEntry>();
+    let acl = this.getACL();
 
-    let {_extends} = this.syncable;
-
-    if (_extends && _extends.acl) {
-      let {syncable: {_acl: extendedACL}} = this.require(_extends.ref);
-
-      if (extendedACL) {
-        for (let entry of extendedACL) {
-          entryMap.set(entry.name, entry);
-        }
-      }
-    }
-
-    for (let entry of acl) {
-      entryMap.set(entry.name, entry);
-    }
-
-    if (entryMap.size) {
-      for (let [, entry] of entryMap) {
+    if (acl.length) {
+      for (let entry of acl) {
         if (!this.testAccessControlEntry(this, entry, context)) {
           continue;
         }
