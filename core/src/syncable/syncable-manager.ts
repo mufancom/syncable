@@ -127,7 +127,6 @@ export class SyncableManager {
 
     syncableMap.set(id, syncable);
 
-    // replace relatedRefs
     let relatedIds = this.getRelatedIds(snapshot);
 
     this.addRelatedTargetSyncable(syncable, relatedIds);
@@ -284,7 +283,6 @@ export class SyncableManager {
       : [...associations];
   }
 
-  // getRelatedRefs
   private getRelatedIds(syncable: ISyncable): SyncableId[] {
     return this.getRelatedRefs(syncable).map(ref => ref.id);
   }
