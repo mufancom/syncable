@@ -1,3 +1,5 @@
+import {EventEmitter} from 'events';
+
 import {
   ChangePacket,
   ChangePacketId,
@@ -6,11 +8,13 @@ import {
   GeneralChange,
   GeneralSyncableRef,
   IChange,
+  INotification,
   ISyncable,
   ISyncableObject,
   ISyncableObjectProvider,
   IUserSyncableObject,
   InitialData,
+  NotificationPacket,
   SnapshotData,
   SyncableId,
   SyncableManager,
@@ -32,11 +36,12 @@ export interface ClientGenericParams {
   user: IUserSyncableObject;
   syncableObject: ISyncableObject;
   change: IChange;
+  notification: INotification;
 }
 
 export class Client<
   TGenericParams extends ClientGenericParams = ClientGenericParams
-> {
+> extends EventEmitter {
   readonly context: Context<TGenericParams['user']>;
   readonly ready: Promise<void>;
 
@@ -49,13 +54,19 @@ export class Client<
   constructor(
     socket: SocketIOClient.Socket,
     provider: ISyncableObjectProvider,
-    changePlant: ChangePlant<TGenericParams['user'], TGenericParams['change']>,
+    changePlant: ChangePlant<{
+      user: TGenericParams['user'];
+      change: TGenericParams['change'];
+      notification: TGenericParams['notification'];
+    }>,
   );
   constructor(
     socket: SocketIOClient.Socket,
     provider: ISyncableObjectProvider,
     private changePlant: ChangePlant,
   ) {
+    super();
+
     this.context = new Context('user');
     this.manager = new SyncableManager(provider);
 
@@ -242,7 +253,12 @@ export class Client<
           : manager.requireSyncableObject(ref),
     );
 
-    let {updates: updateDict, creations, removals} = this.changePlant.process(
+    let {
+      updates: updateDict,
+      creations,
+      removals,
+      notificationPacket,
+    } = this.changePlant.process(
       packet,
       syncableObjectOrCreationRefDict,
       this.context,
@@ -259,6 +275,10 @@ export class Client<
     for (let syncable of creations) {
       manager.addSyncable(syncable);
     }
+
+    if (notificationPacket) {
+      this.emit('notify', notificationPacket);
+    }
   }
 
   private pushChangePacket(packet: ChangePacket): void {
@@ -266,4 +286,20 @@ export class Client<
 
     this.socket.emit('syncable:change', packet);
   }
+}
+
+export interface Client<
+  TGenericParams extends ClientGenericParams = ClientGenericParams
+> {
+  on(
+    event: 'notify',
+    listener: (
+      packet: NotificationPacket<TGenericParams['notification']>,
+    ) => void,
+  ): this;
+
+  emit(
+    event: 'notify',
+    packet: NotificationPacket<TGenericParams['notification']>,
+  ): boolean;
 }

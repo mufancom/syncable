@@ -90,6 +90,7 @@ export interface ChangePlantProcessingResult {
   updates: Dict<ChangePlantProcessingResultUpdateItem>;
   creations: ISyncable[];
   removals: SyncableRef[];
+  notificationPacket: NotificationPacket | undefined;
 }
 
 export interface ChangePlantProcessingResultWithTimestamp
@@ -107,6 +108,18 @@ export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
     | ChangeToSyncable<TChange>,
 ) => void;
 
+export interface INotification {
+  type: string;
+}
+
+export type NotificationPacket<
+  TNotification extends INotification = INotification
+> = TNotification & {id: ChangePacketId};
+
+export type ChangePlantProcessorNotifyOperation<
+  TNotification extends INotification = INotification
+> = (notification: TNotification) => void;
+
 export interface ChangePlantProcessorExtra<
   TUser extends IUserSyncableObject = IUserSyncableObject,
   TChange extends IChange = GeneralChange
@@ -115,6 +128,7 @@ export interface ChangePlantProcessorExtra<
   options: TChange['options'];
   create: ChangePlantProcessorCreateOperation<TChange>;
   remove: ChangePlantProcessorRemoveOperation<TChange>;
+  notify: ChangePlantProcessorNotifyOperation;
 }
 
 export type ChangePlantProcessor<
@@ -136,12 +150,24 @@ export type ChangePlantBlueprint<
   >
 };
 
+export interface ChangePlantGenericParams {
+  user: IUserSyncableObject;
+  change: IChange;
+  notification: INotification;
+}
+
+interface DefaultChangePlantGenericParams extends ChangePlantGenericParams {
+  change: GeneralChange;
+}
+
 export class ChangePlant<
-  TUser extends IUserSyncableObject = IUserSyncableObject,
-  TChange extends IChange = GeneralChange
+  TGenericParams extends ChangePlantGenericParams = DefaultChangePlantGenericParams
 > {
   constructor(
-    private blueprint: ChangePlantBlueprint<TUser, TChange>,
+    private blueprint: ChangePlantBlueprint<
+      TGenericParams['user'],
+      TGenericParams['change']
+    >,
     private provider: ISyncableObjectProvider,
   ) {}
 
@@ -150,14 +176,14 @@ export class ChangePlant<
     syncableObjectOrCreationRefDict: Dict<
       ISyncableObject | SyncableCreationRef
     >,
-    context: Context<TUser>,
+    context: Context<TGenericParams['user']>,
   ): ChangePlantProcessingResult;
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
       ISyncableObject | SyncableCreationRef
     >,
-    context: Context<TUser>,
+    context: Context<TGenericParams['user']>,
     timestamp: number,
   ): ChangePlantProcessingResultWithTimestamp;
   process(
@@ -169,7 +195,7 @@ export class ChangePlant<
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
     let processor = (this.blueprint as any)[type] as ChangePlantProcessor<
-      TUser,
+      TGenericParams['user'],
       IChange
     >;
 
@@ -215,6 +241,9 @@ export class ChangePlant<
 
     let creations: ISyncable[] = [];
     let removals: SyncableRef[] = [];
+    let notificationPacket:
+      | NotificationPacket<TGenericParams['notification']>
+      | undefined;
 
     let create: ChangePlantProcessorCreateOperation<
       GeneralChange
@@ -244,6 +273,15 @@ export class ChangePlant<
       removals.push(object.ref);
     };
 
+    let notify: ChangePlantProcessorNotifyOperation<
+      TGenericParams['notification']
+    > = notification => {
+      notificationPacket = {
+        id,
+        ...(notification as INotification),
+      };
+    };
+
     processor(
       clonedSyncableDict,
       syncableObjectOrCreationRefDict as ChangeToObjectOrCreationRefDict<
@@ -252,9 +290,17 @@ export class ChangePlant<
       {
         context,
         options,
-        create: create as ChangePlantProcessorCreateOperation<TChange>,
-        remove: remove as ChangePlantProcessorRemoveOperation<TChange>,
-      } as ChangePlantProcessorExtra<TUser, TChange>,
+        create: create as ChangePlantProcessorCreateOperation<
+          TGenericParams['change']
+        >,
+        remove: remove as ChangePlantProcessorRemoveOperation<
+          TGenericParams['change']
+        >,
+        notify,
+      } as ChangePlantProcessorExtra<
+        TGenericParams['user'],
+        TGenericParams['change']
+      >,
     );
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};
@@ -326,6 +372,7 @@ export class ChangePlant<
       updates: updateDict,
       creations: creations || [],
       removals: removals || [],
+      notificationPacket,
     };
   }
 }

@@ -9,10 +9,12 @@ import {
   GeneralChange,
   GeneralSyncableRef,
   IChange,
+  INotification,
   ISyncable,
   ISyncableObject,
   ISyncableObjectProvider,
   IUserSyncableObject,
+  NotificationPacket,
   SyncableManager,
   SyncableRef,
 } from '@syncable/core';
@@ -49,6 +51,23 @@ export interface ServerGenericParams {
   syncableObject: ISyncableObject;
   change: IChange;
   viewQuery: unknown;
+  notification: INotification;
+}
+
+interface Server<TGenericParams extends ServerGenericParams> {
+  on(event: 'error', listener: (error: Error) => void): this;
+  on(
+    event: 'notify',
+    listener: (
+      packet: NotificationPacket<TGenericParams['notification']>,
+    ) => void,
+  ): this;
+
+  emit(event: 'error', error: Error): boolean;
+  emit(
+    event: 'notify',
+    packet: NotificationPacket<TGenericParams['notification']>,
+  ): boolean;
 }
 
 abstract class Server<
@@ -62,10 +81,11 @@ abstract class Server<
   constructor(
     server: SocketServer,
     readonly provider: ISyncableObjectProvider,
-    readonly changePlant: ChangePlant<
-      TGenericParams['user'],
-      TGenericParams['change']
-    >,
+    readonly changePlant: ChangePlant<{
+      user: TGenericParams['user'];
+      change: TGenericParams['change'];
+      notification: TGenericParams['notification'];
+    }>,
   ) {
     super();
 
@@ -221,7 +241,7 @@ abstract class Server<
       timestamp,
     );
 
-    let {updates: updateDict, creations, removals} = result;
+    let {updates: updateDict, creations, removals, notificationPacket} = result;
 
     for (let {snapshot} of Object.values(updateDict)) {
       manager.updateSyncable(snapshot);
@@ -233,6 +253,10 @@ abstract class Server<
 
     for (let ref of removals) {
       manager.removeSyncable(ref);
+    }
+
+    if (notificationPacket) {
+      this.emit('notify', notificationPacket);
     }
 
     await this.saveAndBroadcastChangeResult(group, result);
