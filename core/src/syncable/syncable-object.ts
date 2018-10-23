@@ -165,7 +165,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     };
 
     let acl = this.syncable._acl || [];
-    let aclMap = new Map<string, AccessControlEntry>();
+    let entryMap = new Map<string, AccessControlEntry>();
 
     let {_extends} = this.syncable;
 
@@ -173,28 +173,28 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       let {syncable: {_acl: extendedACL}} = this.require(_extends.ref);
 
       if (extendedACL) {
-        for (let ace of extendedACL) {
-          aclMap.set(ace.name, ace);
+        for (let entry of extendedACL) {
+          entryMap.set(entry.name, entry);
         }
       }
     }
 
-    for (let ace of acl) {
-      aclMap.set(ace.name, ace);
+    for (let entry of acl) {
+      entryMap.set(entry.name, entry);
     }
 
-    if (aclMap.size) {
-      for (let [, ace] of aclMap) {
-        if (!this.testAccessControlEntry(this, ace, context)) {
+    if (entryMap.size) {
+      for (let [, entry] of entryMap) {
+        if (!this.testAccessControlEntry(this, entry, context)) {
           continue;
         }
 
-        let {type, grantable, rights} = ace;
+        let {type, grantable, rights} = entry;
 
         let item: AccessRightComparableItem = {
           type,
           grantable,
-          priority: getAccessControlEntryPriority(ace, false),
+          priority: getAccessControlEntryPriority(entry, false),
         };
 
         for (let right of rights) {
