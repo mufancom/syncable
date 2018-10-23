@@ -77,9 +77,43 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     );
   }
 
+  getACL(): AccessControlEntry[] {
+    let {_extends, _acl = []} = this.syncable;
+
+    let superACL: AccessControlEntry[] = [];
+
+    if (_extends && _extends.acl) {
+      let superObject = this.require(_extends.ref);
+      superACL = superObject.getACL();
+    }
+
+    return Array.from(
+      new Map(
+        [...superACL, ..._acl].map((entry): [string, AccessControlEntry] => [
+          entry.name,
+          entry,
+        ]),
+      ).values(),
+    );
+  }
+
   getSecuringACL(): SecuringAccessControlEntry[] {
-    return (this.syncable._secures || []).filter(
-      entry => entry.type === 'deny',
+    let {_extends, _secures = []} = this.syncable;
+
+    let superSecuringEntries: SecuringAccessControlEntry[] = [];
+
+    if (_extends && _extends.secures) {
+      let superObject = this.require(_extends.ref);
+      superSecuringEntries = superObject.getSecuringACL();
+    }
+
+    return Array.from(
+      new Map(
+        [...superSecuringEntries, ..._secures].map((entry): [
+          string,
+          SecuringAccessControlEntry
+        ] => [entry.name, entry]),
+      ).values(),
     );
   }
 
@@ -150,7 +184,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       full: [],
     };
 
-    let acl = this.syncable._acl || [];
+    let acl = this.getACL();
 
     if (acl.length) {
       for (let entry of acl) {
@@ -182,15 +216,26 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       }
     }
 
-    let associatedObjects = this.manager.requireAssociatedSyncableObjects(
-      this.syncable,
-      true,
-    );
+    let associatedObjects = this.getAssociatedObjects(true);
+    let type = this.ref.type;
 
     for (let associatedObject of associatedObjects) {
-      let securingACL = associatedObject
-        .getSecuringACL()
-        .filter(({match}) => !match || match.includes(this.ref.type));
+      let securingACL = associatedObject.getSecuringACL().filter(({match}) => {
+        if (!match) {
+          return true;
+        }
+
+        if (Array.isArray(match) || typeof match === 'string') {
+          let matches = Array.isArray(match) ? match : [match];
+
+          return matches.some(match => match === type);
+        } else {
+          let {not} = match;
+          let negativeMatches = Array.isArray(not) ? not : [not];
+
+          return negativeMatches.some(negativeMatch => negativeMatch !== type);
+        }
+      });
 
       for (let entry of securingACL) {
         let {type, grantable, rights} = entry;

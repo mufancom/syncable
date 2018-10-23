@@ -345,7 +345,11 @@ export class ChangePlant<
       for (let diff of diffs) {
         let propertyName = diff.path[0];
 
-        if (propertyName === '_id' || propertyName === '_type') {
+        if (
+          propertyName === '_id' ||
+          propertyName === '_type' ||
+          propertyName === '_extends'
+        ) {
           throw new Error('Invalid operation');
         }
 

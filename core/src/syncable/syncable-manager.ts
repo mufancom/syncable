@@ -127,11 +127,9 @@ export class SyncableManager {
 
     syncableMap.set(id, syncable);
 
-    let associationIds = this.provider
-      .resolveAssociations(snapshot)
-      .map(association => association.ref.id);
+    let relatedIds = this.getRelatedIds(snapshot);
 
-    this.addAssociatedTargetSyncable(syncable, associationIds);
+    this.addRelatedTargetSyncable(syncable, relatedIds);
   }
 
   /**
@@ -151,29 +149,17 @@ export class SyncableManager {
       throw new Error(`Syncable with ID "${id}" does not exists in context`);
     }
 
-    let provider = this.provider;
-
-    let previousAssociationIds = provider
-      .resolveAssociations(syncable)
-      .map(association => association.ref.id);
-    let nextAssociationIds = provider
-      .resolveAssociations(snapshot)
-      .map(association => association.ref.id);
+    let previousRelatedIds = this.getRelatedIds(syncable);
+    let nextRelatedIds = this.getRelatedIds(snapshot);
 
     DeepDiff.applyDiff(syncable, snapshot, undefined!);
 
-    let newAssociationIds = _.difference(
-      nextAssociationIds,
-      previousAssociationIds,
-    );
+    let newRelatedIds = _.difference(nextRelatedIds, previousRelatedIds);
 
-    let obsoleteAssociationIds = _.difference(
-      previousAssociationIds,
-      nextAssociationIds,
-    );
+    let obsoleteRelatedIds = _.difference(previousRelatedIds, nextRelatedIds);
 
-    this.addAssociatedTargetSyncable(syncable, newAssociationIds);
-    this.removeAssociatedTargetSyncable(syncable, obsoleteAssociationIds);
+    this.addRelatedTargetSyncable(syncable, newRelatedIds);
+    this.removeRelatedTargetSyncable(syncable, obsoleteRelatedIds);
   }
 
   removeSyncable({type, id}: SyncableRef): void {
@@ -196,11 +182,9 @@ export class SyncableManager {
       syncableObjectMap.delete(id);
     }
 
-    let associationIds = this.provider
-      .resolveAssociations(syncable)
-      .map(association => association.ref.id);
+    let relatedIds = this.getRelatedIds(syncable);
 
-    this.removeAssociatedTargetSyncable(syncable, associationIds);
+    this.removeRelatedTargetSyncable(syncable, relatedIds);
   }
 
   getAssociatedTargetSyncables(source: SyncableRef | ISyncable): ISyncable[] {
@@ -288,6 +272,21 @@ export class SyncableManager {
     }
   }
 
+  getRelatedRefs(syncable: ISyncable, securesOnly = false): SyncableRef[] {
+    let associations = this.getAssociations(syncable, securesOnly).map(
+      association => association.ref,
+    );
+    let {_extends} = syncable;
+
+    return _extends && _extends.secures
+      ? [...associations, _extends.ref]
+      : [...associations];
+  }
+
+  private getRelatedIds(syncable: ISyncable): SyncableId[] {
+    return this.getRelatedRefs(syncable).map(ref => ref.id);
+  }
+
   private getAssociations(
     syncable: ISyncable,
     securesOnly = false,
@@ -301,7 +300,7 @@ export class SyncableManager {
     return associations;
   }
 
-  private addAssociatedTargetSyncable(
+  private addRelatedTargetSyncable(
     syncable: ISyncable,
     ids: SyncableId[],
   ): void {
@@ -322,7 +321,7 @@ export class SyncableManager {
     }
   }
 
-  private removeAssociatedTargetSyncable(
+  private removeRelatedTargetSyncable(
     syncable: ISyncable,
     ids: SyncableId[],
   ): void {
