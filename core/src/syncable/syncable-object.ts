@@ -182,8 +182,8 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       aclMap.set(ace.name, ace);
     }
 
-    if (acl.length) {
-      for (let ace of acl) {
+    if (aclMap.size) {
+      for (let [, ace] of aclMap) {
         if (!this.testAccessControlEntry(this, ace, context)) {
           continue;
         }
