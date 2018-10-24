@@ -109,10 +109,13 @@ export class Client<
       | undefined;
   }
 
-  requireObject<T extends TGenericParams['syncableObject']>(
-    ref: SyncableRef<T>,
-  ): T {
-    return this.manager.requireSyncableObject(ref) as T;
+  requireObject<TRef extends TGenericParams['syncableObject']['ref']>(
+    ref: TRef,
+  ): Extract<TGenericParams['syncableObject'], {ref: TRef}> {
+    return this.manager.requireSyncableObject(ref as SyncableRef) as Extract<
+      TGenericParams['syncableObject'],
+      {ref: TRef}
+    >;
   }
 
   update(change: TGenericParams['change']): void {
