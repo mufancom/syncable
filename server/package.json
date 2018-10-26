@@ -1,6 +1,6 @@
 {
   "name": "@syncable/server",
-  "version": "2.0.0-wip.3",
+  "version": "2.0.0-wip.5",
   "publishConfig": {
     "access": "public"
   },
