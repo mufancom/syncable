@@ -26,12 +26,14 @@ export type RefDictToObjectOrCreationRefDict<
   T extends object
 > = T extends object
   ? {
-      [K in KeyOfValueWithType<T, SyncableRef>]: T[K] extends SyncableRef<
-        infer TSyncableObject
-      >
-        ? T[K] extends SyncableCreationRef<TSyncableObject>
-          ? T[K]
-          : TSyncableObject
+      [K in KeyOfValueWithType<Required<T>, SyncableRef>]: NonNullable<
+        T[K]
+      > extends SyncableRef<infer TSyncableObject>
+        ?
+            | (NonNullable<T[K]> extends SyncableCreationRef<TSyncableObject>
+                ? T[K]
+                : TSyncableObject)
+            | (undefined extends T[K] ? undefined : never)
         : never
     }
   : never;
@@ -44,12 +46,14 @@ export type ChangeToObjectOrCreationRefDict<
 
 export type RefDictToSyncableDict<T extends object> = T extends object
   ? {
-      [K in KeyOfValueWithType<T, SyncableRef>]: T[K] extends SyncableRef<
-        infer TSyncableObject
-      >
-        ? T[K] extends SyncableCreationRef<TSyncableObject>
+      [K in KeyOfValueWithType<Required<T>, SyncableRef>]: NonNullable<
+        T[K]
+      > extends SyncableRef<infer TSyncableObject>
+        ? NonNullable<T[K]> extends SyncableCreationRef<TSyncableObject>
           ? never
-          : TSyncableObject['syncable']
+          :
+              | TSyncableObject['syncable']
+              | (undefined extends T[K] ? undefined : never)
         : never
     }
   : never;
@@ -65,7 +69,7 @@ export type ChangeToSyncable<T extends IChange> = T extends IChange<
   string,
   infer TRefDict
 >
-  ? ValueWithType<RefDictToSyncableDict<TRefDict>, any>
+  ? NonNullable<ValueWithType<RefDictToSyncableDict<TRefDict>, any>>
   : never;
 
 export type RefDictToCreation<T extends object> = ValueWithType<
@@ -77,7 +81,7 @@ export type ChangeToCreation<T extends IChange> = T extends IChange<
   string,
   infer TRefDict
 >
-  ? SyncableType<ValueWithType<TRefDict, SyncableCreationRef>>
+  ? SyncableType<ValueWithType<Required<TRefDict>, SyncableCreationRef>>
   : never;
 
 export interface ChangePlantProcessingResultUpdateItem {
