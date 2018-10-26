@@ -220,6 +220,7 @@ export class ChangePlant<
 
     let syncableDict = syncableObjectEntries.reduce(
       (dict, [name, object]) => {
+        object.validateAccessRights(['read'], context);
         dict[name] = object.syncable;
         return dict;
       },
