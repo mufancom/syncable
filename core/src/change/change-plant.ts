@@ -178,14 +178,14 @@ export class ChangePlant<
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      ISyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef | undefined
     >,
     context: Context<TGenericParams['user']>,
   ): ChangePlantProcessingResult;
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      ISyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef | undefined
     >,
     context: Context<TGenericParams['user']>,
     timestamp: number,
@@ -193,7 +193,7 @@ export class ChangePlant<
   process(
     {id, type, options}: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
-      ISyncableObject | SyncableCreationRef
+      ISyncableObject | SyncableCreationRef | undefined
     >,
     context: Context,
     timestamp?: number,
@@ -207,14 +207,10 @@ export class ChangePlant<
 
     let syncableObjectEntries = Array.from(
       Object.entries(syncableObjectOrCreationRefDict),
-    ).filter(
-      (
-        entry: [string, ISyncableObject | SyncableCreationRef],
-      ): entry is [string, ISyncableObject] => {
-        let [, object] = entry;
-        return object instanceof AbstractSyncableObject;
-      },
-    );
+    ).filter((entry): entry is [string, ISyncableObject] => {
+      let [, object] = entry;
+      return object instanceof AbstractSyncableObject;
+    });
 
     let syncableKeys = syncableObjectEntries.map(([key]) => key);
 

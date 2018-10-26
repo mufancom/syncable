@@ -229,9 +229,11 @@ abstract class Server<
     let syncableObjectOrCreationRefDict = _.mapValues(
       refDict,
       (ref: GeneralSyncableRef) =>
-        'creation' in ref && ref.creation
-          ? ref
-          : manager.requireSyncableObject(ref),
+        ref
+          ? 'creation' in ref && ref.creation
+            ? ref
+            : manager.requireSyncableObject(ref)
+          : undefined,
     );
 
     let result = this.changePlant.process(
