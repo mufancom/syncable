@@ -161,11 +161,7 @@ export type ChangePlantProcessor<
 > = (
   syncables: ChangeToSyncableDict<TGenericParams['change']>,
   objects: ChangeToObjectOrCreationRefDict<TGenericParams['change']>,
-  data: ChangePlantProcessorExtra<{
-    user: TGenericParams['user'];
-    change: TGenericParams['change'];
-    notification: TGenericParams['notification'];
-  }>,
+  data: ChangePlantProcessorExtra<TGenericParams>,
 ) => void;
 
 export interface ChangePlantBlueprintGenericParams {
@@ -198,11 +194,7 @@ export class ChangePlant<
   TGenericParams extends ChangePlantGenericParams = DefaultChangePlantGenericParams
 > {
   constructor(
-    private blueprint: ChangePlantBlueprint<{
-      user: TGenericParams['user'];
-      change: TGenericParams['change'];
-      notification: TGenericParams['notification'];
-    }>,
+    private blueprint: ChangePlantBlueprint<TGenericParams>,
     private provider: ISyncableObjectProvider,
   ) {}
 
@@ -330,11 +322,7 @@ export class ChangePlant<
           TGenericParams['change']
         >,
         notify,
-      } as ChangePlantProcessorExtra<{
-        user: TGenericParams['user'];
-        change: TGenericParams['change'];
-        notification: TGenericParams['notification'];
-      }>,
+      } as ChangePlantProcessorExtra<TGenericParams>,
     );
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};
