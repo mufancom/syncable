@@ -6,7 +6,7 @@
     "lerna:publish": "lerna publish prerelease --npm-tag latest --registry=https://registry.npmjs.org"
   },
   "devDependencies": {
-    "@magicspace/configs": "^0.1.44",
+    "@magicspace/configs": "^0.1.45",
     "biu": "^0.2.19",
     "lerna": "^3.4.3",
     "prettier": "^1.11.1",

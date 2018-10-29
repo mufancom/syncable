@@ -124,34 +124,60 @@ export type ChangePlantProcessorNotifyOperation<
   TNotification extends INotification = INotification
 > = (notification: TNotification) => void;
 
+export interface ChangePlantProcessorExtraGenericParams {
+  user: IUserSyncableObject;
+  change: IChange;
+  notification: INotification;
+}
+
+export interface DefaultChangePlantProcessorExtraGenericParams
+  extends ChangePlantProcessorExtraGenericParams {
+  change: GeneralChange;
+}
+
 export interface ChangePlantProcessorExtra<
-  TUser extends IUserSyncableObject = IUserSyncableObject,
-  TChange extends IChange = GeneralChange
+  TGenericParams extends ChangePlantProcessorExtraGenericParams = DefaultChangePlantProcessorExtraGenericParams
 > {
-  context: Context<TUser>;
-  options: TChange['options'];
-  create: ChangePlantProcessorCreateOperation<TChange>;
-  remove: ChangePlantProcessorRemoveOperation<TChange>;
-  notify: ChangePlantProcessorNotifyOperation;
+  context: Context<TGenericParams['user']>;
+  options: TGenericParams['change']['options'];
+  create: ChangePlantProcessorCreateOperation<TGenericParams['change']>;
+  remove: ChangePlantProcessorRemoveOperation<TGenericParams['change']>;
+  notify: ChangePlantProcessorNotifyOperation<TGenericParams['notification']>;
+}
+
+export interface ChangePlantProcessorGenericParams {
+  user: IUserSyncableObject;
+  change: IChange;
+  notification: INotification;
+}
+
+export interface DefaultChangePlantProcessorGenericParams
+  extends ChangePlantProcessorGenericParams {
+  change: GeneralChange;
 }
 
 export type ChangePlantProcessor<
-  TUser extends IUserSyncableObject = IUserSyncableObject,
-  TChange extends IChange = GeneralChange
+  TGenericParams extends ChangePlantProcessorGenericParams = DefaultChangePlantProcessorGenericParams
 > = (
-  syncables: ChangeToSyncableDict<TChange>,
-  objects: ChangeToObjectOrCreationRefDict<TChange>,
-  data: ChangePlantProcessorExtra<TUser, TChange>,
+  syncables: ChangeToSyncableDict<TGenericParams['change']>,
+  objects: ChangeToObjectOrCreationRefDict<TGenericParams['change']>,
+  data: ChangePlantProcessorExtra<TGenericParams>,
 ) => void;
 
+export interface ChangePlantBlueprintGenericParams {
+  user: IUserSyncableObject;
+  change: IChange;
+  notification: INotification;
+}
+
 export type ChangePlantBlueprint<
-  TUser extends IUserSyncableObject,
-  TChange extends IChange
+  TGenericParams extends ChangePlantBlueprintGenericParams
 > = {
-  [K in TChange['type']]: ChangePlantProcessor<
-    TUser,
-    Extract<TChange, {type: K}>
-  >
+  [K in TGenericParams['change']['type']]: ChangePlantProcessor<{
+    user: TGenericParams['user'];
+    change: Extract<TGenericParams['change'], {type: K}>;
+    notification: TGenericParams['notification'];
+  }>
 };
 
 export interface ChangePlantGenericParams {
@@ -168,10 +194,7 @@ export class ChangePlant<
   TGenericParams extends ChangePlantGenericParams = DefaultChangePlantGenericParams
 > {
   constructor(
-    private blueprint: ChangePlantBlueprint<
-      TGenericParams['user'],
-      TGenericParams['change']
-    >,
+    private blueprint: ChangePlantBlueprint<TGenericParams>,
     private provider: ISyncableObjectProvider,
   ) {}
 
@@ -198,10 +221,11 @@ export class ChangePlant<
     context: Context,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
-    let processor = (this.blueprint as any)[type] as ChangePlantProcessor<
-      TGenericParams['user'],
-      IChange
-    >;
+    let processor = (this.blueprint as any)[type] as ChangePlantProcessor<{
+      user: TGenericParams['user'];
+      change: IChange;
+      notification: TGenericParams['notification'];
+    }>;
 
     let provider = this.provider;
 
@@ -298,10 +322,7 @@ export class ChangePlant<
           TGenericParams['change']
         >,
         notify,
-      } as ChangePlantProcessorExtra<
-        TGenericParams['user'],
-        TGenericParams['change']
-      >,
+      } as ChangePlantProcessorExtra<TGenericParams>,
     );
 
     let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};

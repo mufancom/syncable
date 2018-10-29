@@ -257,11 +257,11 @@ abstract class Server<
       manager.removeSyncable(ref);
     }
 
+    await this.saveAndBroadcastChangeResult(group, result);
+
     if (notificationPacket) {
       this.emit('notify', notificationPacket);
     }
-
-    await this.saveAndBroadcastChangeResult(group, result);
 
     return result;
   }

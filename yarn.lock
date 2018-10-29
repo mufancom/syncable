@@ -577,10 +577,10 @@
     npmlog "^4.1.2"
     write-file-atomic "^2.3.0"
 
-"@magicspace/configs@^0.1.44":
-  version "0.1.44"
-  resolved "http://registry.npm.taobao.org/@magicspace/configs/download/@magicspace/configs-0.1.44.tgz#7bdcbddde7705cc3386055fc2970808914e357ac"
-  integrity sha1-e9y93edwXMM4YFX8KXCAiRTjV6w=
+"@magicspace/configs@^0.1.45":
+  version "0.1.45"
+  resolved "https://registry.yarnpkg.com/@magicspace/configs/-/configs-0.1.45.tgz#26395ec958d03d4acd7ff8837362f3b11ee5c927"
+  integrity sha512-5UEERr67ywfQVR3vFl/RjHQ4huFekmM2mz00MblE2GSXbXCF6dz59Vzzm6asTq0tS96aqHJy3j8MjtGYLfibWw==
   dependencies:
     "@magicspace/tslint-rules" "^0.1.41"
     tslint-config-prettier "^1.10.0"
