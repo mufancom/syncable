@@ -1,8 +1,8 @@
-import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {ObservableMap, observable} from 'mobx';
 
 import {ISyncableObjectProvider} from '../context';
+import {replaceObjectWithoutDeletion} from '../utils';
 
 import {
   ISyncable,
@@ -152,7 +152,9 @@ export class SyncableManager {
     let previousRelatedIds = this.getRelatedIds(syncable);
     let nextRelatedIds = this.getRelatedIds(snapshot);
 
-    DeepDiff.applyDiff(syncable, snapshot, undefined!);
+    replaceObjectWithoutDeletion(syncable, snapshot);
+    // TODO (vilic): https://github.com/mobxjs/mobx/issues/1730
+    // DeepDiff.applyDiff(syncable, snapshot, undefined!);
 
     let newRelatedIds = _.difference(nextRelatedIds, previousRelatedIds);
 
