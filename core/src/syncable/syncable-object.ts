@@ -56,6 +56,12 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     };
   }
 
+  get super(): this | undefined {
+    let {_extends} = this.syncable;
+
+    return _extends && this.require<this>(_extends.ref);
+  }
+
   private get manager(): SyncableManager {
     let manager = this._manager;
 

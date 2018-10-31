@@ -70,6 +70,10 @@ interface Server<TGenericParams extends ServerGenericParams> {
   ): boolean;
 }
 
+export interface ServerOptions<TSyncable extends ISyncable> {
+  builtInSyncables?: TSyncable[];
+}
+
 abstract class Server<
   TGenericParams extends ServerGenericParams
 > extends EventEmitter {
@@ -86,6 +90,9 @@ abstract class Server<
       change: TGenericParams['change'];
       notification: TGenericParams['notification'];
     }>,
+    private options: ServerOptions<
+      TGenericParams['syncableObject']['syncable']
+    > = {},
   ) {
     super();
 
@@ -179,6 +186,12 @@ abstract class Server<
     if (!groupInfo) {
       let clock = this.createGroupClock(group);
       let manager = new SyncableManager(this.provider);
+      let {builtInSyncables = []} = this.options;
+
+      for (let builtInSyncable of builtInSyncables) {
+        manager.addSyncable(builtInSyncable);
+      }
+
       let loadingPromise = this.loadAndAddSyncables(group, manager);
 
       groupInfo = {
