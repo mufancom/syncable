@@ -2,7 +2,11 @@ import {ObjectReplacer} from 'replace-object';
 
 class NonDeleteObjectReplacer extends ObjectReplacer {
   protected delete(object: any, key: string): void {
-    object[key] = undefined;
+    if (Array.isArray(object)) {
+      delete object[key as any];
+    } else {
+      object[key] = undefined;
+    }
   }
 }
 
