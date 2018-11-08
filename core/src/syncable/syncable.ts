@@ -43,6 +43,10 @@ export interface ISyncable<TType extends string = string> {
 
   _timestamp: number;
 
+  _updatedAt: number;
+
+  _createdAt: number;
+
   /**
    * Permissions of this object, only applied if this object is a user that
    * will be attached to a context.
@@ -98,7 +102,12 @@ export function createSyncableCreationRef<T extends ISyncableObject>(
   };
 }
 
-export type CreateSyncableExcludingKey = '_id' | '_type' | '_timestamp';
+export type CreateSyncableExcludingKey =
+  | '_id'
+  | '_type'
+  | '_timestamp'
+  | '_createdAt'
+  | '_updatedAt';
 
 export function createSyncable<T extends ISyncableObject>(
   type: T['syncable']['_type'] | SyncableCreationRef<T>,
@@ -113,12 +122,12 @@ export function createSyncable<T extends ISyncableObject>(
     type = type.type;
   }
 
-  let timestamp = 0;
-
   return {
     _id: id,
     _type: type,
-    _timestamp: timestamp,
+    _timestamp: 0,
+    _createdAt: 0,
+    _updatedAt: 0,
     ...(data as object),
   };
 }

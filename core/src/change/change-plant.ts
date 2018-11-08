@@ -221,6 +221,8 @@ export class ChangePlant<
     context: Context,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
+    let now = Date.now();
+
     let processor = (this.blueprint as any)[type] as ChangePlantProcessor<{
       user: TGenericParams['user'];
       change: IChange;
@@ -279,6 +281,9 @@ export class ChangePlant<
         _creation._timestamp = timestamp;
       }
 
+      _creation._createdAt = now;
+      _creation._updatedAt = now;
+
       creations.push(_creation);
     };
 
@@ -334,6 +339,8 @@ export class ChangePlant<
       if (timestamp !== undefined) {
         updatedSyncableClone._timestamp = timestamp;
       }
+
+      updatedSyncableClone._updatedAt = now;
 
       let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone);
 
