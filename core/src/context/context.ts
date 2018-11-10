@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import {observable} from 'mobx';
+import {action, observable} from 'mobx';
 
 import {ISyncableObject, IUserSyncableObject} from '../syncable';
 
@@ -28,6 +28,7 @@ export class Context<TUser extends IUserSyncableObject = IUserSyncableObject> {
     }
   }
 
+  @action
   initialize(user: TUser): void {
     this.user = user;
   }

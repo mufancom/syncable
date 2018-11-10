@@ -1,6 +1,6 @@
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
-import {ObservableMap, observable} from 'mobx';
+import {ObservableMap, action, observable} from 'mobx';
 
 import {ISyncableObjectProvider} from '../context';
 
@@ -103,6 +103,7 @@ export class SyncableManager {
    * Add a syncable, please notice that it won't change the reference of the
    * originally stored syncable. Instead, differences will be applied to it.
    */
+  @action
   addSyncable(snapshot: ISyncable, update = false): void {
     let {_id: id, _type: type} = snapshot;
 
@@ -137,6 +138,7 @@ export class SyncableManager {
    * the reference of the originally stored syncable. Instead, differences will
    * be applied to it.
    */
+  @action
   updateSyncable(snapshot: ISyncable): void {
     let {_id: id, _type: type} = snapshot;
 
@@ -162,6 +164,7 @@ export class SyncableManager {
     this.removeRelatedTargetSyncable(syncable, obsoleteRelatedIds);
   }
 
+  @action
   removeSyncable({type, id}: SyncableRef): void {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
     let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
@@ -258,6 +261,7 @@ export class SyncableManager {
     );
   }
 
+  @action
   clear(): void {
     clearMapOrSetMap(this.typeToIdToSyncableMapMap);
     clearMapOrSetMap(this.typeToIdToSyncableObjectMapMap);
