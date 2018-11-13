@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import {computed} from 'mobx';
 
 import {
   ACCESS_RIGHTS,
@@ -60,6 +61,16 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     let {_extends} = this.syncable;
 
     return _extends && this.require<this>(_extends.ref);
+  }
+
+  @computed
+  get createdAt(): Date {
+    return new Date(this.syncable._createdAt);
+  }
+
+  @computed
+  get updatedAt(): Date {
+    return new Date(this.syncable._updatedAt);
   }
 
   private get manager(): SyncableManager {
