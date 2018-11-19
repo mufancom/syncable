@@ -103,6 +103,7 @@ abstract class Server<
 
   abstract getViewQueryFilter(
     query: TGenericParams['viewQuery'],
+    context: Context,
   ): ViewQueryFilter<TGenericParams['syncableObject']>;
 
   async update(

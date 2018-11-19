@@ -175,7 +175,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   }
 
   private updateViewQuery(query: unknown, snapshot = true): void {
-    this.filter = this.server.getViewQueryFilter(query);
+    this.filter = this.server.getViewQueryFilter(query, this.context);
 
     if (snapshot) {
       let snapshotData = this.snapshot();
