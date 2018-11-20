@@ -55,7 +55,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     let user = manager.requireSyncableObject(userRef);
 
-    this.context = new Context('user', user);
+    this.context = new Context('user', 'server', user);
 
     this.updateViewQuery(viewQuery, false);
 
@@ -175,7 +175,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   }
 
   private updateViewQuery(query: unknown, snapshot = true): void {
-    this.filter = this.server.getViewQueryFilter(query);
+    this.filter = this.server.getViewQueryFilter(query, this.context);
 
     if (snapshot) {
       let snapshotData = this.snapshot();

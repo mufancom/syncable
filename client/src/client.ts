@@ -67,7 +67,7 @@ export class Client<
   ) {
     super();
 
-    this.context = new Context('user');
+    this.context = new Context('user', 'client');
     this.manager = new SyncableManager(provider);
 
     this.socket = socket as ClientSocket<TGenericParams['user']>;
@@ -121,6 +121,7 @@ export class Client<
   update(change: TGenericParams['change']): void {
     let packet: ChangePacket = {
       id: uuid() as ChangePacketId,
+      createdAt: Date.now(),
       ...(change as GeneralChange),
     };
 

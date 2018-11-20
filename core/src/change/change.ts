@@ -30,4 +30,5 @@ export type GeneralChange = IChange<
 
 export interface ChangePacket extends GeneralChange {
   id: ChangePacketId;
+  createdAt: number;
 }
