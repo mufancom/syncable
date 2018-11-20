@@ -11,7 +11,6 @@ import {
   IUserSyncableObject,
   SyncableId,
   SyncableRef,
-  SyncableType,
 } from '../syncable';
 
 import {
@@ -77,13 +76,6 @@ export type RefDictToCreation<T extends object> = ValueWithType<
   SyncableCreationRef
 >;
 
-export type ChangeToCreation<T extends IChange> = T extends IChange<
-  string,
-  infer TRefDict
->
-  ? SyncableType<ValueWithType<Required<TRefDict>, SyncableCreationRef>>
-  : never;
-
 export interface ChangePlantProcessingResultUpdateItem {
   diffs: deepDiff.IDiff[];
   snapshot: ISyncable;
@@ -102,9 +94,7 @@ export interface ChangePlantProcessingResultWithTimestamp
   timestamp: number;
 }
 
-export type ChangePlantProcessorCreateOperation<TChange extends IChange> = (
-  creation: ChangeToCreation<TChange>,
-) => void;
+export type ChangePlantProcessorCreateOperation = (creation: ISyncable) => void;
 
 export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
   removal:
@@ -140,7 +130,7 @@ export interface ChangePlantProcessorExtra<
 > {
   context: Context<TGenericParams['user']>;
   options: TGenericParams['change']['options'];
-  create: ChangePlantProcessorCreateOperation<TGenericParams['change']>;
+  create: ChangePlantProcessorCreateOperation;
   remove: ChangePlantProcessorRemoveOperation<TGenericParams['change']>;
   notify: ChangePlantProcessorNotifyOperation<TGenericParams['notification']>;
 }
@@ -272,10 +262,8 @@ export class ChangePlant<
       | NotificationPacket<TGenericParams['notification']>
       | undefined;
 
-    let create: ChangePlantProcessorCreateOperation<
-      GeneralChange
-    > = creation => {
-      let _creation = creation as ISyncable;
+    let create: ChangePlantProcessorCreateOperation = creation => {
+      let _creation = creation;
 
       if (timestamp !== undefined) {
         _creation._timestamp = timestamp;
@@ -320,9 +308,7 @@ export class ChangePlant<
       {
         context,
         options,
-        create: create as ChangePlantProcessorCreateOperation<
-          TGenericParams['change']
-        >,
+        create,
         remove: remove as ChangePlantProcessorRemoveOperation<
           TGenericParams['change']
         >,
