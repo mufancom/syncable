@@ -80,7 +80,7 @@ abstract class Server<
   private server: SocketServer;
   private groupInfoMap = new Map<string, GroupInfo<TGenericParams>>();
 
-  private context = new Context<TGenericParams['user']>('server');
+  private context = new Context<TGenericParams['user']>('server', 'server');
 
   constructor(
     server: SocketServer,
@@ -114,6 +114,7 @@ abstract class Server<
 
     let packet: ChangePacket = {
       id: uuid() as ChangePacketId,
+      createdAt: Date.now(),
       ...(change as GeneralChange),
     };
 

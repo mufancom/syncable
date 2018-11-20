@@ -133,6 +133,7 @@ export interface ChangePlantProcessorExtra<
   create: ChangePlantProcessorCreateOperation;
   remove: ChangePlantProcessorRemoveOperation<TGenericParams['change']>;
   notify: ChangePlantProcessorNotifyOperation<TGenericParams['notification']>;
+  createdAt: number;
 }
 
 export interface ChangePlantProcessorGenericParams {
@@ -204,7 +205,7 @@ export class ChangePlant<
     timestamp: number,
   ): ChangePlantProcessingResultWithTimestamp;
   process(
-    {id, type, options}: ChangePacket,
+    {id, type, options, createdAt}: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
       ISyncableObject | SyncableCreationRef | undefined
     >,
@@ -313,6 +314,7 @@ export class ChangePlant<
           TGenericParams['change']
         >,
         notify,
+        createdAt: context.environment === 'client' ? createdAt : Date.now(),
       } as ChangePlantProcessorExtra<TGenericParams>,
     );
 

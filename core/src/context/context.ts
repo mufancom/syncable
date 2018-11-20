@@ -19,10 +19,16 @@ export type AccessControlRuleTester = (
  */
 export type ContextType = 'server' | 'user';
 
+export type ContextEnvironment = 'server' | 'client';
+
 export class Context<TUser extends IUserSyncableObject = IUserSyncableObject> {
   @observable user!: TUser;
 
-  constructor(readonly type: ContextType, user?: TUser) {
+  constructor(
+    readonly type: ContextType,
+    readonly environment: ContextEnvironment,
+    user?: TUser,
+  ) {
     if (user) {
       this.user = user;
     }

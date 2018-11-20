@@ -55,7 +55,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     let user = manager.requireSyncableObject(userRef);
 
-    this.context = new Context('user', user);
+    this.context = new Context('user', 'server', user);
 
     this.updateViewQuery(viewQuery, false);
 
