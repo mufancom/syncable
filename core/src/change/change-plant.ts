@@ -9,9 +9,9 @@ import {
   ISyncable,
   ISyncableObject,
   IUserSyncableObject,
-  SyncableId,
   SyncableRef,
 } from '../syncable';
+import {NumericTimestamp} from '../types';
 
 import {
   ChangePacket,
@@ -83,7 +83,7 @@ export interface ChangePlantProcessingResultUpdateItem {
 
 export interface ChangePlantProcessingResult {
   id: ChangePacketId;
-  updates: Dict<ChangePlantProcessingResultUpdateItem>;
+  updates: ChangePlantProcessingResultUpdateItem[];
   creations: ISyncable[];
   removals: SyncableRef[];
   notificationPacket: NotificationPacket | undefined;
@@ -96,11 +96,13 @@ export interface ChangePlantProcessingResultWithTimestamp
 
 export type ChangePlantProcessorCreateOperation = (creation: ISyncable) => void;
 
-export type ChangePlantProcessorRemoveOperation<TChange extends IChange> = (
-  removal:
-    | Extract<keyof ChangeToSyncableDict<TChange>, string>
-    | ChangeToSyncable<TChange>,
+export type ChangePlantProcessorRemoveOperation = (
+  object: ISyncableObject,
 ) => void;
+
+export type ChangePlantProcessorPrepareOperation = <T extends ISyncableObject>(
+  object: T,
+) => T['syncable'];
 
 export interface INotification {
   type: string;
@@ -131,9 +133,10 @@ export interface ChangePlantProcessorExtra<
   context: Context<TGenericParams['user']>;
   options: TGenericParams['change']['options'];
   create: ChangePlantProcessorCreateOperation;
-  remove: ChangePlantProcessorRemoveOperation<TGenericParams['change']>;
+  remove: ChangePlantProcessorRemoveOperation;
+  prepare: ChangePlantProcessorPrepareOperation;
   notify: ChangePlantProcessorNotifyOperation<TGenericParams['notification']>;
-  createdAt: number;
+  createdAt: NumericTimestamp;
 }
 
 export interface ChangePlantProcessorGenericParams {
@@ -162,7 +165,7 @@ export interface ChangePlantBlueprintGenericParams {
 }
 
 export type ChangePlantBlueprint<
-  TGenericParams extends ChangePlantBlueprintGenericParams
+  TGenericParams extends ChangePlantBlueprintGenericParams = ChangePlantBlueprintGenericParams
 > = {
   [K in TGenericParams['change']['type']]: ChangePlantProcessor<{
     user: TGenericParams['user'];
@@ -177,15 +180,9 @@ export interface ChangePlantGenericParams {
   notification: INotification;
 }
 
-interface DefaultChangePlantGenericParams extends ChangePlantGenericParams {
-  change: GeneralChange;
-}
-
-export class ChangePlant<
-  TGenericParams extends ChangePlantGenericParams = DefaultChangePlantGenericParams
-> {
+export class ChangePlant {
   constructor(
-    private blueprint: ChangePlantBlueprint<TGenericParams>,
+    private blueprint: ChangePlantBlueprint,
     private provider: ISyncableObjectProvider,
   ) {}
 
@@ -194,14 +191,14 @@ export class ChangePlant<
     syncableObjectOrCreationRefDict: Dict<
       ISyncableObject | SyncableCreationRef | undefined
     >,
-    context: Context<TGenericParams['user']>,
+    context: Context,
   ): ChangePlantProcessingResult;
   process(
     packet: ChangePacket,
     syncableObjectOrCreationRefDict: Dict<
       ISyncableObject | SyncableCreationRef | undefined
     >,
-    context: Context<TGenericParams['user']>,
+    context: Context,
     timestamp: number,
   ): ChangePlantProcessingResultWithTimestamp;
   process(
@@ -212,13 +209,9 @@ export class ChangePlant<
     context: Context,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
-    let now = Date.now();
+    let now = context.environment === 'client' ? createdAt : Date.now();
 
-    let processor = (this.blueprint as any)[type] as ChangePlantProcessor<{
-      user: TGenericParams['user'];
-      change: IChange;
-      notification: TGenericParams['notification'];
-    }>;
+    let processor = this.blueprint[type];
 
     let provider = this.provider;
 
@@ -229,101 +222,86 @@ export class ChangePlant<
       return object instanceof AbstractSyncableObject;
     });
 
-    let syncableKeys = syncableObjectEntries.map(([key]) => key);
+    let preparedSyncableObjectSet = new Set<ISyncableObject>();
 
-    let syncableDict = syncableObjectEntries.reduce(
-      (dict, [name, object]) => {
-        object.validateAccessRights(['read'], context);
-        dict[name] = object.syncable;
-        return dict;
-      },
-      {} as Dict<ISyncable>,
-    );
+    interface PreparedBundle {
+      latest: ISyncable;
+      clone: ISyncable;
+      object: ISyncableObject;
+    }
 
-    let syncableObjectMap = new Map<SyncableId, ISyncableObject>();
-
-    let syncableObjectDict = syncableObjectEntries.reduce(
-      (dict, [name, object]) => {
-        syncableObjectMap.set(object.syncable._id, object);
-
-        dict[name] = object;
-
-        return dict;
-      },
-      {} as Dict<ISyncableObject>,
-    );
-
-    let clonedSyncableDict = _.mapValues(syncableDict, syncable =>
-      _.cloneDeep(syncable),
-    );
+    let preparedBundles: PreparedBundle[] = [];
 
     let creations: ISyncable[] = [];
     let removals: SyncableRef[] = [];
-    let notificationPacket:
-      | NotificationPacket<TGenericParams['notification']>
-      | undefined;
+    let updates: ChangePlantProcessingResultUpdateItem[] = [];
+    let notificationPacket: NotificationPacket | undefined;
 
     let create: ChangePlantProcessorCreateOperation = creation => {
-      let _creation = creation;
-
       if (timestamp !== undefined) {
-        _creation._timestamp = timestamp;
+        creation._timestamp = timestamp;
       }
 
-      _creation._createdAt = now;
-      _creation._updatedAt = now;
+      creation._createdAt = now;
+      creation._updatedAt = now;
 
-      creations.push(_creation);
+      creations.push(creation);
     };
 
-    let remove: ChangePlantProcessorRemoveOperation<
-      GeneralChange
-    > = removal => {
-      let object;
-
-      if (typeof removal === 'string') {
-        object = syncableObjectDict[removal];
-      } else {
-        object = syncableObjectMap.get(removal._id)!;
-      }
-
+    let remove: ChangePlantProcessorRemoveOperation = object => {
       object.validateAccessRights(['full'], context);
-
       removals.push(object.ref);
     };
 
-    let notify: ChangePlantProcessorNotifyOperation<
-      TGenericParams['notification']
-    > = notification => {
+    let prepare: ChangePlantProcessorPrepareOperation = object => {
+      if (preparedSyncableObjectSet.has(object)) {
+        throw new Error('Cannot prepare a syncable object twice');
+      }
+
+      preparedSyncableObjectSet.add(object);
+
+      object.validateAccessRights(['read'], context);
+
+      let latest = object.syncable;
+      let clone = _.cloneDeep(latest);
+
+      preparedBundles.push({
+        latest,
+        clone,
+        object,
+      });
+
+      return clone;
+    };
+
+    let notify: ChangePlantProcessorNotifyOperation = notification => {
       notificationPacket = {
         id,
-        ...(notification as INotification),
+        ...notification,
       };
     };
 
-    processor(
-      clonedSyncableDict,
-      syncableObjectOrCreationRefDict as ChangeToObjectOrCreationRefDict<
-        GeneralChange
-      >,
-      {
-        context,
-        options,
-        create,
-        remove: remove as ChangePlantProcessorRemoveOperation<
-          TGenericParams['change']
-        >,
-        notify,
-        createdAt: context.environment === 'client' ? createdAt : Date.now(),
-      } as ChangePlantProcessorExtra<TGenericParams>,
-    );
+    let clonedSyncableDict: Dict<ISyncable> = {};
 
-    let updateDict: Dict<ChangePlantProcessingResultUpdateItem> = {};
+    for (let [key, object] of syncableObjectEntries) {
+      clonedSyncableDict[key] = prepare(object);
+    }
 
-    for (let key of syncableKeys) {
-      let latestSyncable = syncableDict[key];
-      let updatedSyncableClone = clonedSyncableDict[key];
+    processor(clonedSyncableDict, syncableObjectOrCreationRefDict, {
+      context,
+      options,
+      create,
+      remove,
+      prepare,
+      notify,
+      createdAt: now,
+    });
 
+    for (let {
+      latest: latestSyncable,
+      clone: updatedSyncableClone,
+      object: latestSyncableObject,
+    } of preparedBundles) {
       if (timestamp !== undefined) {
         updatedSyncableClone._timestamp = timestamp;
       }
@@ -349,11 +327,12 @@ export class ChangePlant<
         .resolveAssociations(updatedSyncableClone)
         .filter(association => association.secures);
 
-      let securingAssociationChanged = !!_.xorBy(
-        latestAssociations,
-        updatedAssociations,
-        ({ref: {type, id}}) => `${type}-${id}`,
-      ).length;
+      let securingAssociationChanged =
+        _.xorBy(
+          latestAssociations,
+          updatedAssociations,
+          ({ref: {type, id}}) => `${type}-${id}`,
+        ).length > 0;
 
       if (securingAssociationChanged) {
         requiredRightSet.add('full');
@@ -378,19 +357,19 @@ export class ChangePlant<
       }
 
       if (requiredRightSet.size) {
-        syncableObjectDict[key].validateAccessRights(
+        latestSyncableObject.validateAccessRights(
           Array.from(requiredRightSet),
           context,
         );
       }
 
-      updateDict[key] = {diffs, snapshot: updatedSyncableClone};
+      updates.push({diffs, snapshot: updatedSyncableClone});
     }
 
     return {
       id,
       timestamp,
-      updates: updateDict,
+      updates,
       creations: creations || [],
       removals: removals || [],
       notificationPacket,

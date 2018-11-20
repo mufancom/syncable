@@ -3,6 +3,7 @@ import {
   ChangePlant,
   Context,
   ISyncableObjectProvider,
+  NumericTimestamp,
   SyncableCreationRef,
   SyncableManager,
   createSyncable,
@@ -19,7 +20,7 @@ import {
   changePlantBlueprint,
 } from './change-plant';
 
-let context = new Context<User>('server');
+let context = new Context<User>('server', 'client');
 
 let provider: ISyncableObjectProvider = {
   create(syncable: Syncable, manager) {
@@ -75,6 +76,7 @@ test('should update task brief', () => {
       options: {
         brief: 'hello, jest.',
       },
+      createdAt: 0 as NumericTimestamp,
     },
     {
       task: manager.requireSyncableObject(getSyncableRef(taskSyncable)),
@@ -102,6 +104,7 @@ test('should create task', () => {
       options: {
         brief: 'hello, create.',
       },
+      createdAt: 0 as NumericTimestamp,
     },
     {
       task: taskRef,
@@ -121,6 +124,7 @@ test('should remove task', () => {
         task: getSyncableRef(taskSyncable),
       },
       options: {},
+      createdAt: 0 as NumericTimestamp,
     },
     {
       task: manager.requireSyncableObject(getSyncableRef(taskSyncable)),

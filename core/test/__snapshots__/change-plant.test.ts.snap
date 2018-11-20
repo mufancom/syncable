@@ -4,16 +4,19 @@ exports[`should create task 1`] = `
 Object {
   "creations": Array [
     Object {
+      "_createdAt": 0,
       "_id": "task-id",
       "_timestamp": 0,
       "_type": "task",
+      "_updatedAt": 0,
       "brief": "hello, create.",
     },
   ],
   "id": "change-packet-id",
+  "notificationPacket": undefined,
   "removals": Array [],
   "timestamp": undefined,
-  "updates": Object {},
+  "updates": Array [],
 }
 `;
 
@@ -21,6 +24,7 @@ exports[`should remove task 1`] = `
 Object {
   "creations": Array [],
   "id": "change-packet-id",
+  "notificationPacket": undefined,
   "removals": Array [
     Object {
       "id": "task-id",
@@ -28,7 +32,7 @@ Object {
     },
   ],
   "timestamp": undefined,
-  "updates": Object {},
+  "updates": Array [],
 }
 `;
 
@@ -36,10 +40,11 @@ exports[`should update task brief 1`] = `
 Object {
   "creations": Array [],
   "id": "change-packet-id",
+  "notificationPacket": undefined,
   "removals": Array [],
   "timestamp": undefined,
-  "updates": Object {
-    "task": Object {
+  "updates": Array [
+    Object {
       "diffs": Array [
         DiffEdit {
           "kind": "E",
@@ -51,12 +56,14 @@ Object {
         },
       ],
       "snapshot": Object {
+        "_createdAt": 0,
         "_id": "task-id",
         "_timestamp": 0,
         "_type": "task",
+        "_updatedAt": 0,
         "brief": "hello, jest.",
       },
     },
-  },
+  ],
 }
 `;

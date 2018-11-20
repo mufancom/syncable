@@ -4,6 +4,7 @@ import {
   ChangePacket,
   ChangePacketId,
   ChangePlant,
+  ChangePlantBlueprint,
   Context,
   GeneralChange,
   GeneralSyncableRef,
@@ -51,24 +52,18 @@ export class Client<
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
+  private changePlant: ChangePlant;
+
   constructor(
     socket: SocketIOClient.Socket,
     provider: ISyncableObjectProvider,
-    changePlant: ChangePlant<{
-      user: TGenericParams['user'];
-      change: TGenericParams['change'];
-      notification: TGenericParams['notification'];
-    }>,
-  );
-  constructor(
-    socket: SocketIOClient.Socket,
-    provider: ISyncableObjectProvider,
-    private changePlant: ChangePlant,
+    blueprint: ChangePlantBlueprint<TGenericParams>,
   ) {
     super();
 
     this.context = new Context('user', 'client');
     this.manager = new SyncableManager(provider);
+    this.changePlant = new ChangePlant(blueprint, provider);
 
     this.socket = socket as ClientSocket<TGenericParams['user']>;
 
@@ -228,7 +223,7 @@ export class Client<
     );
 
     let {
-      updates: updateDict,
+      updates,
       creations,
       removals,
       notificationPacket,
@@ -238,7 +233,7 @@ export class Client<
       this.context,
     );
 
-    for (let {snapshot} of Object.values(updateDict)) {
+    for (let {snapshot} of updates) {
       manager.updateSyncable(snapshot);
     }
 

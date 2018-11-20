@@ -4,6 +4,7 @@ import {
   ChangePacket,
   ChangePacketId,
   ChangePlant,
+  ChangePlantBlueprint,
   ChangePlantProcessingResultWithTimestamp,
   Context,
   GeneralChange,
@@ -82,14 +83,12 @@ abstract class Server<
 
   private context = new Context<TGenericParams['user']>('server', 'server');
 
+  private changePlant: ChangePlant;
+
   constructor(
     server: SocketServer,
-    readonly provider: ISyncableObjectProvider,
-    readonly changePlant: ChangePlant<{
-      user: TGenericParams['user'];
-      change: TGenericParams['change'];
-      notification: TGenericParams['notification'];
-    }>,
+    private provider: ISyncableObjectProvider,
+    blueprint: ChangePlantBlueprint<TGenericParams>,
     private options: ServerOptions<
       TGenericParams['syncableObject']['syncable']
     > = {},
@@ -97,6 +96,8 @@ abstract class Server<
     super();
 
     this.server = server;
+
+    this.changePlant = new ChangePlant(blueprint, provider);
 
     this.initialize().catch(this.error);
   }
@@ -258,9 +259,9 @@ abstract class Server<
       timestamp,
     );
 
-    let {updates: updateDict, creations, removals, notificationPacket} = result;
+    let {updates, creations, removals, notificationPacket} = result;
 
-    for (let {snapshot} of Object.values(updateDict)) {
+    for (let {snapshot} of updates) {
       manager.updateSyncable(snapshot);
     }
 

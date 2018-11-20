@@ -1,6 +1,7 @@
 import {Dict, Nominal} from 'tslang';
 
 import {ISyncableObject, SyncableRef} from '../syncable';
+import {NumericTimestamp} from '../types';
 
 export type ChangePacketId = Nominal<string, 'change-id'>;
 
@@ -30,5 +31,5 @@ export type GeneralChange = IChange<
 
 export interface ChangePacket extends GeneralChange {
   id: ChangePacketId;
-  createdAt: number;
+  createdAt: NumericTimestamp;
 }

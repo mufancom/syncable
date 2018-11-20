@@ -8,15 +8,19 @@ import {
 
 import {Task, User} from './models';
 
-export const changePlantBlueprint: ChangePlantBlueprint<User, Change> = {
-  'task:update-brief'({task}, {}, {options: {brief}}) {
-    task.brief = brief;
+export const changePlantBlueprint: ChangePlantBlueprint<{
+  user: User;
+  change: Change;
+  notification: never;
+}> = {
+  'task:update-brief'({task: taskSyncable}, {}, {options: {brief}}) {
+    taskSyncable.brief = brief;
   },
-  'task:create'({}, {task: taskRef}, {create, options: {brief}}) {
-    let syncable = createSyncable(taskRef, {brief});
+  'task:create'({}, {task: taskCreationRef}, {create, options: {brief}}) {
+    let syncable = createSyncable(taskCreationRef, {brief});
     create(syncable);
   },
-  'task:remove'({task}, {}, {remove}) {
+  'task:remove'({}, {task}, {remove}) {
     remove(task);
   },
 };
