@@ -21,8 +21,8 @@
   "main": "bld/library/index.js",
   "types": "bld/library/index.d.ts",
   "files": [
-    "bld",
-    "!*.js.map"
+    "src",
+    "bld"
   ],
   "peerDependencies": {
     "mobx": "5"
