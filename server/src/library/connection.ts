@@ -141,7 +141,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   handleChangeResult({
     id,
     timestamp,
-    updates: updateDict,
+    updates: changeUpdates,
   }: ChangePlantProcessingResultWithTimestamp): void {
     let socket = this.socket;
 
@@ -151,7 +151,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     let snapshotIdSet = this.snapshotIdSet;
 
-    for (let {snapshot, diffs} of Object.values(updateDict)) {
+    for (let {snapshot, diffs} of changeUpdates) {
       let ref = getSyncableRef(snapshot);
       let {id} = ref;
 
