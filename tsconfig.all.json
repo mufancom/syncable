@@ -1,0 +1,9 @@
+{
+  "references": [
+    {"path": "core/src/library"},
+    {"path": "core/test"},
+    {"path": "server/src/library"},
+    {"path": "client/src/library"}
+  ],
+  "files": []
+}

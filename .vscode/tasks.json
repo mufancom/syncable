@@ -12,6 +12,23 @@
         "isDefault": true
       },
       "problemMatcher": "$biu-typescript"
+    },
+    {
+      "group": "build",
+      "label": "build libraries",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["tsc", "--build", "--watch"],
+      "isBackground": true,
+      "problemMatcher": "$tsc-watch"
+    },
+    {
+      "group": "build",
+      "label": "build/typecheck all",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["tsc", "--build", "tsconfig.all.json"],
+      "problemMatcher": "$tsc"
     }
   ]
 }

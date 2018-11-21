@@ -231,6 +231,7 @@ export class Client<
       packet,
       syncableObjectOrCreationRefDict,
       this.context,
+      manager,
     );
 
     for (let {snapshot} of updates) {

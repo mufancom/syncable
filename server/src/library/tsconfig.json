@@ -1,0 +1,18 @@
+{
+  "extends": "../../../node_modules/@magicspace/configs/tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "types": ["deep-diff", "socket.io"],
+    "declaration": true,
+    "declarationMap": true,
+    "experimentalDecorators": true,
+
+    "rootDir": ".",
+    "outDir": "../../bld/library"
+  },
+  "references": [
+    {
+      "path": "../../../core/src/library"
+    }
+  ]
+}

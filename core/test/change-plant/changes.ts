@@ -4,7 +4,7 @@ import {
   SyncableCreationRef,
   SyncableRef,
   createSyncable,
-} from '../../bld';
+} from '../../bld/library';
 
 import {Task, User} from './models';
 

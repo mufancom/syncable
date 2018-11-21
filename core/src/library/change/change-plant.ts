@@ -9,6 +9,7 @@ import {
   ISyncable,
   ISyncableObject,
   IUserSyncableObject,
+  SyncableManager,
   SyncableRef,
 } from '../syncable';
 import {NumericTimestamp} from '../types';
@@ -131,6 +132,7 @@ export interface ChangePlantProcessorExtra<
   TGenericParams extends ChangePlantProcessorExtraGenericParams = DefaultChangePlantProcessorExtraGenericParams
 > {
   context: Context<TGenericParams['user']>;
+  manager: SyncableManager;
   options: TGenericParams['change']['options'];
   create: ChangePlantProcessorCreateOperation;
   remove: ChangePlantProcessorRemoveOperation;
@@ -192,6 +194,7 @@ export class ChangePlant {
       ISyncableObject | SyncableCreationRef | undefined
     >,
     context: Context,
+    manager: SyncableManager,
   ): ChangePlantProcessingResult;
   process(
     packet: ChangePacket,
@@ -199,6 +202,7 @@ export class ChangePlant {
       ISyncableObject | SyncableCreationRef | undefined
     >,
     context: Context,
+    manager: SyncableManager,
     timestamp: number,
   ): ChangePlantProcessingResultWithTimestamp;
   process(
@@ -207,6 +211,7 @@ export class ChangePlant {
       ISyncableObject | SyncableCreationRef | undefined
     >,
     context: Context,
+    manager: SyncableManager,
     timestamp?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithTimestamp {
     let now = context.environment === 'client' ? createdAt : Date.now();
@@ -289,6 +294,7 @@ export class ChangePlant {
 
     processor(clonedSyncableDict, syncableObjectOrCreationRefDict, {
       context,
+      manager,
       options,
       create,
       remove,

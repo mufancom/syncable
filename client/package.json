@@ -18,8 +18,8 @@
     "url": "https://github.com/makeflow/syncable/issues"
   },
   "homepage": "https://github.com/makeflow/syncable#readme",
-  "main": "bld/index.js",
-  "types": "bld/index.d.ts",
+  "main": "bld/library/index.js",
+  "types": "bld/library/index.d.ts",
   "files": [
     "bld",
     "!*.js.map"

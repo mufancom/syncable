@@ -256,6 +256,7 @@ abstract class Server<
       packet,
       syncableObjectOrCreationRefDict,
       context,
+      manager,
       timestamp,
     );
 

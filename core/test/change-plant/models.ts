@@ -3,7 +3,7 @@ import {
   AbstractUserSyncableObject,
   ISyncable,
   SyncableId,
-} from '../../bld';
+} from '../../bld/library';
 
 export type Syncable = UserSyncable | TaskSyncable | TagSyncable;
 

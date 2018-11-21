@@ -8,7 +8,7 @@ import {
   SyncableManager,
   createSyncable,
   getSyncableRef,
-} from '../bld';
+} from '../bld/library';
 
 import {
   Syncable,
@@ -82,6 +82,7 @@ test('should update task brief', () => {
       task: manager.requireSyncableObject(getSyncableRef(taskSyncable)),
     },
     context,
+    manager,
   );
 
   expect(result).toMatchSnapshot();
@@ -110,6 +111,7 @@ test('should create task', () => {
       task: taskRef,
     },
     context,
+    manager,
   );
 
   expect(result).toMatchSnapshot();
@@ -130,6 +132,7 @@ test('should remove task', () => {
       task: manager.requireSyncableObject(getSyncableRef(taskSyncable)),
     },
     context,
+    manager,
   );
 
   expect(result).toMatchSnapshot();
