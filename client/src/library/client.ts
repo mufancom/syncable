@@ -15,7 +15,6 @@ import {
   ISyncableObjectProvider,
   IUserSyncableObject,
   InitialData,
-  NotificationPacket,
   SnapshotData,
   SyncableId,
   SyncableManager,
@@ -210,7 +209,7 @@ export class Client<
   private applyChangePacket(packet: ChangePacket): void {
     let manager = this.manager;
 
-    let refDict = packet.refs;
+    let {id, refs: refDict} = packet;
 
     let syncableObjectOrCreationRefDict = _.mapValues(
       refDict,
@@ -226,7 +225,7 @@ export class Client<
       updates,
       creations,
       removals,
-      notificationPacket,
+      notifications,
     } = this.changePlant.process(
       packet,
       syncableObjectOrCreationRefDict,
@@ -246,8 +245,8 @@ export class Client<
       manager.addSyncable(syncable);
     }
 
-    if (notificationPacket) {
-      this.emit('notify', notificationPacket);
+    for (let notification of notifications) {
+      this.emit('notify', notification, id);
     }
   }
 
@@ -264,12 +263,14 @@ export interface Client<
   on(
     event: 'notify',
     listener: (
-      packet: NotificationPacket<TGenericParams['notification']>,
+      notification: TGenericParams['notification'],
+      id: ChangePacketId,
     ) => void,
   ): this;
 
   emit(
     event: 'notify',
-    packet: NotificationPacket<TGenericParams['notification']>,
+    notification: TGenericParams['notification'],
+    id: ChangePacketId,
   ): boolean;
 }

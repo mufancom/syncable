@@ -3,7 +3,7 @@ import {Dict, Nominal} from 'tslang';
 import {ISyncableObject, SyncableRef} from '../syncable';
 import {NumericTimestamp} from '../types';
 
-export type ChangePacketId = Nominal<string, 'change-id'>;
+export type ChangePacketId = Nominal<string, 'change-packet-id'>;
 
 export interface SyncableCreationRef<
   T extends ISyncableObject = ISyncableObject

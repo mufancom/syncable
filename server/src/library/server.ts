@@ -15,7 +15,6 @@ import {
   ISyncableObject,
   ISyncableObjectProvider,
   IUserSyncableObject,
-  NotificationPacket,
   SyncableManager,
   SyncableRef,
 } from '@syncable/core';
@@ -60,14 +59,16 @@ interface Server<TGenericParams extends ServerGenericParams> {
   on(
     event: 'notify',
     listener: (
-      packet: NotificationPacket<TGenericParams['notification']>,
+      notification: TGenericParams['notification'],
+      id: ChangePacketId,
     ) => void,
   ): this;
 
   emit(event: 'error', error: Error): boolean;
   emit(
     event: 'notify',
-    packet: NotificationPacket<TGenericParams['notification']>,
+    notification: TGenericParams['notification'],
+    id: ChangePacketId,
   ): boolean;
 }
 
@@ -240,7 +241,7 @@ abstract class Server<
 
     let timestamp = await clock.next();
 
-    let refDict = packet.refs;
+    let {id, refs: refDict} = packet;
 
     let syncableObjectOrCreationRefDict = _.mapValues(
       refDict,
@@ -260,7 +261,7 @@ abstract class Server<
       timestamp,
     );
 
-    let {updates, creations, removals, notificationPacket} = result;
+    let {updates, creations, removals, notifications} = result;
 
     for (let {snapshot} of updates) {
       manager.updateSyncable(snapshot);
@@ -276,8 +277,8 @@ abstract class Server<
 
     await this.saveAndBroadcastChangeResult(group, result);
 
-    if (notificationPacket) {
-      this.emit('notify', notificationPacket);
+    for (let notification of notifications) {
+      this.emit('notify', notification, id);
     }
 
     return result;

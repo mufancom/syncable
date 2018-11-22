@@ -87,7 +87,7 @@ export interface ChangePlantProcessingResult {
   updates: ChangePlantProcessingResultUpdateItem[];
   creations: ISyncable[];
   removals: SyncableRef[];
-  notificationPacket: NotificationPacket | undefined;
+  notifications: INotification[];
 }
 
 export interface ChangePlantProcessingResultWithTimestamp
@@ -108,10 +108,6 @@ export type ChangePlantProcessorPrepareOperation = <T extends ISyncableObject>(
 export interface INotification {
   type: string;
 }
-
-export type NotificationPacket<
-  TNotification extends INotification = INotification
-> = TNotification & {id: ChangePacketId};
 
 export type ChangePlantProcessorNotifyOperation<
   TNotification extends INotification = INotification
@@ -222,10 +218,12 @@ export class ChangePlant {
 
     let syncableObjectEntries = Array.from(
       Object.entries(syncableObjectOrCreationRefDict),
-    ).filter((entry): entry is [string, ISyncableObject] => {
-      let [, object] = entry;
-      return object instanceof AbstractSyncableObject;
-    });
+    ).filter(
+      (entry): entry is [string, ISyncableObject] => {
+        let [, object] = entry;
+        return object instanceof AbstractSyncableObject;
+      },
+    );
 
     let preparedSyncableObjectSet = new Set<ISyncableObject>();
 
@@ -240,7 +238,7 @@ export class ChangePlant {
     let creations: ISyncable[] = [];
     let removals: SyncableRef[] = [];
     let updates: ChangePlantProcessingResultUpdateItem[] = [];
-    let notificationPacket: NotificationPacket | undefined;
+    let notifications: INotification[] = [];
 
     let create: ChangePlantProcessorCreateOperation = creation => {
       if (timestamp !== undefined) {
@@ -280,10 +278,7 @@ export class ChangePlant {
     };
 
     let notify: ChangePlantProcessorNotifyOperation = notification => {
-      notificationPacket = {
-        id,
-        ...notification,
-      };
+      notifications.push(notification);
     };
 
     let clonedSyncableDict: Dict<ISyncable> = {};
@@ -378,7 +373,7 @@ export class ChangePlant {
       updates,
       creations: creations || [],
       removals: removals || [],
-      notificationPacket,
+      notifications,
     };
   }
 }
