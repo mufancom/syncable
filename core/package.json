@@ -30,6 +30,7 @@
   "dependencies": {
     "deep-diff": "^1.0.1",
     "lodash": "^4.17.10",
+    "replace-object": "^0.1.3",
     "tslang": "^0.1.5",
     "uuid": "^3.3.2",
     "villa": "^0.3.1"

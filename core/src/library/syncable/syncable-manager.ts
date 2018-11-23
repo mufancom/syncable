@@ -1,6 +1,6 @@
-import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {ObservableMap, action, observable} from 'mobx';
+import replaceObject from 'replace-object';
 
 import {ISyncableObjectProvider} from '../context';
 
@@ -154,7 +154,7 @@ export class SyncableManager {
     let previousRelatedIds = this.getRelatedIds(syncable);
     let nextRelatedIds = this.getRelatedIds(snapshot);
 
-    DeepDiff.applyDiff(syncable, snapshot, undefined!);
+    replaceObject(syncable, snapshot);
 
     let newRelatedIds = _.difference(nextRelatedIds, previousRelatedIds);
 
