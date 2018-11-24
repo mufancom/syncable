@@ -2,6 +2,7 @@ import _ from 'lodash';
 import {ObservableMap, action, observable} from 'mobx';
 import replaceObject from 'replace-object';
 
+import {AccessControlEntry} from '../access-control';
 import {ISyncableObjectProvider} from '../context';
 
 import {
@@ -240,6 +241,10 @@ export class SyncableManager {
     syncableObjectMap.set(id, object);
 
     return object;
+  }
+
+  getDefaultACL(type: string): AccessControlEntry[] {
+    return this.provider.getDefaultACL(type);
   }
 
   requireSyncableObject<T extends ISyncableObject>(ref: SyncableRef<T>): T {

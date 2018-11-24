@@ -104,12 +104,13 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       superACL = superObject.getACL();
     }
 
+    let defaultACL = this.manager.getDefaultACL(this.syncable._type);
+
     return Array.from(
       new Map(
-        [...superACL, ..._acl].map((entry): [string, AccessControlEntry] => [
-          entry.name,
-          entry,
-        ]),
+        [...superACL, ...defaultACL, ..._acl].map(
+          (entry): [string, AccessControlEntry] => [entry.name, entry],
+        ),
       ).values(),
     );
   }
@@ -126,10 +127,9 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
     return Array.from(
       new Map(
-        [...superSecuringEntries, ..._secures].map((entry): [
-          string,
-          SecuringAccessControlEntry
-        ] => [entry.name, entry]),
+        [...superSecuringEntries, ..._secures].map(
+          (entry): [string, SecuringAccessControlEntry] => [entry.name, entry],
+        ),
       ).values(),
     );
   }
