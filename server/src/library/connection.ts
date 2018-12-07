@@ -22,6 +22,8 @@ import {IServer, ServerGenericParams, ViewQueryFilter} from './server';
 export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'syncable:view-query', listener: (query: unknown) => void): this;
   on(event: 'syncable:change', listener: (packet: ChangePacket) => void): this;
+  on(event: 'disconnect', listener: () => void): this;
+  on(event: 'error', listener: (error: any) => void): this;
 
   emit(event: 'syncable:initialize', data: InitialData): boolean;
   emit(event: 'syncable:sync', data: SyncingData): boolean;

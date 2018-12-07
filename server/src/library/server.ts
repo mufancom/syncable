@@ -100,7 +100,7 @@ abstract class Server<
 
     this.changePlant = new ChangePlant(blueprint, provider);
 
-    this.initialize().catch(this.error);
+    this.initialize().catch(this.errorHandler);
   }
 
   abstract getViewQueryFilter(
@@ -128,9 +128,7 @@ abstract class Server<
     packet: ChangePacket,
     context: Context<TGenericParams['user']>,
   ): void {
-    this._applyChangePacket(group, packet, context).catch(error =>
-      this.emit('error', error),
-    );
+    this._applyChangePacket(group, packet, context).catch(this.errorHandler);
   }
 
   getNextTimestamp(group: string): Promise<number> {
@@ -152,7 +150,7 @@ abstract class Server<
     removals: SyncableRef[],
   ): Promise<void>;
 
-  protected error = (error: Error): void => {
+  protected errorHandler = (error: Error): void => {
     console.error(error);
     this.emit('error', error);
   };
@@ -166,18 +164,25 @@ abstract class Server<
   private async initializeConnection(socket: ConnectionSocket): Promise<void> {
     let {group, userRef, viewQuery} = await this.resolveSession(socket);
 
-    let groupInfo = await this.initializeGroup(group);
+    let {manager, connectionSet} = await this.initializeGroup(group);
 
     let connection = new Connection<TGenericParams>(
       group,
       socket,
       this,
-      groupInfo.manager,
+      manager,
     );
 
-    groupInfo.connectionSet.add(connection);
+    connectionSet.add(connection);
+
+    socket.on('disconnect', cleanUp);
+    socket.on('error', cleanUp);
 
     connection.initialize(userRef, viewQuery).catch(console.error);
+
+    function cleanUp(): void {
+      connectionSet.delete(connection);
+    }
   }
 
   private async initializeGroup(
