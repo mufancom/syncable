@@ -225,7 +225,7 @@ export class ChangePlant {
       },
     );
 
-    let preparedSyncableObjectSet = new Set<ISyncableObject>();
+    let preparedSyncableObjectMap = new Map<ISyncableObject, ISyncable>();
 
     interface PreparedBundle {
       latest: ISyncable;
@@ -257,11 +257,9 @@ export class ChangePlant {
     };
 
     let prepare: ChangePlantProcessorPrepareOperation = object => {
-      if (preparedSyncableObjectSet.has(object)) {
-        throw new Error('Cannot prepare a syncable object twice');
+      if (preparedSyncableObjectMap.has(object)) {
+        return preparedSyncableObjectMap.get(object)!;
       }
-
-      preparedSyncableObjectSet.add(object);
 
       object.validateAccessRights(['read'], context);
 
@@ -273,6 +271,8 @@ export class ChangePlant {
         clone,
         object,
       });
+
+      preparedSyncableObjectMap.set(object, clone);
 
       return clone;
     };
