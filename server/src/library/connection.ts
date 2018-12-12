@@ -68,7 +68,10 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
   // TODO: ability limit iteration within a subset of syncables to improve
   // performance.
-  snapshot(userRef?: SyncableRef<IUserSyncableObject>): SnapshotData {
+  snapshot(
+    userRef?: SyncableRef<IUserSyncableObject>,
+    removals: SyncableRef[] = [],
+  ): SnapshotData {
     let manager = this.manager;
     let context = this.context;
 
@@ -78,7 +81,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     let ensuredSyncableSet = new Set<ISyncable>();
 
     let snapshotSyncables: ISyncable[] = [];
-    let snapshotRemovals: SyncableRef[] = [];
+    let snapshotRemovals = [...removals];
 
     if (userRef) {
       let userSyncable = manager.requireSyncable(userRef);
@@ -144,10 +147,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     id,
     timestamp,
     updates: changeUpdates,
+    removals,
   }: ChangePlantProcessingResultWithTimestamp): void {
     let socket = this.socket;
 
-    let snapshotData = this.snapshot();
+    let snapshotData = this.snapshot(undefined, removals);
 
     let updates: SyncingDataUpdateEntry[] = [];
 

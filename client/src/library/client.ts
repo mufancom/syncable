@@ -173,7 +173,7 @@ export class Client<
   }
 
   private onUpdateRemove(ref: SyncableRef): void {
-    this.manager.removeSyncable(ref);
+    this.manager.removeSyncable(ref, true);
     this.syncableSnapshotMap.delete(ref.id);
   }
 

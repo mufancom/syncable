@@ -6939,12 +6939,7 @@ ts-jest@^23.10.4:
     semver "^5.5"
     yargs-parser "10.x"
 
-tslang@^0.1.5:
-  version "0.1.5"
-  resolved "http://registry.npm.taobao.org/tslang/download/tslang-0.1.5.tgz#801abcbe2b9d47d5c75147396df27f8eadbf7d70"
-  integrity sha1-gBq8viudR9XHUUc5bfJ/jq2/fXA=
-
-tslang@^0.1.9:
+tslang@^0.1.11, tslang@^0.1.9:
   version "0.1.11"
   resolved "http://registry.npm.taobao.org/tslang/download/tslang-0.1.11.tgz#8ec5599ce2662aa25fdaadbbf88b9b2655f56a19"
   integrity sha1-jsVZnOJmKqJf2q27+IubJlX1ahk=

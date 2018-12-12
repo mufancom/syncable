@@ -166,7 +166,7 @@ export class SyncableManager {
   }
 
   @action
-  removeSyncable({type, id}: SyncableRef): void {
+  removeSyncable({type, id}: SyncableRef, syncing = false): void {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
     let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
 
@@ -175,6 +175,10 @@ export class SyncableManager {
     let syncable = syncableMap && syncableMap.get(id);
 
     if (!syncable) {
+      if (syncing) {
+        return;
+      }
+
       throw new Error(`Syncable with ID "${id}" does not exists in context`);
     }
 
