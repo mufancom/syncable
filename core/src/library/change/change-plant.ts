@@ -237,6 +237,7 @@ export class ChangePlant {
 
     let creations: ISyncable[] = [];
     let removals: SyncableRef[] = [];
+    let removalObjectSet = new Set<ISyncableObject>();
     let updates: ChangePlantProcessingResultUpdateItem[] = [];
     let notifications: INotification[] = [];
 
@@ -254,17 +255,21 @@ export class ChangePlant {
     let remove: ChangePlantProcessorRemoveOperation = object => {
       object.validateAccessRights(['full'], context);
       removals.push(object.ref);
+      removalObjectSet.add(object);
     };
 
     let prepare: ChangePlantProcessorPrepareOperation = object => {
-      if (preparedSyncableObjectMap.has(object)) {
-        return preparedSyncableObjectMap.get(object)!;
+      let clone = preparedSyncableObjectMap.get(object);
+
+      if (clone) {
+        return clone;
       }
 
       object.validateAccessRights(['read'], context);
 
       let latest = object.syncable;
-      let clone = _.cloneDeep(latest);
+
+      clone = _.cloneDeep(latest);
 
       preparedBundles.push({
         latest,
@@ -303,6 +308,10 @@ export class ChangePlant {
       clone: updatedSyncableClone,
       object: latestSyncableObject,
     } of preparedBundles) {
+      if (removalObjectSet.has(latestSyncableObject)) {
+        continue;
+      }
+
       if (timestamp !== undefined) {
         updatedSyncableClone._timestamp = timestamp;
       }

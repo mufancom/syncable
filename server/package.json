@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "lodash": "^4.17.10",
-    "tslang": "^0.1.5",
+    "tslang": "^0.1.11",
     "uuid": "^3.3.2",
     "villa": "^0.3.1"
   },

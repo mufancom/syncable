@@ -12,7 +12,7 @@
     "socket.io": "^2.1.1",
     "socket.io-client": "^2.1.1",
     "source-map-support": "^0.5.6",
-    "tslang": "^0.1.5",
+    "tslang": "^0.1.11",
     "villa": "^0.3.1"
   },
   "devDependencies": {
