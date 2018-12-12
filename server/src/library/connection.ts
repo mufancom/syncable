@@ -81,7 +81,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     let ensuredSyncableSet = new Set<ISyncable>();
 
     let snapshotSyncables: ISyncable[] = [];
-    let snapshotRemovals = removals;
+    let snapshotRemovals = [...removals];
 
     if (userRef) {
       let userSyncable = manager.requireSyncable(userRef);
@@ -147,11 +147,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     id,
     timestamp,
     updates: changeUpdates,
-    removals: changeRemovals,
+    removals,
   }: ChangePlantProcessingResultWithTimestamp): void {
     let socket = this.socket;
 
-    let snapshotData = this.snapshot(undefined, changeRemovals);
+    let snapshotData = this.snapshot(undefined, removals);
 
     let updates: SyncingDataUpdateEntry[] = [];
 
