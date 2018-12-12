@@ -171,11 +171,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     let source: UpdateSource = {id, timestamp};
 
-    socket.emit('syncable:sync', {
-      source,
-      updates,
-      ...snapshotData,
-    });
+    socket.emit('syncable:sync', {source, updates, ...snapshotData});
   }
 
   @observable private filter: ViewQueryFilter = () => false;
