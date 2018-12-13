@@ -21,7 +21,7 @@
   "main": "bld/library/index.js",
   "types": "bld/library/index.d.ts",
   "files": [
-    "src",
+    "src/**/*.ts",
     "bld"
   ],
   "peerDependencies": {
