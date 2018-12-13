@@ -4,6 +4,7 @@
     "composite": true,
     "lib": ["esnext", "dom"],
     "types": ["socket.io-client"],
+    "experimentalDecorators": true,
     "declaration": true,
     "declarationMap": true,
 

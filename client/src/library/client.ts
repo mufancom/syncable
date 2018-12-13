@@ -23,6 +23,7 @@ import {
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
+import {observable} from 'mobx';
 import uuid from 'uuid';
 
 import {ClientSocket} from './@client-socket';
@@ -44,6 +45,9 @@ export class Client<
 > extends EventEmitter {
   readonly context: Context<TGenericParams['user']>;
   readonly ready: Promise<void>;
+
+  @observable
+  private _syncing = false;
 
   private manager: SyncableManager;
   private socket: ClientSocket<TGenericParams['user']>;
@@ -77,6 +81,10 @@ export class Client<
     this.socket.on('syncable:sync', data => {
       this.onSync(data);
     });
+  }
+
+  get syncing(): boolean {
+    return this._syncing;
   }
 
   get user(): TGenericParams['user'] {
@@ -121,6 +129,8 @@ export class Client<
 
     this.applyChangePacket(packet);
     this.pushChangePacket(packet);
+
+    this._syncing = true;
   }
 
   private onInitialize({
@@ -143,8 +153,14 @@ export class Client<
         this.onUpdateChange(ref, diffs);
       }
 
-      for (let packet of this.pendingChangePackets) {
-        this.applyChangePacket(packet);
+      let packets = this.pendingChangePackets;
+
+      if (packets.length) {
+        for (let packet of packets) {
+          this.applyChangePacket(packet);
+        }
+      } else {
+        this._syncing = false;
       }
     } else {
       this.onSnapshotData(data, false);
