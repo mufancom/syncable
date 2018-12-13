@@ -18,12 +18,6 @@
       "problemMatcher": "$typescript:tslint",
       "autoClose": true
     },
-    "lint-example-design": {
-      "executable": "tslint",
-      "args": ["-p", "examples/design"],
-      "problemMatcher": "$typescript:tslint",
-      "autoClose": true
-    },
     "build-core": {
       "executable": "tsc",
       "args": ["-p", "core/src/library", "-w"],
@@ -38,23 +32,6 @@
       "executable": "tsc",
       "args": ["-p", "client/src/library", "-w"],
       "problemMatcher": "$typescript:tsc-watch"
-    },
-    "build-example-design": {
-      "executable": "tsc",
-      "args": ["-p", "examples/design", "-w"],
-      "problemMatcher": "$typescript:tsc-watch"
-    },
-    "start-example-design-server": {
-      "executable": "node",
-      "args": ["bld/server/main.js"],
-      "cwd": "examples/design",
-      "watch": ["bld/server/**"]
-    },
-    "start-example-design-client": {
-      "executable": "node",
-      "args": ["bld/client/main.js"],
-      "cwd": "examples/design",
-      "watch": ["bld/client/**"]
     }
   }
 }

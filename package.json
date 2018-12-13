@@ -19,8 +19,7 @@
     "packages": [
       "core",
       "server",
-      "client",
-      "examples/design"
+      "client"
     ]
   }
 }
