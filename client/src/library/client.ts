@@ -23,7 +23,7 @@ import {
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
-import {observable} from 'mobx';
+import {action, observable} from 'mobx';
 import uuid from 'uuid';
 
 import {ClientSocket} from './@client-socket';
@@ -120,6 +120,7 @@ export class Client<
     >;
   }
 
+  @action
   update(change: TGenericParams['change']): void {
     let packet: ChangePacket = {
       id: uuid() as ChangePacketId,
@@ -143,6 +144,7 @@ export class Client<
     this.context.initialize(user);
   }
 
+  @action
   private onSync(data: SyncingData): void {
     if ('source' in data) {
       let matched = this.shiftChangePacket(data.source.id);
