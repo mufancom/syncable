@@ -31,13 +31,13 @@
   },
   "dependencies": {
     "deep-diff": "^1.0.1",
-    "lodash": "^4.17.10",
+    "lodash": "^4.17.11",
     "tslang": "^0.1.11",
     "uuid": "^3.3.2",
     "villa": "^0.3.1"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.115",
+    "@types/lodash": "^4.14.119",
     "@types/socket.io-client": "^1.4.32",
     "@types/uuid": "^3.4.3",
     "socket.io-client": "^2.1.1"

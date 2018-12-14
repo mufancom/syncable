@@ -9,11 +9,13 @@
   "devDependencies": {
     "@magicspace/configs": "^0.1.46",
     "biu": "^0.2.19",
+    "mobx": "^5.8.0",
     "lerna": "^3.4.3",
+    "lodash": "^4.17.11",
     "prettier": "^1.15.2",
     "tslint": "^5.11.0",
     "tslint-language-service": "^0.9.9",
-    "typescript": "^3.1.6"
+    "typescript": "^3.2.2"
   },
   "workspaces": {
     "packages": [
