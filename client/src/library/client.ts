@@ -23,7 +23,7 @@ import {
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
-import {action, observable} from 'mobx';
+import {action, observable, when} from 'mobx';
 import uuid from 'uuid';
 
 import {ClientSocket} from './@client-socket';
@@ -118,6 +118,23 @@ export class Client<
       TGenericParams['syncableObject'],
       {ref: TRef}
     >;
+  }
+
+  async requestObject<TRef extends TGenericParams['syncableObject']['ref']>(
+    ref: TRef,
+  ): Promise<Extract<TGenericParams['syncableObject'], {ref: TRef}>> {
+    let manager = this.manager;
+
+    let object = manager.getSyncableObject(ref);
+
+    if (!object) {
+      this.socket.emit('syncable:request', ref);
+
+      // TODO (vilic): timeout / error etc.
+      await when(() => !!(object = manager.getSyncableObject(ref)));
+    }
+
+    return object! as Extract<TGenericParams['syncableObject'], {ref: TRef}>;
   }
 
   @action

@@ -2,6 +2,7 @@ import {
   ChangePacket,
   IUserSyncableObject,
   InitialData,
+  SyncableRef,
   SyncingData,
 } from '@syncable/core';
 
@@ -18,5 +19,5 @@ export interface ClientSocket<TUser extends IUserSyncableObject>
 
   emit(event: 'syncable:change', packet: ChangePacket): this;
 
-  emit(event: 'syncable:request', request: Request): this;
+  emit(event: 'syncable:request', ref: SyncableRef): this;
 }

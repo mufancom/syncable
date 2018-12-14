@@ -15,13 +15,17 @@ import {
   getSyncableRef,
 } from '@syncable/core';
 import _ from 'lodash';
-import {observable} from 'mobx';
+import {Subject} from 'rxjs';
+import {debounceTime, distinctUntilChanged} from 'rxjs/operators';
 
 import {IServer, ServerGenericParams, ViewQueryFilter} from './server';
+
+const SNAPSHOT_DEBOUNCING_TIME = 100;
 
 export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'syncable:view-query', listener: (query: unknown) => void): this;
   on(event: 'syncable:change', listener: (packet: ChangePacket) => void): this;
+  on(event: 'syncable:request', listener: (ref: SyncableRef) => void): this;
   on(event: 'disconnect', listener: () => void): this;
   on(event: 'error', listener: (error: any) => void): this;
 
@@ -33,12 +37,21 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   private context!: Context;
   private snapshotIdSet = new Set<SyncableId>();
 
+  private filter: ViewQueryFilter;
+
+  private requestedSyncableSet = new Set<ISyncable>();
+
+  private snapshotScheduler = new Subject<boolean>();
+
   constructor(
     readonly group: string,
     private socket: ConnectionSocket,
     private server: IServer<TServerGenericParams>,
     private manager: SyncableManager,
-  ) {}
+  ) {
+    // Avoid filter being treated as a method (tslint member-ordering rule).
+    this.filter = () => false;
+  }
 
   async initialize(
     userRef: SyncableRef<IUserSyncableObject>,
@@ -53,6 +66,9 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       })
       .on('syncable:view-query', query => {
         this.updateViewQuery(query);
+      })
+      .on('syncable:request', ref => {
+        this.request(ref);
       });
 
     let user = manager.requireSyncableObject(userRef);
@@ -61,9 +77,20 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     this.updateViewQuery(viewQuery, false);
 
-    let snapshotData = this.snapshot(userRef);
+    socket.emit('syncable:initialize', {userRef, ...this.snapshot(userRef)});
 
-    socket.emit('syncable:initialize', {userRef, ...snapshotData});
+    this.snapshotScheduler
+      .pipe(
+        debounceTime(SNAPSHOT_DEBOUNCING_TIME),
+        distinctUntilChanged(),
+      )
+      .subscribe(toSnapshot => {
+        if (!toSnapshot) {
+          return;
+        }
+
+        this.socket.emit('syncable:sync', this.snapshot());
+      });
   }
 
   // TODO: ability limit iteration within a subset of syncables to improve
@@ -72,13 +99,16 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     userRef?: SyncableRef<IUserSyncableObject>,
     removals: SyncableRef[] = [],
   ): SnapshotData {
+    this.snapshotScheduler.next(false);
+
     let manager = this.manager;
     let context = this.context;
 
     let filter = this.filter;
     let snapshotIdSet = this.snapshotIdSet;
+    let requestedSyncableSet = this.requestedSyncableSet;
 
-    let ensuredSyncableSet = new Set<ISyncable>();
+    let iteratedSyncableSet = new Set<ISyncable>();
 
     let snapshotSyncables: ISyncable[] = [];
     let snapshotRemovals = [...removals];
@@ -99,13 +129,13 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     function ensureRelatedAndDoSnapshot(
       syncable: ISyncable,
-      requisite: boolean,
+      ignoreFilter: boolean,
     ): void {
-      if (ensuredSyncableSet.has(syncable)) {
+      if (iteratedSyncableSet.has(syncable)) {
         return;
       }
 
-      ensuredSyncableSet.add(syncable);
+      iteratedSyncableSet.add(syncable);
 
       let {_id: id} = syncable;
 
@@ -127,7 +157,12 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
         return;
       }
 
-      if (!requisite && filter && !filter(object)) {
+      if (
+        !ignoreFilter &&
+        !requestedSyncableSet.has(syncable) &&
+        filter &&
+        !filter(object)
+      ) {
         return;
       }
 
@@ -151,8 +186,6 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   }: ChangePlantProcessingResultWithTimestamp): void {
     let socket = this.socket;
 
-    let snapshotData = this.snapshot(undefined, removals);
-
     let updates: SyncingDataUpdateEntry[] = [];
 
     let snapshotIdSet = this.snapshotIdSet;
@@ -171,10 +204,12 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     let source: UpdateSource = {id, timestamp};
 
-    socket.emit('syncable:sync', {source, updates, ...snapshotData});
+    socket.emit('syncable:sync', {
+      source,
+      updates,
+      ...this.snapshot(undefined, removals),
+    });
   }
-
-  @observable private filter: ViewQueryFilter = () => false;
 
   private update(packet: ChangePacket): void {
     this.server.applyChangePacket(this.group, packet, this.context);
@@ -184,8 +219,18 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     this.filter = this.server.getViewQueryFilter(query, this.context);
 
     if (snapshot) {
-      let snapshotData = this.snapshot();
-      this.socket.emit('syncable:sync', {...snapshotData});
+      this.snapshotScheduler.next(true);
+    }
+  }
+
+  private request(ref: SyncableRef): void {
+    let manager = this.manager;
+
+    let syncable = manager.getSyncable(ref);
+
+    if (syncable) {
+      this.requestedSyncableSet.add(syncable);
+      this.snapshotScheduler.next(true);
     }
   }
 }

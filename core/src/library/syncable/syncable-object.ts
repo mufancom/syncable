@@ -11,6 +11,7 @@ import {
   getAccessControlEntryPriority,
 } from '../access-control';
 import {AccessControlRuleTester, Context} from '../context';
+import {getSyncableKey, getSyncableRef} from '../utils';
 
 import {AccessControlRule} from './access-control-rule-decorator';
 import {ISyncable, SyncableRef} from './syncable';
@@ -49,12 +50,11 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 
   get ref(): SyncableRef<this> {
-    let {_id: id, _type: type} = this.syncable;
+    return getSyncableRef(this.syncable);
+  }
 
-    return {
-      id,
-      type,
-    };
+  get key(): string {
+    return getSyncableKey(this.syncable);
   }
 
   get super(): this | undefined {

@@ -1,5 +1,5 @@
 import {SyncableCreationRef} from '../change';
-import {ISyncableObject, SyncableRef} from '../syncable';
+import {ISyncable, ISyncableObject, SyncableRef} from '../syncable';
 
 export function getSyncableRef<T extends ISyncableObject>(
   object: SyncableCreationRef<T> | T['syncable'],
@@ -14,4 +14,19 @@ export function getSyncableRef<T extends ISyncableObject>(
   }
 
   return {id, type};
+}
+
+export function getSyncableKey(
+  syncableOrSyncableRef: ISyncable | SyncableRef,
+): string {
+  let type: string;
+  let id: string;
+
+  if ('_type' in syncableOrSyncableRef) {
+    ({_type: type, _id: id} = syncableOrSyncableRef);
+  } else {
+    ({type, id} = syncableOrSyncableRef);
+  }
+
+  return `${type}:${id}`;
 }
