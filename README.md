@@ -2,10 +2,10 @@
 
 ## Features
 
-* Based on MobX.
-* Real-time change synchronization.
-* Association-based access control.
-* View query support.
+- Based on MobX.
+- Real-time change synchronization.
+- Association-based access control.
+- View query support.
 
 ## Limitation
 
@@ -13,9 +13,15 @@ All syncables in the same group will be loaded into memory (single thread), shar
 
 ## Roadmap
 
-* Gateway and hot standby.
-* Performance optimization.
-* More flexible scaling options.
+- Gateway and hot standby.
+- Performance optimization.
+- More flexible scaling options.
+
+## Mechanisms
+
+### View queries
+
+### Dynamically request objects
 
 ## License
 
