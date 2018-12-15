@@ -47,6 +47,9 @@ export class Client<
   readonly context: Context<TGenericParams['user']>;
   readonly ready: Promise<void>;
 
+  private initialized = false;
+  private viewQuery: TGenericParams['viewQuery'] | undefined;
+
   @observable
   private _syncing = false;
 
@@ -152,8 +155,12 @@ export class Client<
     this._syncing = true;
   }
 
-  query(query: TGenericParams['viewQuery']): void {
-    this.socket.emit('syncable:view-query', query);
+  query(viewQuery: TGenericParams['viewQuery']): void {
+    this.viewQuery = viewQuery;
+
+    if (this.initialized) {
+      this.socket.emit('syncable:view-query', viewQuery);
+    }
   }
 
   private onInitialize({
@@ -164,6 +171,14 @@ export class Client<
 
     let user = this.manager.requireSyncableObject(userRef);
     this.context.initialize(user);
+
+    this.initialized = true;
+
+    let viewQuery = this.viewQuery;
+
+    if (viewQuery) {
+      this.socket.emit('syncable:view-query', viewQuery);
+    }
   }
 
   @action
