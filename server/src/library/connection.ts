@@ -31,6 +31,7 @@ export interface ConnectionSocket extends SocketIO.Socket {
 
   emit(event: 'syncable:initialize', data: InitialData): boolean;
   emit(event: 'syncable:sync', data: SyncingData): boolean;
+  emit(event: 'syncable:complete-requests', refs: SyncableRef[]): boolean;
 }
 
 export class Connection<TServerGenericParams extends ServerGenericParams> {
@@ -40,6 +41,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   private filter: ViewQueryFilter;
 
   private requestedSyncableSet = new Set<ISyncable>();
+  private pendingRequestedRefs: SyncableRef[] = [];
 
   private snapshotScheduler = new Subject<boolean>();
 
@@ -89,7 +91,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
           return;
         }
 
-        this.socket.emit('syncable:sync', this.snapshot());
+        this.sync(this.snapshot());
       });
   }
 
@@ -184,8 +186,6 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     updates: changeUpdates,
     removals,
   }: ChangePlantProcessingResultWithTimestamp): void {
-    let socket = this.socket;
-
     let updates: SyncingDataUpdateEntry[] = [];
 
     let snapshotIdSet = this.snapshotIdSet;
@@ -204,7 +204,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
     let source: UpdateSource = {id, timestamp};
 
-    socket.emit('syncable:sync', {
+    this.sync({
       source,
       updates,
       ...this.snapshot(undefined, removals),
@@ -229,8 +229,26 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     let syncable = manager.getSyncable(ref);
 
     if (syncable) {
+      this.pendingRequestedRefs.push(ref);
       this.requestedSyncableSet.add(syncable);
       this.snapshotScheduler.next(true);
+    } else {
+      this.completeRequests([ref]);
     }
+  }
+
+  private sync(data: SyncingData): void {
+    this.socket.emit('syncable:sync', data);
+
+    let pendingRequestedRefs = this.pendingRequestedRefs;
+
+    if (pendingRequestedRefs.length) {
+      this.completeRequests(pendingRequestedRefs);
+      this.pendingRequestedRefs = [];
+    }
+  }
+
+  private completeRequests(refs: SyncableRef[]): void {
+    this.socket.emit('syncable:complete-requests', refs);
   }
 }

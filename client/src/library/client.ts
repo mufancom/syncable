@@ -20,10 +20,11 @@ import {
   SyncableManager,
   SyncableRef,
   SyncingData,
+  getSyncableKey,
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
-import {action, observable, when} from 'mobx';
+import {action, observable} from 'mobx';
 import uuid from 'uuid';
 
 import {ClientSocket} from './@client-socket';
@@ -59,6 +60,8 @@ export class Client<
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
+  private requestHandlerMap = new Map<string, () => void>();
+
   private changePlant: ChangePlant;
 
   constructor(
@@ -82,9 +85,13 @@ export class Client<
       });
     });
 
-    this.socket.on('syncable:sync', data => {
-      this.onSync(data);
-    });
+    this.socket
+      .on('syncable:sync', data => {
+        this.onSync(data);
+      })
+      .on('syncable:complete-requests', refs => {
+        this.onCompleteRequests(refs);
+      });
   }
 
   get syncing(): boolean {
@@ -126,19 +133,29 @@ export class Client<
 
   async requestObject<TRef extends TGenericParams['syncableObject']['ref']>(
     ref: TRef,
-  ): Promise<Extract<TGenericParams['syncableObject'], {ref: TRef}>> {
+  ): Promise<
+    Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined
+  > {
     let manager = this.manager;
 
-    let object = manager.getSyncableObject(ref);
+    let object = manager.getSyncableObject<
+      Extract<TGenericParams['syncableObject'], {ref: TRef}>
+    >(ref);
 
-    if (!object) {
+    if (object) {
+      return object;
+    } else {
       this.socket.emit('syncable:request', ref);
 
-      // TODO (vilic): timeout / error etc.
-      await when(() => !!(object = manager.getSyncableObject(ref)));
-    }
+      await new Promise<void>(resolve => {
+        let key = getSyncableKey(ref);
+        this.requestHandlerMap.set(key, resolve);
+      });
 
-    return object! as Extract<TGenericParams['syncableObject'], {ref: TRef}>;
+      return manager.getSyncableObject<
+        Extract<TGenericParams['syncableObject'], {ref: TRef}>
+      >(ref);
+    }
   }
 
   @action
@@ -203,6 +220,19 @@ export class Client<
       }
     } else {
       this.onSnapshotData(data, false);
+    }
+  }
+
+  private onCompleteRequests(refs: SyncableRef[]): void {
+    let map = this.requestHandlerMap;
+
+    for (let ref of refs) {
+      let key = getSyncableKey(ref);
+      let resolve = map.get(key)!;
+
+      resolve();
+
+      map.delete(key);
     }
   }
 
