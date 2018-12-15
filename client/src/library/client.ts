@@ -37,6 +37,7 @@ export interface ClientGenericParams {
   user: IUserSyncableObject;
   syncableObject: ISyncableObject;
   change: IChange;
+  viewQuery: unknown;
   notification: INotification;
 }
 
@@ -50,7 +51,7 @@ export class Client<
   private _syncing = false;
 
   private manager: SyncableManager;
-  private socket: ClientSocket<TGenericParams['user']>;
+  private socket: ClientSocket;
 
   private pendingChangePackets: ChangePacket[] = [];
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
@@ -68,7 +69,7 @@ export class Client<
     this.manager = new SyncableManager(provider);
     this.changePlant = new ChangePlant(blueprint, provider);
 
-    this.socket = socket as ClientSocket<TGenericParams['user']>;
+    this.socket = socket as ClientSocket;
 
     this.ready = new Promise<void>(resolve => {
       this.socket.on('syncable:initialize', data => {
@@ -149,6 +150,10 @@ export class Client<
     this.pushChangePacket(packet);
 
     this._syncing = true;
+  }
+
+  query(query: TGenericParams['viewQuery']): void {
+    this.socket.emit('syncable:view-query', query);
   }
 
   private onInitialize({
