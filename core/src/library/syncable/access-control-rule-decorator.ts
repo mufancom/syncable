@@ -15,12 +15,12 @@ export function AccessControlRule(
   explicitName?: string,
 ): AccessControlRuleDecorator {
   return (target, name, descriptor) => {
-    let entryName = (explicitName || name) as AccessControlEntryRuleName;
+    let ruleName = (explicitName || name) as AccessControlEntryRuleName;
 
     let test = descriptor.value!;
 
     if (hasOwnProperty.call(target, '__accessControlRuleMap')) {
-      target.__accessControlRuleMap.set(entryName, {test});
+      target.__accessControlRuleMap.set(ruleName, {test});
     } else {
       let accessControlRules: [
         AccessControlEntryRuleName,
@@ -29,11 +29,11 @@ export function AccessControlRule(
 
       if (target.__accessControlRuleMap) {
         accessControlRules = [
-          ...target.__accessControlRuleMap.entries(),
-          [entryName, {test}],
+          ...target.__accessControlRuleMap,
+          [ruleName, {test}],
         ];
       } else {
-        accessControlRules = [[entryName, {test}]];
+        accessControlRules = [[ruleName, {test}]];
       }
 
       Object.defineProperty(target, '__accessControlRuleMap', {
