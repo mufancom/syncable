@@ -328,7 +328,7 @@ export class ChangePlant {
         continue;
       }
 
-      let securingFieldNames = new Set(
+      let securingFieldNameSet = new Set(
         latestSyncableObject.getSecuringFieldNames(),
       );
 
@@ -365,7 +365,7 @@ export class ChangePlant {
 
         if (
           /^_(?!timestamp)$/.test(fieldName) ||
-          securingFieldNames.has(fieldName)
+          securingFieldNameSet.has(fieldName)
         ) {
           requiredRightSet.add('full');
         } else {
