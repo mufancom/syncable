@@ -1,7 +1,9 @@
 import {AccessControlEntryRuleName} from '../access-control';
 import {AccessControlRuleTester} from '../context';
 
-import {ISyncableObject} from './syncable-object';
+import {AccessControlRuleEntry, ISyncableObject} from './syncable-object';
+
+const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 export type AccessControlRuleDecorator = (
   target: ISyncableObject,
@@ -13,12 +15,30 @@ export function AccessControlRule(
   explicitName?: string,
 ): AccessControlRuleDecorator {
   return (target, name, descriptor) => {
+    let ruleName = (explicitName || name) as AccessControlEntryRuleName;
+
     let test = descriptor.value!;
 
-    let ruleMap =
-      target.__accessControlRuleMap ||
-      (target.__accessControlRuleMap = new Map());
+    if (hasOwnProperty.call(target, '__accessControlRuleMap')) {
+      target.__accessControlRuleMap.set(ruleName, {test});
+    } else {
+      let accessControlRules: [
+        AccessControlEntryRuleName,
+        AccessControlRuleEntry
+      ][];
 
-    ruleMap.set((explicitName || name) as AccessControlEntryRuleName, {test});
+      if (target.__accessControlRuleMap) {
+        accessControlRules = [
+          ...target.__accessControlRuleMap,
+          [ruleName, {test}],
+        ];
+      } else {
+        accessControlRules = [[ruleName, {test}]];
+      }
+
+      Object.defineProperty(target, '__accessControlRuleMap', {
+        value: new Map(accessControlRules),
+      });
+    }
   };
 }
