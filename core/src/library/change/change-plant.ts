@@ -328,6 +328,10 @@ export class ChangePlant {
         continue;
       }
 
+      let securingFieldNameSet = new Set(
+        latestSyncableObject.getSecuringFieldNames(),
+      );
+
       let requiredRightSet = new Set<AccessRight>();
 
       let latestAssociations = provider
@@ -349,17 +353,20 @@ export class ChangePlant {
       }
 
       for (let diff of diffs) {
-        let propertyName = diff.path[0];
+        let fieldName = diff.path[0];
 
         if (
-          propertyName === '_id' ||
-          propertyName === '_type' ||
-          propertyName === '_extends'
+          fieldName === '_id' ||
+          fieldName === '_type' ||
+          fieldName === '_extends'
         ) {
           throw new Error('Invalid operation');
         }
 
-        if (/^_(?!timestamp)$/.test(propertyName)) {
+        if (
+          /^_(?!timestamp)$/.test(fieldName) ||
+          securingFieldNameSet.has(fieldName)
+        ) {
           requiredRightSet.add('full');
         } else {
           requiredRightSet.add('write');

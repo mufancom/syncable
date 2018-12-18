@@ -1,4 +1,3 @@
-import {AccessControlEntry} from '../access-control';
 import {
   ISyncable,
   ISyncableObject,
@@ -11,8 +10,6 @@ abstract class SyncableObjectProvider {
     syncable: ISyncable,
     manager: SyncableManager,
   ): ISyncableObject;
-
-  abstract getDefaultACL(type: string): AccessControlEntry[];
 
   abstract resolveAssociations(syncable: ISyncable): SyncableAssociation[];
 }
