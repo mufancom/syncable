@@ -94,6 +94,14 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     );
   }
 
+  getDefaultACL(): AccessControlEntry[] {
+    return [];
+  }
+
+  getSecuringFieldNames(): string[] {
+    return [];
+  }
+
   getACL(): AccessControlEntry[] {
     let {_extends, _acl = []} = this.syncable;
 
@@ -104,7 +112,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       superACL = superObject.getACL();
     }
 
-    let defaultACL = this.manager.getDefaultACL(this.syncable._type);
+    let defaultACL = this.getDefaultACL();
 
     return Array.from(
       new Map(
