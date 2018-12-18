@@ -106,6 +106,8 @@ export class SyncableManager {
    */
   @action
   addSyncable(snapshot: ISyncable, update = false): void {
+    snapshot = _.cloneDeep(snapshot);
+
     let {_id: id, _type: type} = snapshot;
 
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
@@ -141,6 +143,8 @@ export class SyncableManager {
    */
   @action
   updateSyncable(snapshot: ISyncable): void {
+    snapshot = _.cloneDeep(snapshot);
+
     let {_id: id, _type: type} = snapshot;
 
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;

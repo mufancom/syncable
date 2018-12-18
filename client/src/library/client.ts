@@ -160,6 +160,8 @@ export class Client<
 
   @action
   update(change: TGenericParams['change']): void {
+    change = _.cloneDeep(change);
+
     let packet: ChangePacket = {
       id: uuid() as ChangePacketId,
       createdAt: Date.now(),
