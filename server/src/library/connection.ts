@@ -216,7 +216,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   }
 
   private updateViewQuery(query: unknown, snapshot = true): void {
-    this.filter = this.server.getViewQueryFilter(query, this.context);
+    this.filter = this.server.getViewQueryFilter(
+      query,
+      this.context,
+      this.manager,
+    );
 
     if (snapshot) {
       this.snapshotScheduler.next(true);
