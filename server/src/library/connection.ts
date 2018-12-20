@@ -16,7 +16,7 @@ import {
 } from '@syncable/core';
 import _ from 'lodash';
 import {Subject} from 'rxjs';
-import {debounceTime, distinctUntilChanged} from 'rxjs/operators';
+import {debounceTime} from 'rxjs/operators';
 
 import {IServer, ServerGenericParams, ViewQueryFilter} from './server';
 
@@ -82,10 +82,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     socket.emit('syncable:initialize', {userRef, ...this.snapshot(userRef)});
 
     this.snapshotScheduler
-      .pipe(
-        debounceTime(SNAPSHOT_DEBOUNCING_TIME),
-        distinctUntilChanged(),
-      )
+      .pipe(debounceTime(SNAPSHOT_DEBOUNCING_TIME))
       .subscribe(toSnapshot => {
         if (!toSnapshot) {
           return;
