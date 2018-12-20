@@ -182,6 +182,7 @@ export class Client<
     }
   }
 
+  @action
   private onInitialize({
     userRef,
     ...data

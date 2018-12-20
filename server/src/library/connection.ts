@@ -152,24 +152,25 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
         return;
       }
 
-      if (snapshotIdSet.has(id)) {
-        return;
+      let alreadyBeenSnapshot = snapshotIdSet.has(id);
+      let shouldBeSnapshot =
+        alreadyBeenSnapshot ||
+        ignoreFilter ||
+        requestedSyncableSet.has(syncable) ||
+        !filter ||
+        filter(object);
+
+      if (shouldBeSnapshot) {
+        let relatedRefs = manager.getRelatedRefs(syncable);
+
+        for (let ref of relatedRefs) {
+          let syncable = manager.requireSyncable(ref);
+          ensureRelatedAndDoSnapshot(syncable, true);
+        }
       }
 
-      if (
-        !ignoreFilter &&
-        !requestedSyncableSet.has(syncable) &&
-        filter &&
-        !filter(object)
-      ) {
+      if (alreadyBeenSnapshot) {
         return;
-      }
-
-      let relatedRefs = manager.getRelatedRefs(syncable);
-
-      for (let ref of relatedRefs) {
-        let syncable = manager.requireSyncable(ref);
-        ensureRelatedAndDoSnapshot(syncable, true);
       }
 
       snapshotIdSet.add(id);
