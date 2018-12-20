@@ -87,6 +87,10 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return this.manager.requireSyncableObject(ref);
   }
 
+  get<T extends ISyncableObject>(ref: SyncableRef<T>): T | undefined {
+    return this.manager.getSyncableObject(ref);
+  }
+
   getAssociatedObjects(securesOnly?: boolean): ISyncableObject[] {
     return this.manager.requireAssociatedSyncableObjects(
       this.syncable,
