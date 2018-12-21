@@ -26,6 +26,7 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {action, observable} from 'mobx';
 import uuid from 'uuid';
+import * as v from 'villa';
 
 import {ClientSocket} from './@client-socket';
 
@@ -129,6 +130,14 @@ export class Client<
       TGenericParams['syncableObject'],
       {ref: TRef}
     >;
+  }
+
+  async requestObjects<TRef extends TGenericParams['syncableObject']['ref']>(
+    refs: TRef[],
+  ): Promise<
+    (Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined)[]
+  > {
+    return v.map(refs, ref => this.requestObject(ref));
   }
 
   async requestObject<TRef extends TGenericParams['syncableObject']['ref']>(

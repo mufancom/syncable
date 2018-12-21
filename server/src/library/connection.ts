@@ -157,16 +157,17 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
         alreadyBeenSnapshot ||
         ignoreFilter ||
         requestedSyncableSet.has(syncable) ||
-        !filter ||
         filter(object);
 
-      if (shouldBeSnapshot) {
-        let relatedRefs = manager.getRelatedRefs(syncable);
+      if (!shouldBeSnapshot) {
+        return;
+      }
 
-        for (let ref of relatedRefs) {
-          let syncable = manager.requireSyncable(ref);
-          ensureRelatedAndDoSnapshot(syncable, true);
-        }
+      let relatedRefs = manager.getRelatedRefs(syncable);
+
+      for (let ref of relatedRefs) {
+        let syncable = manager.requireSyncable(ref);
+        ensureRelatedAndDoSnapshot(syncable, true);
       }
 
       if (alreadyBeenSnapshot) {
