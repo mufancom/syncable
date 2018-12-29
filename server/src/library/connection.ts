@@ -166,8 +166,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       let relatedRefs = manager.getRelatedRefs(syncable);
 
       for (let ref of relatedRefs) {
-        let syncable = manager.requireSyncable(ref);
-        ensureRelatedAndDoSnapshot(syncable, true);
+        let syncable = manager.getSyncable(ref);
+
+        if (syncable) {
+          ensureRelatedAndDoSnapshot(syncable, true);
+        }
       }
 
       if (alreadyBeenSnapshot) {
