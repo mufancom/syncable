@@ -24,7 +24,7 @@ import {
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
-import {action, observable} from 'mobx';
+import {action, observable, runInAction} from 'mobx';
 import uuid from 'uuid';
 import * as v from 'villa';
 
@@ -80,8 +80,10 @@ export class Client<
 
     this.ready = new Promise<void>(resolve => {
       this.socket.on('syncable:initialize', data => {
-        this.manager.clear();
-        this.onInitialize(data);
+        runInAction(() => {
+          this.manager.clear();
+          this.onInitialize(data);
+        });
         resolve();
       });
     });
