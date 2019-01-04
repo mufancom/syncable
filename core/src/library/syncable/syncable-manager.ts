@@ -264,9 +264,9 @@ export class SyncableManager {
     syncable: ISyncable,
     securesOnly?: boolean,
   ): ISyncableObject[] {
-    return this.getAssociations(syncable, securesOnly).map(association =>
-      this.requireSyncableObject(association.ref),
-    );
+    return this.getAssociations(syncable, securesOnly)
+      .map(association => this.getSyncableObject(association.ref))
+      .filter(object => !!object) as ISyncableObject[];
   }
 
   @action
