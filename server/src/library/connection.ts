@@ -139,7 +139,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       let {_id: id} = syncable;
 
       let ref = getSyncableRef(syncable);
-      let object = manager.requireSyncableObject(ref);
+      let object = manager.getSyncableObject(ref);
+
+      if (!object) {
+        return;
+      }
 
       let visible = object.testAccessRights(['read'], context, {});
 
