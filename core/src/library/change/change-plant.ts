@@ -339,21 +339,26 @@ export class ChangePlant {
 
       updatedSyncableClone._updatedAt = now;
 
-      let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone);
+      let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone) || [];
 
-      if (
-        !diffs ||
-        !diffs.length ||
-        (diffs.length === 1 && diffs[0].path[0] === '_timestamp')
-      ) {
+      let changedFieldNameSet = new Set(diffs.map(diff => diff.path[0]));
+
+      changedFieldNameSet.delete('_timestamp');
+      changedFieldNameSet.delete('_updatedAt');
+
+      if (!changedFieldNameSet.size) {
         continue;
       }
 
-      let securingFieldNameSet = new Set(
-        latestSyncableObject.getSecuringFieldNames(),
-      );
+      if (
+        changedFieldNameSet.has('_id') ||
+        changedFieldNameSet.has('_type') ||
+        changedFieldNameSet.has('_extends')
+      ) {
+        throw new Error('Invalid operation');
+      }
 
-      let requiredRightSet = new Set<AccessRight>();
+      let requiredRightSet = new Set<AccessRight>(['write']);
 
       let latestAssociations = provider
         .resolveAssociations(latestSyncable)
@@ -369,26 +374,15 @@ export class ChangePlant {
 
       if (securingAssociationChanged) {
         requiredRightSet.add('full');
-      }
+      } else {
+        let securingFieldNameSet = new Set(
+          latestSyncableObject.getSecuringFieldNames(),
+        );
 
-      for (let diff of diffs) {
-        let fieldName = diff.path[0];
-
-        if (
-          fieldName === '_id' ||
-          fieldName === '_type' ||
-          fieldName === '_extends'
-        ) {
-          throw new Error('Invalid operation');
-        }
-
-        if (
-          /^_(?!timestamp)$/.test(fieldName) ||
-          securingFieldNameSet.has(fieldName)
-        ) {
-          requiredRightSet.add('full');
-        } else {
-          requiredRightSet.add('write');
+        for (let fieldName of changedFieldNameSet) {
+          if (/^_/.test(fieldName) || securingFieldNameSet.has(fieldName)) {
+            requiredRightSet.add('full');
+          }
         }
       }
 
