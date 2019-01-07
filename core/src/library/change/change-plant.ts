@@ -13,6 +13,7 @@ import {
   SyncableRef,
 } from '../syncable';
 import {NumericTimestamp} from '../types';
+import {getSyncableKey} from '../utils';
 
 import {
   ChangePacket,
@@ -225,7 +226,11 @@ export class ChangePlant {
       },
     );
 
-    let preparedSyncableObjectMap = new Map<ISyncableObject, ISyncable>();
+    let preparedSyncableObjectMap = new Map<string, ISyncableObject>();
+    let preparedSyncableObjectToSyncableMap = new Map<
+      ISyncableObject,
+      ISyncable
+    >();
 
     interface PreparedBundle {
       latest: ISyncable;
@@ -242,6 +247,19 @@ export class ChangePlant {
     let notifications: INotification[] = [];
 
     let create: ChangePlantProcessorCreateOperation = creation => {
+      let {_extends} = creation;
+
+      if (_extends) {
+        let superKey = getSyncableKey(_extends.ref);
+        let superObject = preparedSyncableObjectMap.get(superKey);
+
+        if (!superObject) {
+          throw new Error(
+            'A super object (`extends`) must be prepared (either in ref dict or using `prepare`), using a ref directly is not allowed',
+          );
+        }
+      }
+
       if (timestamp !== undefined) {
         creation._timestamp = timestamp;
       }
@@ -259,7 +277,7 @@ export class ChangePlant {
     };
 
     let prepare: ChangePlantProcessorPrepareOperation = object => {
-      let clone = preparedSyncableObjectMap.get(object);
+      let clone = preparedSyncableObjectToSyncableMap.get(object);
 
       if (clone) {
         return clone;
@@ -277,7 +295,10 @@ export class ChangePlant {
         object,
       });
 
-      preparedSyncableObjectMap.set(object, clone);
+      let key = getSyncableKey(object.ref);
+
+      preparedSyncableObjectMap.set(key, object);
+      preparedSyncableObjectToSyncableMap.set(object, clone);
 
       return clone;
     };
@@ -342,10 +363,8 @@ export class ChangePlant {
         .filter(association => association.secures);
 
       let securingAssociationChanged =
-        _.xorBy(
-          latestAssociations,
-          updatedAssociations,
-          ({ref: {type, id}}) => `${type}-${id}`,
+        _.xorBy(latestAssociations, updatedAssociations, association =>
+          getSyncableKey(association.ref),
         ).length > 0;
 
       if (securingAssociationChanged) {
