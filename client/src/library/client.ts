@@ -15,6 +15,10 @@ import {
   ISyncableObjectProvider,
   IUserSyncableObject,
   InitialData,
+  RPCCallId,
+  RPCCallList,
+  RPCDefinition,
+  RPCReturnData,
   SnapshotData,
   SyncableId,
   SyncableManager,
@@ -43,11 +47,18 @@ export interface ClientGenericParams {
   notification: INotification;
 }
 
+interface RPCCallHandler {
+  resolve(data: RPCReturnData['data']): void;
+  reject(reason: string): void;
+}
+
 export class Client<
-  TGenericParams extends ClientGenericParams = ClientGenericParams
+  TGenericParams extends ClientGenericParams = ClientGenericParams,
+  TRPCDefinition extends RPCDefinition = RPCDefinition
 > extends EventEmitter {
   readonly context: Context<TGenericParams['user']>;
   readonly ready: Promise<void>;
+  readonly rpc: RPCCallList<TRPCDefinition>;
 
   private initialized = false;
   private viewQuery: TGenericParams['viewQuery'] | undefined;
@@ -62,6 +73,7 @@ export class Client<
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
   private requestHandlerMap = new Map<string, () => void>();
+  private callHandlerMap = new Map<RPCCallId, RPCCallHandler>();
 
   private changePlant: ChangePlant;
 
@@ -92,7 +104,10 @@ export class Client<
       })
       .on('syncable:complete-requests', refs => {
         this.onCompleteRequests(refs);
-      });
+      })
+      .on('syncable:return', data => this.onCompleteCall(data));
+
+    this.rpc = this.createRPC();
   }
 
   get syncing(): boolean {
@@ -351,6 +366,41 @@ export class Client<
     this.pendingChangePackets.push(packet);
 
     this.socket.emit('syncable:change', packet);
+  }
+
+  private createRPC(): RPCCallList<TRPCDefinition> {
+    return new Proxy({} as RPCCallList<TRPCDefinition>, {
+      get: (_target, name) => {
+        return (params: any) => {
+          let id = uuid() as RPCCallId;
+          this.socket.emit('syncable:call', {
+            id,
+            name: name as string,
+            params,
+          });
+
+          return new Promise<any>((resolve, reject) => {
+            this.callHandlerMap.set(id, {resolve, reject});
+          });
+        };
+      },
+    });
+  }
+
+  private onCompleteCall(data: RPCReturnData): void {
+    let promise = this.callHandlerMap.get(data.id);
+
+    if (promise) {
+      let {resolve, reject} = promise;
+
+      if (data.error) {
+        reject(data.error);
+      } else {
+        resolve(data.data);
+      }
+    }
+
+    this.callHandlerMap.delete(data.id);
   }
 }
 

@@ -15,6 +15,7 @@ import {
   ISyncableObject,
   ISyncableObjectProvider,
   IUserSyncableObject,
+  RPCDefinitionList,
   SyncableManager,
   SyncableRef,
 } from '@syncable/core';
@@ -90,6 +91,7 @@ abstract class Server<
     server: SocketServer,
     private provider: ISyncableObjectProvider,
     blueprint: ChangePlantBlueprint<TGenericParams>,
+    public rpc: RPCDefinitionList = {},
     private options: ServerOptions<
       TGenericParams['syncableObject']['syncable']
     > = {},

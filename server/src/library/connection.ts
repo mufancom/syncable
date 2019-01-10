@@ -5,9 +5,12 @@ import {
   ISyncable,
   IUserSyncableObject,
   InitialData,
+  RPCCallData,
+  RPCReturnData,
   SnapshotData,
   SyncableId,
   SyncableManager,
+  SyncableProvider,
   SyncableRef,
   SyncingData,
   SyncingDataUpdateEntry,
@@ -26,12 +29,14 @@ export interface ConnectionSocket extends SocketIO.Socket {
   on(event: 'syncable:view-query', listener: (query: unknown) => void): this;
   on(event: 'syncable:change', listener: (packet: ChangePacket) => void): this;
   on(event: 'syncable:request', listener: (ref: SyncableRef) => void): this;
+  on(event: 'syncable:call', listener: (data: RPCCallData) => void): this;
   on(event: 'disconnect', listener: () => void): this;
   on(event: 'error', listener: (error: any) => void): this;
 
   emit(event: 'syncable:initialize', data: InitialData): boolean;
   emit(event: 'syncable:sync', data: SyncingData): boolean;
   emit(event: 'syncable:complete-requests', refs: SyncableRef[]): boolean;
+  emit(event: 'syncable:return', data: RPCReturnData): boolean;
 }
 
 export class Connection<TServerGenericParams extends ServerGenericParams> {
@@ -44,6 +49,8 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   private pendingRequestedRefs: SyncableRef[] = [];
 
   private snapshotScheduler = new Subject<boolean>();
+
+  private provider!: SyncableProvider;
 
   constructor(
     readonly group: string,
@@ -71,11 +78,16 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       })
       .on('syncable:request', ref => {
         this.request(ref);
+      })
+      .on('syncable:call', data => {
+        this.callRPC(data);
       });
 
     let user = manager.requireSyncableObject(userRef);
 
     this.context = new Context('user', 'server', user);
+
+    this.provider = new SyncableProvider(this.manager, this.context);
 
     this.updateViewQuery(viewQuery, false);
 
@@ -253,5 +265,32 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
 
   private completeRequests(refs: SyncableRef[]): void {
     this.socket.emit('syncable:complete-requests', refs);
+  }
+
+  private callRPC(data: RPCCallData): void {
+    let returnData: RPCReturnData;
+
+    try {
+      let result = this.server.rpc[data.name](
+        this.context,
+        this.provider,
+        data.params,
+      );
+
+      returnData = {
+        id: data.id,
+        data: result,
+      };
+    } catch (error) {
+      returnData = {
+        id: data.id,
+        data: {},
+        error: error.message,
+      };
+
+      console.error(error);
+    }
+
+    this.socket.emit('syncable:return', returnData);
   }
 }
