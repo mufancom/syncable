@@ -13,7 +13,7 @@ Object {
     },
   ],
   "id": "change-packet-id",
-  "notificationPacket": undefined,
+  "notifications": Array [],
   "removals": Array [],
   "timestamp": undefined,
   "updates": Array [],
@@ -24,7 +24,7 @@ exports[`should remove task 1`] = `
 Object {
   "creations": Array [],
   "id": "change-packet-id",
-  "notificationPacket": undefined,
+  "notifications": Array [],
   "removals": Array [
     Object {
       "id": "task-id",
@@ -40,7 +40,7 @@ exports[`should update task brief 1`] = `
 Object {
   "creations": Array [],
   "id": "change-packet-id",
-  "notificationPacket": undefined,
+  "notifications": Array [],
   "removals": Array [],
   "timestamp": undefined,
   "updates": Array [

@@ -13,6 +13,7 @@ import {
   SyncableRef,
 } from '../syncable';
 import {NumericTimestamp} from '../types';
+import {getSyncableKey} from '../utils';
 
 import {
   ChangePacket,
@@ -225,7 +226,11 @@ export class ChangePlant {
       },
     );
 
-    let preparedSyncableObjectMap = new Map<ISyncableObject, ISyncable>();
+    let preparedSyncableObjectMap = new Map<string, ISyncableObject>();
+    let preparedSyncableObjectToSyncableMap = new Map<
+      ISyncableObject,
+      ISyncable
+    >();
 
     interface PreparedBundle {
       latest: ISyncable;
@@ -242,6 +247,19 @@ export class ChangePlant {
     let notifications: INotification[] = [];
 
     let create: ChangePlantProcessorCreateOperation = creation => {
+      let {_extends} = creation;
+
+      if (_extends) {
+        let superKey = getSyncableKey(_extends.ref);
+        let superObject = preparedSyncableObjectMap.get(superKey);
+
+        if (!superObject) {
+          throw new Error(
+            'A super object (`extends`) must be prepared (either in ref dict or using `prepare`), using a ref directly is not allowed',
+          );
+        }
+      }
+
       if (timestamp !== undefined) {
         creation._timestamp = timestamp;
       }
@@ -259,7 +277,7 @@ export class ChangePlant {
     };
 
     let prepare: ChangePlantProcessorPrepareOperation = object => {
-      let clone = preparedSyncableObjectMap.get(object);
+      let clone = preparedSyncableObjectToSyncableMap.get(object);
 
       if (clone) {
         return clone;
@@ -277,7 +295,10 @@ export class ChangePlant {
         object,
       });
 
-      preparedSyncableObjectMap.set(object, clone);
+      let key = getSyncableKey(object.ref);
+
+      preparedSyncableObjectMap.set(key, object);
+      preparedSyncableObjectToSyncableMap.set(object, clone);
 
       return clone;
     };
@@ -318,21 +339,26 @@ export class ChangePlant {
 
       updatedSyncableClone._updatedAt = now;
 
-      let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone);
+      let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone) || [];
 
-      if (
-        !diffs ||
-        !diffs.length ||
-        (diffs.length === 1 && diffs[0].path[0] === '_timestamp')
-      ) {
+      let changedFieldNameSet = new Set(diffs.map(diff => diff.path[0]));
+
+      changedFieldNameSet.delete('_timestamp');
+      changedFieldNameSet.delete('_updatedAt');
+
+      if (!changedFieldNameSet.size) {
         continue;
       }
 
-      let securingFieldNameSet = new Set(
-        latestSyncableObject.getSecuringFieldNames(),
-      );
+      if (
+        changedFieldNameSet.has('_id') ||
+        changedFieldNameSet.has('_type') ||
+        changedFieldNameSet.has('_extends')
+      ) {
+        throw new Error('Invalid operation');
+      }
 
-      let requiredRightSet = new Set<AccessRight>();
+      let requiredRightSet = new Set<AccessRight>(['write']);
 
       let latestAssociations = provider
         .resolveAssociations(latestSyncable)
@@ -342,34 +368,21 @@ export class ChangePlant {
         .filter(association => association.secures);
 
       let securingAssociationChanged =
-        _.xorBy(
-          latestAssociations,
-          updatedAssociations,
-          ({ref: {type, id}}) => `${type}-${id}`,
+        _.xorBy(latestAssociations, updatedAssociations, association =>
+          getSyncableKey(association.ref),
         ).length > 0;
 
       if (securingAssociationChanged) {
         requiredRightSet.add('full');
-      }
+      } else {
+        let securingFieldNameSet = new Set(
+          latestSyncableObject.getSecuringFieldNames(),
+        );
 
-      for (let diff of diffs) {
-        let fieldName = diff.path[0];
-
-        if (
-          fieldName === '_id' ||
-          fieldName === '_type' ||
-          fieldName === '_extends'
-        ) {
-          throw new Error('Invalid operation');
-        }
-
-        if (
-          /^_(?!timestamp)$/.test(fieldName) ||
-          securingFieldNameSet.has(fieldName)
-        ) {
-          requiredRightSet.add('full');
-        } else {
-          requiredRightSet.add('write');
+        for (let fieldName of changedFieldNameSet) {
+          if (/^_/.test(fieldName) || securingFieldNameSet.has(fieldName)) {
+            requiredRightSet.add('full');
+          }
         }
       }
 

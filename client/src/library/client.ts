@@ -28,7 +28,7 @@ import {
 } from '@syncable/core';
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
-import {action, observable} from 'mobx';
+import {action, observable, runInAction, when} from 'mobx';
 import uuid from 'uuid';
 import * as v from 'villa';
 
@@ -69,7 +69,9 @@ export class Client<
   private manager: SyncableManager;
   private socket: ClientSocket;
 
+  @observable
   private pendingChangePackets: ChangePacket[] = [];
+
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
   private requestHandlerMap = new Map<string, () => void>();
@@ -92,8 +94,10 @@ export class Client<
 
     this.ready = new Promise<void>(resolve => {
       this.socket.on('syncable:initialize', data => {
-        this.manager.clear();
-        this.onInitialize(data);
+        runInAction(() => {
+          this.manager.clear();
+          this.onInitialize(data);
+        });
         resolve();
       });
     });
@@ -183,11 +187,13 @@ export class Client<
   }
 
   @action
-  update(change: TGenericParams['change']): void {
+  update(change: TGenericParams['change']): ChangePacketId {
     change = _.cloneDeep(change);
 
+    let id = uuid() as ChangePacketId;
+
     let packet: ChangePacket = {
-      id: uuid() as ChangePacketId,
+      id,
       createdAt: Date.now(),
       ...(change as GeneralChange),
     };
@@ -196,6 +202,16 @@ export class Client<
     this.pushChangePacket(packet);
 
     this._syncing = true;
+
+    return id;
+  }
+
+  updateAndConfirm(change: TGenericParams['change']): Promise<void> {
+    let id = this.update(change);
+
+    return when(
+      () => !this.pendingChangePackets.some(packet => packet.id === id),
+    );
   }
 
   query(viewQuery: TGenericParams['viewQuery']): void {

@@ -92,7 +92,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 
   getAssociatedObjects(securesOnly?: boolean): ISyncableObject[] {
-    return this.manager.requireAssociatedSyncableObjects(
+    return this.manager.getAssociatedSyncableObjects(
       this.syncable,
       securesOnly,
     );

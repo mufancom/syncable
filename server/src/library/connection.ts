@@ -151,7 +151,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       let {_id: id} = syncable;
 
       let ref = getSyncableRef(syncable);
-      let object = manager.requireSyncableObject(ref);
+      let object = manager.getSyncableObject(ref);
+
+      if (!object) {
+        return;
+      }
 
       let visible = object.testAccessRights(['read'], context, {});
 
@@ -178,8 +182,11 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
       let relatedRefs = manager.getRelatedRefs(syncable);
 
       for (let ref of relatedRefs) {
-        let syncable = manager.requireSyncable(ref);
-        ensureRelatedAndDoSnapshot(syncable, true);
+        let syncable = manager.getSyncable(ref);
+
+        if (syncable) {
+          ensureRelatedAndDoSnapshot(syncable, true);
+        }
       }
 
       if (alreadyBeenSnapshot) {
