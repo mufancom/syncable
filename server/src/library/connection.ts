@@ -279,7 +279,7 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     let result: RPCCallResult;
 
     try {
-      let data = (this.server.rpc as RPCObject)[name](this.context, params);
+      let data = (this.server.rpc as RPCObject)[name](this.context, this.manager, params);
 
       result = {
         id,

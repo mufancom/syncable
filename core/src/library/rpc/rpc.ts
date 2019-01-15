@@ -19,7 +19,7 @@ export interface RPCCallResult {
   error?: RPCCallError;
 }
 
-export interface RPCDefinition<
+export interface IRPCDefinition<
   TName extends string = string,
   TParams extends object = object,
   TReturn = unknown

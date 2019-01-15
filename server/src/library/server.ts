@@ -11,11 +11,11 @@ import {
   GeneralSyncableRef,
   IChange,
   INotification,
+  IRPCDefinition,
   ISyncable,
   ISyncableObject,
   ISyncableObjectProvider,
   IUserSyncableObject,
-  RPCDefinition,
   SyncableManager,
   SyncableRef,
 } from '@syncable/core';
@@ -28,16 +28,22 @@ import {Connection, ConnectionSocket} from './connection';
 
 export type RPCFunction<
   TContext extends Context,
-  TRPCDefinition extends RPCDefinition
+  TRPCDefinition extends IRPCDefinition
 > = (
   context: TContext,
+  manager: SyncableManager,
   params: TRPCDefinition['params'],
 ) => TRPCDefinition['return'];
 
 export type RPCObject<
   TContext extends Context = Context,
-  TRPCDefinition extends RPCDefinition = RPCDefinition
-> = {[K in TRPCDefinition['name']]: RPCFunction<TContext, TRPCDefinition>};
+  TRPCDefinition extends IRPCDefinition = IRPCDefinition
+> = {
+  [K in TRPCDefinition['name']]: RPCFunction<
+    TContext,
+    Extract<TRPCDefinition, {name: K}>
+  >
+};
 
 export type ViewQueryFilter<T extends ISyncableObject = ISyncableObject> = (
   object: T,
@@ -65,7 +71,7 @@ export interface ServerGenericParams {
   syncableObject: ISyncableObject;
   change: IChange;
   viewQuery: unknown;
-  rpcDefinition: RPCDefinition;
+  rpcDefinition: IRPCDefinition;
   notification: INotification;
 }
 

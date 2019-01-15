@@ -10,6 +10,7 @@ import {
   GeneralSyncableRef,
   IChange,
   INotification,
+  IRPCDefinition,
   ISyncable,
   ISyncableObject,
   ISyncableObjectProvider,
@@ -18,7 +19,6 @@ import {
   RPCCallError,
   RPCCallId,
   RPCCallResult,
-  RPCDefinition,
   SnapshotData,
   SyncableId,
   SyncableManager,
@@ -39,12 +39,14 @@ interface RPCCallHandlers {
   reject(error: RPCCallError): void;
 }
 
-type RPCCall<TRPCDefinition extends RPCDefinition> = (
+type RPCCallFunction<TRPCDefinition extends IRPCDefinition> = (
   params: TRPCDefinition['params'],
 ) => Promise<TRPCDefinition['return']>;
 
-type RPCCallObject<TRPCDefinition extends RPCDefinition = RPCDefinition> = {
-  [K in TRPCDefinition['name']]: RPCCall<TRPCDefinition>
+type RPCCallObject<TRPCDefinition extends IRPCDefinition = IRPCDefinition> = {
+  [K in TRPCDefinition['name']]: RPCCallFunction<
+    Extract<TRPCDefinition, {name: K}>
+  >
 };
 
 export interface ClientAssociateOptions {
@@ -57,7 +59,7 @@ export interface ClientGenericParams {
   syncableObject: ISyncableObject;
   change: IChange;
   viewQuery: unknown;
-  rpcDefinition: RPCDefinition;
+  rpcDefinition: IRPCDefinition;
   notification: INotification;
 }
 
