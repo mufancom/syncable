@@ -11,6 +11,7 @@ import {
   GeneralSyncableRef,
   IChange,
   INotification,
+  IRPCDefinition,
   ISyncable,
   ISyncableObject,
   ISyncableObjectProvider,
@@ -24,6 +25,25 @@ import uuid from 'uuid';
 import * as v from 'villa';
 
 import {Connection, ConnectionSocket} from './connection';
+
+export type RPCFunction<
+  TContext extends Context,
+  TRPCDefinition extends IRPCDefinition
+> = (
+  context: TContext,
+  manager: SyncableManager,
+  params: TRPCDefinition['params'],
+) => TRPCDefinition['return'];
+
+export type RPCObject<
+  TContext extends Context = Context,
+  TRPCDefinition extends IRPCDefinition = IRPCDefinition
+> = {
+  [K in TRPCDefinition['name']]: RPCFunction<
+    TContext,
+    Extract<TRPCDefinition, {name: K}>
+  >
+};
 
 export type ViewQueryFilter<T extends ISyncableObject = ISyncableObject> = (
   object: T,
@@ -51,6 +71,7 @@ export interface ServerGenericParams {
   syncableObject: ISyncableObject;
   change: IChange;
   viewQuery: unknown;
+  rpcDefinition: IRPCDefinition;
   notification: INotification;
 }
 
@@ -90,6 +111,10 @@ abstract class Server<
     server: SocketServer,
     private provider: ISyncableObjectProvider,
     blueprint: ChangePlantBlueprint<TGenericParams>,
+    readonly rpc: RPCObject<
+      Context<TGenericParams['user']>,
+      TGenericParams['rpcDefinition']
+    >,
     private options: ServerOptions<
       TGenericParams['syncableObject']['syncable']
     > = {},

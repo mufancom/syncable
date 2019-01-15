@@ -29,6 +29,7 @@
     "socket.io": "2"
   },
   "dependencies": {
+    "extendable-error": "^0.1.5",
     "lodash": "^4.17.11",
     "rxjs": "^6.3.3",
     "tslang": "^0.1.11",

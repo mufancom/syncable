@@ -10,11 +10,15 @@ import {
   GeneralSyncableRef,
   IChange,
   INotification,
+  IRPCDefinition,
   ISyncable,
   ISyncableObject,
   ISyncableObjectProvider,
   IUserSyncableObject,
   InitialData,
+  RPCCallError,
+  RPCCallId,
+  RPCCallResult,
   SnapshotData,
   SyncableId,
   SyncableManager,
@@ -30,6 +34,21 @@ import * as v from 'villa';
 
 import {ClientSocket} from './@client-socket';
 
+interface RPCCallHandlers {
+  resolve(data: unknown): void;
+  reject(error: RPCCallError): void;
+}
+
+type RPCCallFunction<TRPCDefinition extends IRPCDefinition> = (
+  params: TRPCDefinition['params'],
+) => Promise<TRPCDefinition['return']>;
+
+type RPCCallObject<TRPCDefinition extends IRPCDefinition = IRPCDefinition> = {
+  [K in TRPCDefinition['name']]: RPCCallFunction<
+    Extract<TRPCDefinition, {name: K}>
+  >
+};
+
 export interface ClientAssociateOptions {
   name?: string;
   secures?: boolean;
@@ -40,6 +59,7 @@ export interface ClientGenericParams {
   syncableObject: ISyncableObject;
   change: IChange;
   viewQuery: unknown;
+  rpcDefinition: IRPCDefinition;
   notification: INotification;
 }
 
@@ -48,6 +68,7 @@ export class Client<
 > extends EventEmitter {
   readonly context: Context<TGenericParams['user']>;
   readonly ready: Promise<void>;
+  readonly rpc: RPCCallObject<TGenericParams['rpcDefinition']>;
 
   private initialized = false;
   private viewQuery: TGenericParams['viewQuery'] | undefined;
@@ -64,6 +85,7 @@ export class Client<
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
   private requestHandlerMap = new Map<string, () => void>();
+  private callHandlersMap = new Map<RPCCallId, RPCCallHandlers>();
 
   private changePlant: ChangePlant;
 
@@ -91,12 +113,11 @@ export class Client<
     });
 
     this.socket
-      .on('syncable:sync', data => {
-        this.onSync(data);
-      })
-      .on('syncable:complete-requests', refs => {
-        this.onCompleteRequests(refs);
-      });
+      .on('syncable:sync', data => this.onSync(data))
+      .on('syncable:complete-requests', refs => this.onCompleteRequests(refs))
+      .on('syncable:complete-call', data => this.onCompleteCall(data));
+
+    this.rpc = this.createRPCCallObject();
   }
 
   get syncing(): boolean {
@@ -367,6 +388,63 @@ export class Client<
     this.pendingChangePackets.push(packet);
 
     this.socket.emit('syncable:change', packet);
+  }
+
+  private createRPCCallObject(): RPCCallObject<
+    TGenericParams['rpcDefinition']
+  > {
+    let map = new Map<string, (params: object) => unknown>();
+
+    return new Proxy(
+      {},
+      {
+        get: (target, name) => {
+          if (typeof name !== 'string') {
+            return (target as any)[name];
+          }
+
+          let fn = map.get(name);
+
+          if (fn) {
+            return fn;
+          }
+
+          fn = params => {
+            let id = uuid() as RPCCallId;
+
+            this.socket.emit('syncable:call', {
+              id,
+              name,
+              params,
+            });
+
+            return new Promise<any>((resolve, reject) => {
+              this.callHandlersMap.set(id, {resolve, reject});
+            });
+          };
+
+          map.set(name, fn);
+
+          return fn;
+        },
+      },
+    ) as RPCCallObject<TGenericParams['rpcDefinition']>;
+  }
+
+  private onCompleteCall({id, data, error}: RPCCallResult): void {
+    let handlers = this.callHandlersMap.get(id);
+
+    if (handlers) {
+      this.callHandlersMap.delete(id);
+
+      let {resolve, reject} = handlers;
+
+      if (error) {
+        reject(error);
+      } else {
+        resolve(data);
+      }
+    }
   }
 }
 
