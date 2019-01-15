@@ -2,7 +2,7 @@ import {
   ChangePacket,
   InitialData,
   RPCCallData,
-  RPCDefinition,
+  RPCCallResult,
   SyncableRef,
   SyncingData,
 } from '@syncable/core';
@@ -14,13 +14,13 @@ export interface ClientSocket extends SocketIOClient.Socket {
     event: 'syncable:complete-requests',
     listener: (refs: SyncableRef[]) => void,
   ): this;
-  on(event: 'syncable:return', listener: (data: any) => void): this;
+  on(
+    event: 'syncable:complete-call',
+    listener: (result: RPCCallResult) => void,
+  ): this;
 
   emit(event: 'syncable:view-query', query: unknown): this;
   emit(event: 'syncable:change', packet: ChangePacket): this;
   emit(event: 'syncable:request', ref: SyncableRef): this;
-  emit<TRPCDefinition extends RPCDefinition>(
-    event: 'syncable:call',
-    data: RPCCallData<TRPCDefinition['name'], TRPCDefinition['call']>,
-  ): this;
+  emit(event: 'syncable:call', data: RPCCallData): this;
 }

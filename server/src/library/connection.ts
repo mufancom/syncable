@@ -6,11 +6,10 @@ import {
   IUserSyncableObject,
   InitialData,
   RPCCallData,
-  RPCReturnData,
+  RPCCallResult,
   SnapshotData,
   SyncableId,
   SyncableManager,
-  SyncableProvider,
   SyncableRef,
   SyncingData,
   SyncingDataUpdateEntry,
@@ -21,7 +20,13 @@ import _ from 'lodash';
 import {Subject} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
 
-import {IServer, ServerGenericParams, ViewQueryFilter} from './server';
+import {RPCError} from './errors';
+import {
+  IServer,
+  RPCObject,
+  ServerGenericParams,
+  ViewQueryFilter,
+} from './server';
 
 const SNAPSHOT_DEBOUNCING_TIME = 100;
 
@@ -36,7 +41,7 @@ export interface ConnectionSocket extends SocketIO.Socket {
   emit(event: 'syncable:initialize', data: InitialData): boolean;
   emit(event: 'syncable:sync', data: SyncingData): boolean;
   emit(event: 'syncable:complete-requests', refs: SyncableRef[]): boolean;
-  emit(event: 'syncable:return', data: RPCReturnData): boolean;
+  emit(event: 'syncable:complete-call', data: RPCCallResult): boolean;
 }
 
 export class Connection<TServerGenericParams extends ServerGenericParams> {
@@ -49,8 +54,6 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
   private pendingRequestedRefs: SyncableRef[] = [];
 
   private snapshotScheduler = new Subject<boolean>();
-
-  private provider!: SyncableProvider;
 
   constructor(
     readonly group: string,
@@ -80,14 +83,12 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
         this.request(ref);
       })
       .on('syncable:call', data => {
-        this.callRPC(data);
+        this.call(data);
       });
 
     let user = manager.requireSyncableObject(userRef);
 
     this.context = new Context('user', 'server', user);
-
-    this.provider = new SyncableProvider(this.manager, this.context);
 
     this.updateViewQuery(viewQuery, false);
 
@@ -274,30 +275,35 @@ export class Connection<TServerGenericParams extends ServerGenericParams> {
     this.socket.emit('syncable:complete-requests', refs);
   }
 
-  private callRPC(data: RPCCallData): void {
-    let returnData: RPCReturnData;
+  private call({id, name, params}: RPCCallData): void {
+    let result: RPCCallResult;
 
     try {
-      let result = this.server.rpc[data.name](
-        this.context,
-        this.provider,
-        data.params,
-      );
+      let data = (this.server.rpc as RPCObject)[name](this.context, params);
 
-      returnData = {
-        id: data.id,
-        data: result,
+      result = {
+        id,
+        data,
       };
     } catch (error) {
-      returnData = {
-        id: data.id,
-        data: {},
-        error: error.message,
-      };
-
       console.error(error);
+
+      result = {
+        id,
+        data: {},
+        error:
+          error instanceof RPCError
+            ? {
+                code: error.code,
+                message: error.message,
+              }
+            : {
+                code: 'UNKNOWN',
+                message: 'An unknown error occurred.',
+              },
+      };
     }
 
-    this.socket.emit('syncable:return', returnData);
+    this.socket.emit('syncable:complete-call', result);
   }
 }
