@@ -5064,10 +5064,10 @@ trim-off-newlines@^1.0.0:
   resolved "http://registry.npm.taobao.org/trim-off-newlines/download/trim-off-newlines-1.0.1.tgz#9f9ba9d9efa8764c387698bcbfeb2c848f11adb3"
   integrity sha1-n5up2e+odkw4dpi8v+sshI8RrbM=
 
-tslang@^0.1.11, tslang@^0.1.9:
-  version "0.1.11"
-  resolved "http://registry.npm.taobao.org/tslang/download/tslang-0.1.11.tgz#8ec5599ce2662aa25fdaadbbf88b9b2655f56a19"
-  integrity sha1-jsVZnOJmKqJf2q27+IubJlX1ahk=
+tslang@^0.1.12, tslang@^0.1.9:
+  version "0.1.12"
+  resolved "http://registry.npm.taobao.org/tslang/download/tslang-0.1.12.tgz#95548b7736914a6e33756ce01323683bd555c2e5"
+  integrity sha1-lVSLdzaRSm4zdWzgEyNoO9VVwuU=
 
 tslib@^1.8.0, tslib@^1.8.1, tslib@^1.9.0, tslib@^1.9.3:
   version "1.9.3"
