@@ -1,0 +1,11 @@
+{
+  "extends": "@magicspace/configs/tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "experimentalDecorators": true,
+
+    "outDir": "../../bld/library"
+  },
+  "references": [{"path": "../../../core/src/library"}]
+}

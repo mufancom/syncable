@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "group": "build",
+      "label": "incremental-build",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["tsc", "--build", "tsconfig.incremental.json", "--watch"],
+      "isBackground": true,
+      "problemMatcher": "$tsc-watch"
+    },
+    {
+      "group": "build",
+      "label": "build",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["tsc", "--build", "tsconfig.build.json", "--force"],
+      "problemMatcher": "$tsc"
+    }
+  ]
+}

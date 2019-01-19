@@ -1,0 +1,40 @@
+{
+  "name": "@syncable/server",
+  "version": "3.0.0-wip.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "Syncable.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makeflow/syncable.git"
+  },
+  "keywords": [
+    "syncable"
+  ],
+  "author": "Chengdu Mufan Technology Co., Ltd.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/makeflow/syncable/issues"
+  },
+  "homepage": "https://github.com/makeflow/syncable#readme",
+  "main": "bld/library/index.js",
+  "types": "bld/library/index.d.ts",
+  "files": [
+    "src/**/*.ts",
+    "bld"
+  ],
+  "peerDependencies": {
+    "@syncable/core": "^3.0.0-wip.0"
+  },
+  "dependencies": {
+    "extendable-error": "^0.1.5",
+    "lodash": "^4.17.11",
+    "rxjs": "^6.3.3",
+    "tslang": "^0.1.11",
+    "villa": "^0.3.1"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.120"
+  }
+}

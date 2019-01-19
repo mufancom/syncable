@@ -1,0 +1,8 @@
+{
+  "references": [
+    {"path": "core/src/library/tsconfig.incremental.json"},
+    {"path": "server/src/library/tsconfig.incremental.json"},
+    {"path": "client/src/library/tsconfig.incremental.json"}
+  ],
+  "files": []
+}
