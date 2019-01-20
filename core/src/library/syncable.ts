@@ -18,27 +18,9 @@ export interface SyncableRef<T extends ISyncableObject = ISyncableObject> {
 export interface ISyncable<TType extends string = string> {
   _id: SyncableId<TType>;
   _type: TType;
-
   _clock: number;
-
-  _updatedAt: number;
-
   _createdAt: number;
-
-  /**
-   * Permissions of this object, only applied if this object is a user that
-   * will be attached to a context.
-   */
-  // _permissions?: Permission[];
-
-  /**
-   * Permissions that this object can grants a user.
-   */
-  // _grants?: Permission[];
-
-  /**
-   * Specific access control list of this object.
-   */
+  _updatedAt: number;
   _acl?: AccessControlEntry[];
 }
 

@@ -1,0 +1,3 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`should call \`this\` remote function from \`that\` and get error 1`] = `[RPCError: Bar error occurred]`;

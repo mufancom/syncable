@@ -7,3 +7,4 @@ export * from './syncable-container';
 export * from './syncable-object';
 export * from './syncable';
 export * from './types';
+export * from './rpc';

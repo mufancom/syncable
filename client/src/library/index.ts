@@ -1,3 +1,2 @@
-import {generateUniqueId} from '@syncable/core';
-
-generateUniqueId();
+export * from './client-adapter';
+export * from './client';
