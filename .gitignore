@@ -17,5 +17,4 @@ bld/
 
 # Testing files
 
-_*
-!__snapshots__*
+coverage/

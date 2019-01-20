@@ -30,7 +30,9 @@ test('should call `this` remote function from `that` and get return value', asyn
 });
 
 test('should call `this` remote function from `that` and get error', async () => {
-  await expect(thatPeer.call('bar', true)).rejects.toMatchSnapshot();
+  await expect(thatPeer.call('bar', true)).rejects.toMatchInlineSnapshot(
+    `[RPCError: Bar error occurred]`,
+  );
 });
 
 test('should call `that` remote function from `this` and get return value', async () => {

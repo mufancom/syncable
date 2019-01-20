@@ -22,7 +22,7 @@
     "lint:library": "tslint --project src/library",
     "lint:test": "tslint --project src/test",
     "lint": "yarn lint:library && yarn lint:test",
-    "test": "jest --config src/test/jest.config.js"
+    "test": "jest"
   },
   "main": "bld/library/index.js",
   "types": "bld/library/index.d.ts",

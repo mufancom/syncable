@@ -1,14 +1,17 @@
 const Path = require('path');
+const {resolve} = require('module-lens');
 
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  coverageDirectory: 'coverage',
+
   clearMocks: true,
+
+  coverageDirectory: 'coverage',
 
   globals: {
     'ts-jest': {
-      tsConfig: Path.join(__dirname, 'tsconfig.test.json'),
+      tsConfig: 'src/test/tsconfig.test.json',
     },
   },
 };
