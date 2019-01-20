@@ -5,8 +5,10 @@ import {Connection, IConnectionSource} from '../connection';
 import {IServerAdapter} from './server-adapter';
 
 export class Server<TRPCDefinition extends IRPCDefinition> {
+  private connectionSet = new Set<Connection>();
+
   constructor(
-    private serverAdapter: IServerAdapter,
+    serverAdapter: IServerAdapter,
     private rpcFunctionDict: RPCFunctionDict<TRPCDefinition>,
   ) {
     serverAdapter.connectionSource$.subscribe(this.onConnectionSource);
@@ -14,5 +16,7 @@ export class Server<TRPCDefinition extends IRPCDefinition> {
 
   private onConnectionSource = (source: IConnectionSource): void => {
     let connection = new Connection(source, this.rpcFunctionDict);
+
+    this.connectionSet.add(connection);
   };
 }
