@@ -19,6 +19,9 @@
   },
   "homepage": "https://github.com/makeflow/syncable#readme",
   "scripts": {
+    "lint:library": "tslint --project src/library",
+    "lint:test": "tslint --project src/test",
+    "lint": "yarn lint:library && yarn lint:test",
     "test": "jest --config src/test/jest.config.js"
   },
   "main": "bld/library/index.js",
