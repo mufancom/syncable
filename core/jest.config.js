@@ -1,6 +1,3 @@
-const Path = require('path');
-const {resolve} = require('module-lens');
-
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
