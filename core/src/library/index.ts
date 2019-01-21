@@ -8,3 +8,4 @@ export * from './syncable-object';
 export * from './syncable';
 export * from './types';
 export * from './rpc';
+export * from './rpc-definitions';

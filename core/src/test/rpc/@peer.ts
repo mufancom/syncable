@@ -1,6 +1,9 @@
-import {RPCError, RPCFunctionDict} from '@syncable/core';
+import {RPCError, RPCFunctionDict, RPCPeer} from '@syncable/core';
 
-export const thisFunctionDict: RPCFunctionDict<ThisDefinition> = {
+export const thisFunctionDict: RPCFunctionDict<
+  RPCPeer<ThisDefinition, ThatDefinition>,
+  ThisDefinition
+> = {
   foo(text, length) {
     return text.slice(0, length);
   },
@@ -25,7 +28,10 @@ export interface ThisBarDefinition {
   return: void;
 }
 
-export const thatFunctionDict: RPCFunctionDict<ThatDefinition> = {
+export const thatFunctionDict: RPCFunctionDict<
+  RPCPeer<ThatDefinition, ThisDefinition>,
+  ThatDefinition
+> = {
   yoha(text, length) {
     return text.slice(0, length);
   },

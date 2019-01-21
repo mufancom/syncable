@@ -25,8 +25,8 @@ interface RequestHandlers {
 }
 
 export class RPCPeer<
-  TLocalDefinition extends IRPCDefinition,
-  TRemoteDefinition extends IRPCDefinition
+  TLocalDefinition extends IRPCDefinition = IRPCDefinition,
+  TRemoteDefinition extends IRPCDefinition = IRPCDefinition
 > {
   private requestHandlersMap = new Map<RPCCallId, RequestHandlers>();
 
@@ -34,7 +34,7 @@ export class RPCPeer<
 
   constructor(
     private adapter: IRPCAdapter,
-    private functionDict: RPCFunctionDict<TLocalDefinition>,
+    private functionDict: RPCFunctionDict<RPCPeer, TLocalDefinition>,
   ) {
     this.incomingSubscription.add(adapter.incoming$.subscribe(this.onIncoming));
   }
@@ -154,6 +154,6 @@ export class RPCPeer<
 
     let fn = (functionDict as Dict<Function>)[name];
 
-    return fn(...args);
+    return fn.apply(this, args);
   }
 }
