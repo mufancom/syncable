@@ -1,13 +1,14 @@
 import {
   ChangePacketId,
   ChangePlantProcessingResultUpdateItem,
-  IChangeNotification,
   ISyncable,
   SyncableRef,
 } from '@syncable/core';
 import {Observable} from 'rxjs';
 
 import {IConnectionSource} from '../connection';
+
+import {IServerGenericParams} from './server';
 
 export type QueuedChangeProcessor = (clock: number) => Promise<void>;
 
@@ -18,7 +19,7 @@ export interface BroadcastChangeResult {
   removals: SyncableRef[];
 }
 
-export interface IServerAdapter {
+export interface IServerAdapter<TGenericParams extends IServerGenericParams> {
   connectionSource$: Observable<IConnectionSource>;
 
   broadcast$: Observable<BroadcastChangeResult>;
@@ -30,17 +31,20 @@ export interface IServerAdapter {
 
   queueChange(group: string, processor: QueuedChangeProcessor): Promise<void>;
 
-  loadSyncablesByRefs(group: string, refs: SyncableRef[]): Promise<ISyncable[]>;
+  loadSyncablesByRefs(
+    group: string,
+    refs: SyncableRef<TGenericParams['syncableObject']>[],
+  ): Promise<TGenericParams['syncableObject']['syncable'][]>;
 
   saveSyncables(
     group: string,
-    createdSyncables: ISyncable[],
-    updatedSyncables: ISyncable[],
-    removedSyncableRefs: SyncableRef[],
+    createdSyncables: TGenericParams['syncableObject']['syncable'][],
+    updatedSyncables: TGenericParams['syncableObject']['syncable'][],
+    removedSyncableRefs: SyncableRef<TGenericParams['syncableObject']>[],
   ): Promise<void>;
 
   handleNotifications(
     group: string,
-    notifications: IChangeNotification[],
+    notifications: TGenericParams['notification'][],
   ): Promise<void>;
 }

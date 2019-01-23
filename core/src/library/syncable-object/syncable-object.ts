@@ -43,7 +43,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     AccessControlRuleEntry
   >;
 
-  constructor(readonly syncable: T, private _manager?: SyncableContainer) {}
+  constructor(readonly syncable: T, private _container?: SyncableContainer) {}
 
   get id(): T['_id'] {
     return this.syncable._id;
@@ -67,22 +67,22 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return new Date(this.syncable._updatedAt);
   }
 
-  private get manager(): SyncableContainer {
-    let manager = this._manager;
+  private get container(): SyncableContainer {
+    let container = this._container;
 
-    if (!manager) {
+    if (!container) {
       throw new Error('The operation requires `manager` to present');
     }
 
-    return manager;
+    return container;
   }
 
   require<T extends ISyncableObject>(ref: SyncableRef<T>): T {
-    return this.manager.requireSyncableObject(ref);
+    return this.container.requireSyncableObject(ref);
   }
 
   get<T extends ISyncableObject>(ref: SyncableRef<T>): T | undefined {
-    return this.manager.getSyncableObject(ref);
+    return this.container.getSyncableObject(ref);
   }
 
   getSecuringFieldNames(): string[] {

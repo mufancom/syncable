@@ -1,0 +1,41 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`should get correct result of "task:update-task-brief" 1`] = `
+Object {
+  "clock": undefined,
+  "creations": Array [],
+  "id": "change-packet-id-1",
+  "notifications": Array [],
+  "removals": Array [],
+  "updates": Array [
+    Object {
+      "diffs": Array [
+        DiffEdit {
+          "kind": "E",
+          "lhs": 0,
+          "path": Array [
+            "_updatedAt",
+          ],
+          "rhs": 1500000000000,
+        },
+        DiffEdit {
+          "kind": "E",
+          "lhs": "This is task A!",
+          "path": Array [
+            "brief",
+          ],
+          "rhs": "Hello, update!",
+        },
+      ],
+      "snapshot": Object {
+        "_clock": 0,
+        "_createdAt": 0,
+        "_id": "task-1",
+        "_type": "task",
+        "_updatedAt": 1500000000000,
+        "brief": "Hello, update!",
+      },
+    },
+  ],
+}
+`;

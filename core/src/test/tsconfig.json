@@ -3,6 +3,11 @@
   "compilerOptions": {
     "types": ["node", "jest"],
 
+    "baseUrl": ".",
+    "paths": {
+      "@syncable/core": ["../../bld/library"]
+    },
+
     "rootDir": ".",
     "noEmit": true
   }

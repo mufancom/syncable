@@ -65,7 +65,7 @@ export interface ChangePlantProcessingResult {
   creations: ISyncable[];
   updates: ChangePlantProcessingResultUpdateItem[];
   removals: SyncableRef[];
-  notifications: IChangeNotification[];
+  notifications: unknown[];
 }
 
 export interface ChangePlantProcessingResultWithClock
@@ -88,16 +88,12 @@ declare function __changePlantProcessorPrepareOperation<
 // lead to intellisense errors (TypeScript 3.2.4).
 export type ChangePlantProcessorPrepareOperation = typeof __changePlantProcessorPrepareOperation;
 
-export interface IChangeNotification {
-  type: string;
-}
-
-export type ChangePlantProcessorNotifyOperation<
-  TNotification extends IChangeNotification = IChangeNotification
-> = (notification: TNotification) => void;
+export type ChangePlantProcessorNotifyOperation<TNotification = unknown> = (
+  notification: TNotification,
+) => void;
 
 export interface ChangePlantProcessorExtra<
-  TGenericParams extends ChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
+  TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
 > {
   context: TGenericParams['context'];
   container: SyncableContainer;
@@ -110,7 +106,7 @@ export interface ChangePlantProcessorExtra<
 }
 
 export type ChangePlantProcessor<
-  TGenericParams extends ChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
+  TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
 > = (
   syncables: ChangeToSyncableOrCreationRefDict<TGenericParams['change']>,
   objects: ChangeToSyncableObjectRefDict<TGenericParams['change']>,
@@ -118,7 +114,7 @@ export type ChangePlantProcessor<
 ) => void;
 
 type ChangePlantSpecificProcessor<
-  TGenericParams extends ChangePlantBlueprintGenericParams,
+  TGenericParams extends IChangePlantBlueprintGenericParams,
   TType extends string
 > = ChangePlantProcessor<{
   context: TGenericParams['context'];
@@ -128,7 +124,7 @@ type ChangePlantSpecificProcessor<
 }>;
 
 export interface ChangePlantSpecificProcessorOptions<
-  TGenericParams extends ChangePlantBlueprintGenericParams,
+  TGenericParams extends IChangePlantBlueprintGenericParams,
   TType extends string
 > {
   dependency: TGenericParams['dependencyResolveOptions'];
@@ -136,22 +132,22 @@ export interface ChangePlantSpecificProcessorOptions<
 }
 
 export type ChangePlantBlueprint<
-  TGenericParams extends ChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
+  TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
 > = {
   [TType in TGenericParams['change']['type']]:
     | ChangePlantSpecificProcessor<TGenericParams, TType>
     | ChangePlantSpecificProcessorOptions<TGenericParams, TType>
 };
 
-export interface ChangePlantBlueprintGenericParams {
+export interface IChangePlantBlueprintGenericParams {
   context: IContext;
   change: IChange;
   dependencyResolveOptions: unknown;
-  notification: IChangeNotification;
+  notification: unknown;
 }
 
 export interface GeneralChangePlantBlueprintGenericParams
-  extends ChangePlantBlueprintGenericParams {
+  extends IChangePlantBlueprintGenericParams {
   change: GeneralChange;
 }
 
@@ -223,7 +219,7 @@ export class ChangePlant {
     let removals: SyncableRef[] = [];
     let removalObjectSet = new Set<ISyncableObject>();
     let updates: ChangePlantProcessingResultUpdateItem[] = [];
-    let notifications: IChangeNotification[] = [];
+    let notifications: unknown[] = [];
 
     let create: ChangePlantProcessorCreateOperation = creation => {
       if (clock !== undefined) {

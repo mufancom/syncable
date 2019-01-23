@@ -16,8 +16,8 @@ export interface SyncableRef<T extends ISyncableObject = ISyncableObject> {
 }
 
 export interface ISyncable<TType extends string = string> {
-  _id: SyncableId<TType>;
   _type: TType;
+  _id: SyncableId<TType>;
   _clock: number;
   _createdAt: number;
   _updatedAt: number;

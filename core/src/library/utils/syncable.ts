@@ -17,7 +17,7 @@ export function getSyncableRef<T extends ISyncableObject>(
     } = object);
   }
 
-  if (!(typeof type !== 'string' || typeof id !== 'string')) {
+  if (typeof type !== 'string' || typeof id !== 'string') {
     throw new Error('Invalid object');
   }
 
@@ -41,7 +41,7 @@ export function getSyncableKey(
     ({type, id} = object);
   }
 
-  if (!(typeof type !== 'string' || typeof id !== 'string')) {
+  if (typeof type !== 'string' || typeof id !== 'string') {
     throw new Error('Invalid object');
   }
 

@@ -7,12 +7,12 @@ import {
 } from '@syncable/core';
 import {Subscription} from 'rxjs';
 
-import {Server, ServerGenericParams} from '../server';
+import {IServerGenericParams, Server} from '../server';
 
 import {IConnectionSource} from './connection-source';
 
 export const connectionRPCFunctionDict: RPCFunctionDict<
-  Connection<ServerGenericParams>,
+  Connection<IServerGenericParams>,
   ServerConnectionRPCDefinition
 > = {
   async change(packet) {
@@ -23,7 +23,7 @@ export const connectionRPCFunctionDict: RPCFunctionDict<
 };
 
 export class Connection<
-  TGenericParams extends ServerGenericParams
+  TGenericParams extends IServerGenericParams
 > extends RPCPeer<
   ServerConnectionRPCDefinition | TGenericParams['customRPCDefinition'],
   ClientRPCDefinition

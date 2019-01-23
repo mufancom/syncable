@@ -1,3 +1,5 @@
+const Path = require('path');
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -8,7 +10,7 @@ module.exports = {
 
   globals: {
     'ts-jest': {
-      tsConfig: 'src/test/tsconfig.test.json',
+      tsConfig: Path.join(__dirname, 'src/test/tsconfig.test.json'),
     },
   },
 };

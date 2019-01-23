@@ -3,12 +3,12 @@ import {
   ChangePacketId,
   ChangePlant,
   ChangePlantBlueprint,
-  ChangePlantBlueprintGenericParams,
   ChangePlantProcessingResultWithClock,
   GeneralChange,
-  IContext,
+  IChangePlantBlueprintGenericParams,
   IRPCDefinition,
   ISyncableAdapter,
+  ISyncableObject,
   NumericTimestamp,
   RPCFunctionDict,
   ServerConnectionRPCDefinition,
@@ -24,11 +24,13 @@ import {
 
 import {BroadcastChangeResult, IServerAdapter} from './server-adapter';
 
-export interface ServerGenericParams extends ChangePlantBlueprintGenericParams {
+export interface IServerGenericParams
+  extends IChangePlantBlueprintGenericParams {
+  syncableObject: ISyncableObject;
   customRPCDefinition: IRPCDefinition;
 }
 
-export class Server<TGenericParams extends ServerGenericParams> {
+export class Server<TGenericParams extends IServerGenericParams> {
   private connectionSet = new Set<Connection<TGenericParams>>();
 
   private changePlant: ChangePlant;
@@ -39,9 +41,9 @@ export class Server<TGenericParams extends ServerGenericParams> {
   >;
 
   constructor(
-    private context: IContext,
-    private serverAdapter: IServerAdapter,
-    private syncableAdapter: ISyncableAdapter,
+    private context: TGenericParams['context'],
+    private serverAdapter: IServerAdapter<TGenericParams>,
+    private syncableAdapter: ISyncableAdapter<TGenericParams>,
     blueprint: ChangePlantBlueprint<TGenericParams>,
     customRPCFunctionDict: RPCFunctionDict<
       Connection<TGenericParams>,
