@@ -1,8 +1,8 @@
 import {Dict, Nominal} from 'tslang';
 
-import {SyncableRef} from './syncable';
-import {ISyncableObject} from './syncable-object';
-import {NumericTimestamp} from './types';
+import {SyncableRef} from '../syncable';
+import {ISyncableObject} from '../syncable-object';
+import {NumericTimestamp} from '../types';
 
 export type ChangePacketId = Nominal<string, 'change-packet-id'>;
 

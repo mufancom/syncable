@@ -1,43 +1,52 @@
 import {
   ClientRPCDefinition,
-  IRPCDefinition,
+  IContext,
   RPCFunctionDict,
   RPCPeer,
   ServerConnectionRPCDefinition,
 } from '@syncable/core';
 import {Subscription} from 'rxjs';
 
+import {Server, ServerGenericParams} from '../server';
+
 import {IConnectionSource} from './connection-source';
 
 export const connectionRPCFunctionDict: RPCFunctionDict<
-  Connection<never>,
+  Connection<ServerGenericParams>,
   ServerConnectionRPCDefinition
 > = {
-  change() {},
+  async change(packet) {
+    await this.server.applyChangePacket(this.group, packet, this.context);
+  },
   request() {},
   'update-view-query'() {},
 };
 
 export class Connection<
-  TCustomRPCDefinition extends IRPCDefinition
+  TGenericParams extends ServerGenericParams
 > extends RPCPeer<
-  ServerConnectionRPCDefinition | TCustomRPCDefinition,
+  ServerConnectionRPCDefinition | TGenericParams['customRPCDefinition'],
   ClientRPCDefinition
 > {
-  readonly group: string;
-
   private subscription = new Subscription();
 
   constructor(
-    source: IConnectionSource,
+    readonly server: Server<TGenericParams>,
+    private source: IConnectionSource,
     rpcFunctionDict: RPCFunctionDict<
-      Connection<TCustomRPCDefinition>,
-      ServerConnectionRPCDefinition | TCustomRPCDefinition
+      Connection<TGenericParams>,
+      ServerConnectionRPCDefinition | TGenericParams['customRPCDefinition']
     >,
   ) {
     super(source, rpcFunctionDict);
+  }
 
-    this.group = source.group;
+  get group(): string {
+    return this.source.group;
+  }
+
+  get context(): IContext {
+    return this.source.context;
   }
 
   dispose(): void {

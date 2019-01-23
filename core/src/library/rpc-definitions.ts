@@ -1,3 +1,5 @@
+import {ChangePacket} from './change';
+
 ///////////////////////
 // Server Connection //
 ///////////////////////
@@ -9,7 +11,7 @@ export type ServerConnectionRPCDefinition =
 
 export interface ServerConnectionChangeRPCDefinition {
   name: 'change';
-  args: [];
+  args: [ChangePacket];
   return: void;
 }
 

@@ -1,8 +1,3 @@
-import _ from 'lodash';
-import {action, observable} from 'mobx';
-
-import {IUserSyncableObject} from './syncable-object';
-
 /**
  * Indicates whether a context is initiated by server or user (including the
  * correspondent user context on server).
@@ -15,21 +10,13 @@ export type ContextType = 'server' | 'user';
 
 export type ContextEnvironment = 'server' | 'client';
 
-export class Context<TUser extends IUserSyncableObject = IUserSyncableObject> {
-  @observable user!: TUser;
-
+abstract class Context {
   constructor(
     readonly type: ContextType,
     readonly environment: ContextEnvironment,
-    user?: TUser,
-  ) {
-    if (user) {
-      this.user = user;
-    }
-  }
-
-  @action
-  initialize(user: TUser): void {
-    this.user = user;
-  }
+  ) {}
 }
+
+export interface IContext extends Context {}
+
+export const AbstractContext = Context;

@@ -20,7 +20,7 @@ export type RPCPeerRemoteDefinition<TPeer> = TPeer extends RPCPeer<
 export type RPCFunction<TPeer, TDefinition extends IRPCDefinition> = (
   this: TPeer,
   ...args: TDefinition['args']
-) => TDefinition['return'];
+) => Promise<TDefinition['return']> | TDefinition['return'];
 
 export type RPCFunctionDict<TPeer, TDefinition extends IRPCDefinition> = {
   [TName in TDefinition['name']]: RPCFunction<

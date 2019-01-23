@@ -9,7 +9,7 @@ import {
   AccessRight,
   getAccessControlEntryPriority,
 } from '../access-control';
-import {Context} from '../context';
+import {IContext} from '../context';
 import {ISyncable, SyncableRef} from '../syncable';
 import {SyncableContainer} from '../syncable-container';
 import {getSyncableKey, getSyncableRef} from '../utils';
@@ -18,7 +18,7 @@ import {AccessControlRule} from './access-control-rule-decorator';
 
 export type AccessControlRuleTester = (
   target: ISyncableObject,
-  context: Context<any>,
+  context: IContext,
   options?: object,
 ) => boolean;
 
@@ -107,7 +107,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     );
   }
 
-  getAccessRights(context: Context): AccessRight[] {
+  getAccessRights(context: IContext): AccessRight[] {
     let dict: AccessRightComparableItemsDict = {
       read: [],
       write: [],
@@ -155,13 +155,13 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     });
   }
 
-  testAccessRights(rights: AccessRight[], context: Context): boolean {
+  testAccessRights(rights: AccessRight[], context: IContext): boolean {
     let grantedRights = this.getAccessRights(context);
 
     return _.difference(rights, grantedRights).length === 0;
   }
 
-  validateAccessRights(rights: AccessRight[], context: Context): void {
+  validateAccessRights(rights: AccessRight[], context: IContext): void {
     let grantedRights = this.getAccessRights(context);
 
     if (_.difference(rights, grantedRights).length === 0) {
@@ -176,14 +176,14 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 
   @AccessControlRule('basic')
-  protected testBasic(_target: ISyncableObject, _context: Context): boolean {
+  protected testBasic(_target: ISyncableObject, _context: IContext): boolean {
     return true;
   }
 
   private testAccessControlEntry(
     target: ISyncableObject,
     entry: AccessControlEntry,
-    context: Context,
+    context: IContext,
   ): boolean {
     let {rule: ruleName, options} = entry;
 
