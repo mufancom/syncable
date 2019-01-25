@@ -93,7 +93,7 @@ export class SyncableContainer {
    * originally stored syncable. Instead, differences will be applied to it.
    */
   @action
-  addSyncable(snapshot: ISyncable, update = false): void {
+  addSyncable(snapshot: ISyncable): void {
     snapshot = _.cloneDeep(snapshot);
 
     let {_id: id, _type: type} = snapshot;
@@ -103,12 +103,7 @@ export class SyncableContainer {
 
     if (syncableMap) {
       if (syncableMap.has(id)) {
-        if (update) {
-          this.updateSyncable(snapshot);
-          return;
-        }
-
-        throw new Error(`Syncable with ID "${id}" already exists in context`);
+        this.updateSyncable(snapshot);
       }
     } else {
       syncableMap = observable.map();

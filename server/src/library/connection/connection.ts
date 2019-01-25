@@ -1,4 +1,5 @@
 import {
+  ChangePacket,
   ClientRPCDefinition,
   IContext,
   RPCFunctionDict,
@@ -16,7 +17,7 @@ export const connectionRPCFunctionDict: RPCFunctionDict<
   ServerConnectionRPCDefinition
 > = {
   async change(packet) {
-    await this.server.applyChangePacket(this.group, packet, this.context);
+    await this.change(packet);
   },
   request() {},
   'update-view-query'() {},
@@ -47,6 +48,10 @@ export class Connection<
 
   get context(): IContext {
     return this.source.context;
+  }
+
+  async change(packet: ChangePacket): Promise<void> {
+    await this.server.applyChangePacket(this.group, packet, this.context);
   }
 
   dispose(): void {

@@ -1,3 +1,11 @@
-import {IRPCAdapter} from '@syncable/core';
+import {ChangePacketId, IRPCAdapter} from '@syncable/core';
 
-export interface IClientAdapter extends IRPCAdapter {}
+import {IClientGenericParams} from './client';
+
+export interface IClientAdapter<TGenericParams extends IClientGenericParams>
+  extends IRPCAdapter {
+  handleNotifications(
+    notifications: TGenericParams['notification'][],
+    id: ChangePacketId,
+  ): void;
+}

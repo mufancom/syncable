@@ -46,5 +46,6 @@ export interface IServerAdapter<TGenericParams extends IServerGenericParams> {
   handleNotifications(
     group: string,
     notifications: TGenericParams['notification'][],
+    id: ChangePacketId,
   ): Promise<void>;
 }

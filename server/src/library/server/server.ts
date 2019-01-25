@@ -31,7 +31,10 @@ export interface IServerGenericParams
 }
 
 export class Server<TGenericParams extends IServerGenericParams> {
-  private connectionSet = new Set<Connection<TGenericParams>>();
+  private groupToConnectionSetMap = new Map<
+    string,
+    Set<Connection<TGenericParams>>
+  >();
 
   private changePlant: ChangePlant;
 
@@ -127,7 +130,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
       await serverAdapter.broadcast(group, broadcastResult);
 
-      await serverAdapter.handleNotifications(group, notifications);
+      await serverAdapter.handleNotifications(group, notifications, id);
     });
 
     return result;
@@ -140,12 +143,33 @@ export class Server<TGenericParams extends IServerGenericParams> {
       throw new Error('Invalid context');
     }
 
+    let group = source.group;
+
     let connection = new Connection(
       this,
       source,
       this.extendedConnectionRPCFunctionDict,
     );
 
-    this.connectionSet.add(connection);
+    let groupToConnectionSetMap = this.groupToConnectionSetMap;
+    let connectionSet = groupToConnectionSetMap.get(group);
+
+    if (connectionSet) {
+      connectionSet.add(connection);
+    } else {
+      connectionSet = new Set([connection]);
+      groupToConnectionSetMap.set(group, connectionSet);
+    }
+
+    source.incoming$.subscribe(
+      undefined,
+      error => {
+        console.error(error);
+        removeConnection();
+      },
+      () => removeConnection(),
+    );
+
+    function removeConnection(): void {}
   };
 }

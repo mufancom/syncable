@@ -10,13 +10,16 @@ export type ContextType = 'server' | 'user';
 
 export type ContextEnvironment = 'server' | 'client';
 
-abstract class Context {
+abstract class Context<TData> {
   constructor(
     readonly type: ContextType,
     readonly environment: ContextEnvironment,
   ) {}
+
+  abstract getData(): TData;
+  abstract setData(data: TData): void;
 }
 
-export interface IContext extends Context {}
+export interface IContext<TData = unknown> extends Context<TData> {}
 
 export const AbstractContext = Context;
