@@ -3,18 +3,18 @@ import {Diff} from 'deep-diff';
 import {ChangePacketId} from '../change';
 import {ISyncable, SyncableRef} from '../syncable';
 
-export interface SyncingDataUpdateEntry {
+export interface SyncDataUpdateEntry {
   ref: SyncableRef;
   diffs: Diff<ISyncable>[];
 }
 
-export interface SyncingData {
+export interface SyncData {
   syncables: ISyncable[];
   removals: SyncableRef[];
-  updates: SyncingDataUpdateEntry[];
+  updates: SyncDataUpdateEntry[];
 }
 
-export interface SyncingUpdateSource {
+export interface SyncUpdateSource {
   id: ChangePacketId;
-  timestamp: number;
+  clock: number;
 }

@@ -1,7 +1,5 @@
 import {Observable, Subscription} from 'rxjs';
-import {Dict} from 'tslang';
 
-import {hasOwnProperty} from '../@utils';
 import {generateUniqueId} from '../utils';
 
 import {
@@ -11,8 +9,15 @@ import {
   RPCResponse,
   RPCResponseError,
 } from './rpc-call';
-import {IRPCDefinition, RPCFunctionDict} from './rpc-definition';
+import {IRPCDefinition} from './rpc-definition';
 import {RPCError} from './rpc-error';
+import {RPCMethod} from './rpc-method-decorator';
+
+export type RPCPeerType<TLocalDefinition extends IRPCDefinition> = {
+  [TName in TLocalDefinition['name']]: RPCMethod<
+    Extract<TLocalDefinition, {name: TName}>
+  >
+};
 
 export interface IRPCAdapter {
   incoming$: Observable<RPCData>;
@@ -25,17 +30,17 @@ interface RequestHandlers {
 }
 
 export class RPCPeer<
-  TLocalDefinition extends IRPCDefinition = IRPCDefinition,
   TRemoteDefinition extends IRPCDefinition = IRPCDefinition
 > {
+  /** @internal */
+  // tslint:disable-next-line:variable-name
+  readonly __methodMap!: Map<string, Function>;
+
   private requestHandlersMap = new Map<RPCCallId, RequestHandlers>();
 
   private incomingSubscription = new Subscription();
 
-  constructor(
-    private adapter: IRPCAdapter,
-    private functionDict: RPCFunctionDict<RPCPeer, TLocalDefinition>,
-  ) {
+  constructor(private adapter: IRPCAdapter) {
     this.incomingSubscription.add(adapter.incoming$.subscribe(this.onIncoming));
   }
 
@@ -94,7 +99,7 @@ export class RPCPeer<
     let responseError: RPCResponseError | undefined;
 
     try {
-      value = await this.callFunction(name, args);
+      value = await this.callLocalMethod(name, args);
     } catch (error) {
       if (error instanceof RPCError) {
         responseError = {
@@ -145,15 +150,24 @@ export class RPCPeer<
     }
   }
 
-  private async callFunction(name: string, args: unknown[]): Promise<unknown> {
-    let functionDict = this.functionDict;
+  private async callLocalMethod(
+    name: string,
+    args: unknown[],
+  ): Promise<unknown> {
+    let map = this.__methodMap;
 
-    if (!hasOwnProperty(functionDict, name)) {
-      throw new Error();
+    let method = map && map.get(name);
+
+    if (!method) {
+      if (name in this) {
+        throw new Error(
+          `RPC method "${name}" does not exist, are you missing \`@RPCMethod()\` decorator?`,
+        );
+      } else {
+        throw new Error(`RPC method "${name}" does not exist`);
+      }
     }
 
-    let fn = (functionDict as Dict<Function>)[name];
-
-    return fn.apply(this, args);
+    return method.apply(this, args);
   }
 }

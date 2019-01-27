@@ -1,6 +1,8 @@
 import _ from 'lodash';
 import {computed} from 'mobx';
 
+import {IContext} from '../context';
+
 import {
   ACCESS_RIGHTS,
   AccessControlEntry,
@@ -8,13 +10,15 @@ import {
   AccessControlEntryType,
   AccessRight,
   getAccessControlEntryPriority,
-} from '../access-control';
-import {IContext} from '../context';
-import {ISyncable, SyncableRef} from '../syncable';
-import {SyncableContainer} from '../syncable-container';
-import {getSyncableKey, getSyncableRef} from '../utils';
-
+} from './access-control';
 import {AccessControlRule} from './access-control-rule-decorator';
+import {
+  ISyncable,
+  SyncableRef,
+  getSyncableKey,
+  getSyncableRef,
+} from './syncable';
+import {SyncableContainer} from './syncable-container';
 
 export type AccessControlRuleTester = (
   target: ISyncableObject,

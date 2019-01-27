@@ -2,14 +2,16 @@ import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
 import {Dict, KeyOfValueWithType} from 'tslang';
 
-import {AccessRight} from '../access-control';
 import {IContext} from '../context';
-import {ISyncable, SyncableRef} from '../syncable';
-import {ISyncableAdapter} from '../syncable-adapter';
-import {SyncableContainer} from '../syncable-container';
-import {ISyncableObject} from '../syncable-object';
+import {
+  AccessRight,
+  ISyncable,
+  ISyncableObject,
+  SyncableContainer,
+  SyncableRef,
+  getSyncableKey,
+} from '../syncable';
 import {NumericTimestamp} from '../types';
-import {getSyncableKey} from '../utils';
 
 import {
   ChangePacket,
@@ -156,27 +158,14 @@ export type ChangePlantResolveSyncableLoader = (
 ) => Promise<ISyncable[]>;
 
 export class ChangePlant {
-  constructor(
-    private blueprint: ChangePlantBlueprint,
-    private syncableAdapter: ISyncableAdapter,
-  ) {}
+  constructor(private blueprint: ChangePlantBlueprint) {}
 
-  resolve(
-    {type, refs: refDict}: ChangePacket,
-    loader: ChangePlantResolveSyncableLoader,
-  ): Promise<ISyncable[]> {
-    let refs = Object.values(refDict).filter(
-      (ref): ref is SyncableRef => !!ref && 'id' in ref,
-    );
-
+  getDependencyOptions(type: string): unknown {
     let processorOptions = this.blueprint[type];
 
-    let options =
-      typeof processorOptions === 'object'
-        ? processorOptions.dependency
-        : undefined;
-
-    return this.loadSyncablesByRefsWithDependencies(refs, loader, options);
+    return typeof processorOptions === 'object'
+      ? processorOptions.dependency
+      : undefined;
   }
 
   process(
@@ -373,52 +362,5 @@ export class ChangePlant {
       removals: removals || [],
       notifications,
     };
-  }
-
-  private async loadSyncablesByRefsWithDependencies(
-    refs: SyncableRef[],
-    loader: ChangePlantResolveSyncableLoader,
-    options: unknown,
-  ): Promise<ISyncable[]> {
-    let loadedKeySet = new Set<string>();
-
-    let directSyncables = await loader(refs);
-
-    for (let syncable of directSyncables) {
-      loadedKeySet.add(getSyncableKey(syncable));
-    }
-
-    let loadedSyncables = [...directSyncables];
-
-    let pendingResolvedSyncables = directSyncables;
-
-    let adapter = this.syncableAdapter;
-
-    while (true) {
-      let refs = _.flatMap(pendingResolvedSyncables, syncable =>
-        adapter.resolveDependencyRefs(syncable, options),
-      ).filter(ref => {
-        let key = getSyncableKey(ref);
-
-        if (loadedKeySet.has(key)) {
-          return false;
-        } else {
-          loadedKeySet.add(key);
-          return true;
-        }
-      });
-
-      if (!refs.length) {
-        break;
-      }
-
-      let syncables = await loader(refs);
-
-      loadedSyncables.push(...syncables);
-
-      pendingResolvedSyncables = syncables;
-    }
-
-    return loadedSyncables;
   }
 }

@@ -13,7 +13,7 @@ import {clientContext} from './@context';
 import {syncableAdapter} from './@syncable-adapter';
 import {taskSyncableA} from './@syncables';
 
-const changePlant = new ChangePlant(blueprint, syncableAdapter);
+const changePlant = new ChangePlant(blueprint);
 
 let lolexClock: Clock;
 

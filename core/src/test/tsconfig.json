@@ -2,6 +2,7 @@
   "extends": "@magicspace/configs/tsconfig.json",
   "compilerOptions": {
     "types": ["node", "jest"],
+    "experimentalDecorators": true,
 
     "baseUrl": ".",
     "paths": {

@@ -4,6 +4,7 @@ import {
   ChangePlant,
   ChangePlantBlueprint,
   ClientRPCDefinition,
+  ConnectionRPCDefinition,
   GeneralChange,
   IChangePlantBlueprintGenericParams,
   IRPCDefinition,
@@ -11,14 +12,14 @@ import {
   ISyncableAdapter,
   ISyncableObject,
   NumericTimestamp,
-  RPCFunctionDict,
+  RPCMethod,
   RPCPeer,
-  ServerConnectionRPCDefinition,
+  RPCPeerType,
+  SyncData,
+  SyncUpdateSource,
   SyncableContainer,
   SyncableId,
   SyncableRef,
-  SyncingData,
-  SyncingUpdateSource,
   generateUniqueId,
 } from '@syncable/core';
 import DeepDiff, {Diff} from 'deep-diff';
@@ -26,18 +27,6 @@ import _ from 'lodash';
 import {action, observable, when} from 'mobx';
 
 import {IClientAdapter} from './client-adapter';
-
-const clientRPCFunctionDict: RPCFunctionDict<
-  Client<IClientGenericParams>,
-  ClientRPCDefinition
-> = {
-  initialize(data, contextData) {
-    this.initialize(data, contextData);
-  },
-  sync(data, source) {
-    this.sync(data, source);
-  },
-};
 
 export interface ClientUpdateResult {
   id: ChangePacketId;
@@ -50,9 +39,9 @@ export interface IClientGenericParams
   customRPCDefinition: IRPCDefinition;
 }
 
-export class Client<
-  TGenericParams extends IClientGenericParams
-> extends RPCPeer<ClientRPCDefinition, ServerConnectionRPCDefinition> {
+export class Client<TGenericParams extends IClientGenericParams>
+  extends RPCPeer<ConnectionRPCDefinition>
+  implements RPCPeerType<ClientRPCDefinition> {
   readonly container: SyncableContainer;
 
   @observable
@@ -70,63 +59,16 @@ export class Client<
     private clientAdapter: IClientAdapter<TGenericParams>,
     syncableAdapter: ISyncableAdapter<TGenericParams>,
     blueprint: ChangePlantBlueprint<TGenericParams>,
-    customRPCFunctionDict: RPCFunctionDict<
-      Client<TGenericParams>,
-      TGenericParams['customRPCDefinition']
-    >,
   ) {
-    super(clientAdapter, {
-      ...clientRPCFunctionDict,
-      ...customRPCFunctionDict,
-    });
+    super(clientAdapter);
 
     this.container = new SyncableContainer(syncableAdapter);
 
-    this.changePlant = new ChangePlant(blueprint, syncableAdapter);
+    this.changePlant = new ChangePlant(blueprint);
   }
 
   get syncing(): boolean {
     return this._syncing;
-  }
-
-  @action
-  initialize(data: SyncingData, contextData: unknown): void {
-    this.container.clear();
-    this.context.setData(contextData);
-
-    this.sync(data);
-  }
-
-  @action
-  sync(
-    {syncables, removals, updates}: SyncingData,
-    source?: SyncingUpdateSource,
-  ): void {
-    if (source) {
-      this.shiftChangePacket(source.id);
-    }
-
-    for (let syncable of syncables) {
-      this.onUpdateCreate(syncable);
-    }
-
-    for (let {ref, diffs} of updates) {
-      this.onUpdateChange(ref, diffs);
-    }
-
-    for (let ref of removals) {
-      this.onUpdateRemove(ref);
-    }
-
-    let packets = this.pendingChangePackets;
-
-    if (packets.length) {
-      for (let packet of packets) {
-        this.applyChangePacket(packet);
-      }
-    } else {
-      this._syncing = false;
-    }
   }
 
   @action
@@ -160,6 +102,50 @@ export class Client<
     return when(
       () => !this.pendingChangePackets.some(packet => packet.id === id),
     );
+  }
+
+  /** @internal */
+  @RPCMethod()
+  @action
+  initialize(data: SyncData, contextData: unknown): void {
+    this.container.clear();
+    this.context.setData(contextData);
+
+    this.sync(data);
+  }
+
+  /** @internal */
+  @RPCMethod()
+  @action
+  sync(
+    {syncables, removals, updates}: SyncData,
+    source?: SyncUpdateSource,
+  ): void {
+    if (source) {
+      this.shiftChangePacket(source.id);
+    }
+
+    for (let syncable of syncables) {
+      this.onUpdateCreate(syncable);
+    }
+
+    for (let {ref, diffs} of updates) {
+      this.onUpdateChange(ref, diffs);
+    }
+
+    for (let ref of removals) {
+      this.onUpdateRemove(ref);
+    }
+
+    let packets = this.pendingChangePackets;
+
+    if (packets.length) {
+      for (let packet of packets) {
+        this.applyChangePacket(packet);
+      }
+    } else {
+      this._syncing = false;
+    }
   }
 
   private onUpdateCreate(syncable: ISyncable): void {

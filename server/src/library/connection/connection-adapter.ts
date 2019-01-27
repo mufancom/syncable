@@ -1,6 +1,6 @@
 import {IContext, IRPCAdapter} from '@syncable/core';
 
-export interface IConnectionSource extends IRPCAdapter {
+export interface IConnectionAdapter extends IRPCAdapter {
   group: string;
   context: IContext;
 }

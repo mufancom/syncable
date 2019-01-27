@@ -12,11 +12,11 @@ export interface ISyncableAdapter<
 > {
   instantiate(
     syncable: TGenericParams['syncableObject']['syncable'],
-    container: SyncableContainer,
+    container?: SyncableContainer,
   ): TGenericParams['syncableObject'];
 
   resolveDependencyRefs(
     syncable: TGenericParams['syncableObject']['syncable'],
-    options: TGenericParams['dependencyResolveOptions'],
+    options?: TGenericParams['dependencyResolveOptions'],
   ): SyncableRef<TGenericParams['syncableObject']>[];
 }

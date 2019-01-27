@@ -1,24 +1,11 @@
-import {RPCPeer} from '@syncable/core';
-
 import {createAdapterPair} from './@adapter';
-import {
-  ThatDefinition,
-  ThisDefinition,
-  thatFunctionDict,
-  thisFunctionDict,
-} from './@peer';
+import {ThatPeer, ThisPeer} from './@peers';
 
 const [thisAdapter, thatAdapter] = createAdapterPair();
 
-const thisPeer = new RPCPeer<ThisDefinition, ThatDefinition>(
-  thisAdapter,
-  thisFunctionDict,
-);
+const thisPeer = new ThisPeer(thisAdapter);
 
-const thatPeer = new RPCPeer<ThatDefinition, ThisDefinition>(
-  thatAdapter,
-  thatFunctionDict,
-);
+const thatPeer = new ThatPeer(thatAdapter);
 
 test('should call `this` remote function from `that` and get return value', async () => {
   let fooValue = await thatPeer.call('foo', 'hello, world', 5);

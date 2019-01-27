@@ -1,9 +1,10 @@
 import {Nominal, OmitValueOfKey} from 'tslang';
 
+import {SyncableCreationRef} from '../change';
+import {generateUniqueId} from '../utils';
+
 import {AccessControlEntry} from './access-control';
-import {SyncableCreationRef} from './change';
 import {ISyncableObject} from './syncable-object';
-import {generateUniqueId} from './utils';
 
 export type SyncableId<Type extends string = string> = Nominal<
   string,
@@ -89,4 +90,52 @@ export function createSyncable<T extends ISyncableObject>(
     _updatedAt: 0,
     ...(data as object),
   };
+}
+
+export function getSyncableRef<T extends ISyncableObject>(
+  source: string | T['syncable'] | SyncableCreationRef<T>,
+): SyncableRef<T> {
+  let type: string;
+  let id: SyncableId;
+
+  if (typeof source === 'string') {
+    [type, id] = source.split(':') as [string, SyncableId];
+  } else if ('_type' in source) {
+    ({_type: type, _id: id} = source);
+  } else {
+    ({
+      type,
+      create: {id},
+    } = source);
+  }
+
+  if (typeof type !== 'string' || typeof id !== 'string') {
+    throw new Error('Invalid source');
+  }
+
+  return {type, id};
+}
+
+export function getSyncableKey(
+  source: ISyncable | SyncableRef | SyncableCreationRef,
+): string {
+  let type: string;
+  let id: SyncableId;
+
+  if ('_type' in source) {
+    ({_type: type, _id: id} = source);
+  } else if ('create' in source) {
+    ({
+      type,
+      create: {id},
+    } = source);
+  } else {
+    ({type, id} = source);
+  }
+
+  if (typeof type !== 'string' || typeof id !== 'string') {
+    throw new Error('Invalid source');
+  }
+
+  return `${type}:${id}`;
 }

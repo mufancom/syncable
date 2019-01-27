@@ -1,12 +1,11 @@
-import {AccessControlEntryRuleName} from '../access-control';
+import {hasOwnProperty} from '../@utils';
 
+import {AccessControlEntryRuleName} from './access-control';
 import {
   AccessControlRuleEntry,
   AccessControlRuleTester,
   ISyncableObject,
 } from './syncable-object';
-
-const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 export type AccessControlRuleDecorator = (
   target: ISyncableObject,
@@ -22,7 +21,7 @@ export function AccessControlRule(
 
     let test = descriptor.value!;
 
-    if (hasOwnProperty.call(target, '__accessControlRuleMap')) {
+    if (hasOwnProperty(target, '__accessControlRuleMap')) {
       target.__accessControlRuleMap.set(ruleName, {test});
     } else {
       let accessControlRules: [
