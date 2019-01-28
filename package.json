@@ -5,17 +5,20 @@
     "link-global": "yarn workspace @syncable/core link && yarn workspace @syncable/server link && yarn workspace @syncable/client link",
     "lerna:publish": "lerna publish prerelease --npm-tag latest --registry=https://registry.npmjs.org",
     "build": "tsc --build tsconfig.build.json",
+    "lint:test": "tslint --project test",
     "lint-prettier": "prettier --check \"**/*.{ts,tsx,js,jsx,json,yml,md}\"",
-    "lint": "yarn lint-prettier && yarn workspace @syncable/core lint",
-    "test": "yarn workspace @syncable/core test"
+    "lint": "yarn lint-prettier && yarn lint:test && yarn workspace @syncable/core lint && yarn workspace @syncable/server lint && yarn workspace @syncable/client lint",
+    "test": "jest"
   },
   "devDependencies": {
     "@magicspace/configs": "^0.1.46",
     "@types/jest": "^23.3.13",
+    "@types/lolex": "^2.1.3",
     "biu": "^0.2.19",
     "jest": "^23.6.0",
     "lerna": "^3.10.6",
     "lodash": "^4.17.11",
+    "lolex": "^3.0.0",
     "mobx": "^5.8.0",
     "prettier": "^1.16.0",
     "rxjs": "^6.3.3",

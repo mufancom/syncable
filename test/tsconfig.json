@@ -4,11 +4,6 @@
     "types": ["node", "jest"],
     "experimentalDecorators": true,
 
-    "baseUrl": ".",
-    "paths": {
-      "@syncable/core": ["../../bld/library"]
-    },
-
     "rootDir": ".",
     "noEmit": true
   }
