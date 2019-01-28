@@ -32,7 +32,7 @@ export interface IServerAdapter<
   subscribe(group: string): Promise<void>;
   unsubscribe(group: string): Promise<void>;
 
-  broadcast(group: string, data: BroadcastChangeResult): Promise<void>;
+  broadcast(data: BroadcastChangeResult): Promise<void>;
 
   queueChange(group: string, processor: QueuedChangeProcessor): Promise<void>;
 
@@ -40,7 +40,8 @@ export interface IServerAdapter<
 
   loadSyncablesByQuery(
     group: string,
-    queryMap: Map<string, object>,
+    context: TGenericParams['context'],
+    queryObject: Partial<TGenericParams['viewQuery']>,
     loadedKeySet: Set<string>,
   ): Promise<ISyncable[]>;
 

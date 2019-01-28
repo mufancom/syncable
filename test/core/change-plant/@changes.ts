@@ -1,4 +1,4 @@
-import {SyncableRef} from '../../../bld/library';
+import {SyncableRef} from '@syncable/core';
 
 import {Task} from './@syncables';
 

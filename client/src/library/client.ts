@@ -20,11 +20,13 @@ import {
   SyncableContainer,
   SyncableId,
   SyncableRef,
+  ViewQueryUpdateObject,
   generateUniqueId,
 } from '@syncable/core';
 import DeepDiff, {Diff} from 'deep-diff';
 import _ from 'lodash';
 import {action, observable, when} from 'mobx';
+import {Subject} from 'rxjs';
 
 import {IClientAdapter} from './client-adapter';
 
@@ -36,6 +38,7 @@ export interface ClientUpdateResult {
 export interface IClientGenericParams
   extends IChangePlantBlueprintGenericParams {
   syncableObject: ISyncableObject;
+  viewQuery: object;
   customRPCDefinition: IRPCDefinition;
 }
 
@@ -54,6 +57,10 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   private changePlant: ChangePlant;
 
+  private initializeSubject$ = new Subject<void>();
+
+  readonly ready = this.initializeSubject$.toPromise();
+
   constructor(
     readonly context: TGenericParams['context'],
     private clientAdapter: IClientAdapter<TGenericParams>,
@@ -69,6 +76,69 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   get syncing(): boolean {
     return this._syncing;
+  }
+
+  getObjects(): TGenericParams['syncableObject'][];
+  getObjects<
+    TType extends TGenericParams['syncableObject']['syncable']['_type']
+  >(
+    type: TType,
+  ): Extract<TGenericParams['syncableObject'], {syncable: {_type: TType}}>[];
+  getObjects(type?: string): TGenericParams['syncableObject'][] {
+    return this.container.getSyncableObjects(
+      type,
+    ) as TGenericParams['syncableObject'][];
+  }
+
+  getObject<TRef extends TGenericParams['syncableObject']['ref']>(
+    ref: TRef,
+  ): Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined {
+    return this.container.getSyncableObject(ref as SyncableRef) as
+      | Extract<TGenericParams['syncableObject'], {ref: TRef}>
+      | undefined;
+  }
+
+  requireObject<TRef extends TGenericParams['syncableObject']['ref']>(
+    ref: TRef,
+  ): Extract<TGenericParams['syncableObject'], {ref: TRef}> {
+    return this.container.requireSyncableObject(ref as SyncableRef) as Extract<
+      TGenericParams['syncableObject'],
+      {ref: TRef}
+    >;
+  }
+
+  async requestObjects<TRef extends TGenericParams['syncableObject']['ref']>(
+    refs: TRef[],
+  ): Promise<
+    (Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined)[]
+  > {
+    await this.call('request', refs);
+
+    let container = this.container;
+
+    return refs
+      .map(ref => container.getSyncableObject(ref))
+      .filter(
+        (
+          object,
+        ): object is Extract<TGenericParams['syncableObject'], {ref: TRef}> =>
+          !!object,
+      );
+  }
+
+  async requestObject<TRef extends TGenericParams['syncableObject']['ref']>(
+    ref: TRef,
+  ): Promise<
+    Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined
+  > {
+    let [object] = await this.requestObjects([ref]);
+    return object;
+  }
+
+  async query(
+    update: ViewQueryUpdateObject<TGenericParams['viewQuery']>,
+  ): Promise<void> {
+    await this.call('update-view-query', update);
   }
 
   @action
@@ -104,7 +174,6 @@ export class Client<TGenericParams extends IClientGenericParams>
     );
   }
 
-  /** @internal */
   @RPCMethod()
   @action
   initialize(data: SyncData, contextData: unknown): void {
@@ -112,9 +181,10 @@ export class Client<TGenericParams extends IClientGenericParams>
     this.context.setData(contextData);
 
     this.sync(data);
+
+    this.initializeSubject$.complete();
   }
 
-  /** @internal */
   @RPCMethod()
   @action
   sync(
@@ -186,7 +256,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     }
 
     throw new Error(
-      `Change packet UID "${id}" does not match the first pending packet`,
+      `Change packet ID "${id}" does not match the first pending packet`,
     );
   }
 

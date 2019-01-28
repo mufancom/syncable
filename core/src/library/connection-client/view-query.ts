@@ -1,3 +1,3 @@
-export interface UpdateViewQueryObject {
-  [name: string]: object | false;
-}
+export type ViewQueryUpdateObject<TViewQueryObject extends object> = {
+  [TName in keyof TViewQueryObject]?: TViewQueryObject[TName] | false
+};

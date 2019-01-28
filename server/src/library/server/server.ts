@@ -28,6 +28,7 @@ import {BroadcastChangeResult, IServerAdapter} from './server-adapter';
 export interface IServerGenericParams
   extends IChangePlantBlueprintGenericParams {
   syncableObject: ISyncableObject;
+  viewQuery: object;
   customRPCDefinition: IRPCDefinition;
 }
 
@@ -67,7 +68,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
   async loadSyncablesByQuery(
     group: string,
     context: IContext,
-    queryMap: Map<string, object>,
+    queryObject: object,
     loadedKeySet: Set<string>,
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
@@ -75,7 +76,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
     let directSyncables = await serverAdapter.loadSyncablesByQuery(
       group,
-      queryMap,
+      context,
+      queryObject,
       loadedKeySet,
     );
 
@@ -152,8 +154,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let result!: ChangePlantProcessingResultWithClock;
 
     await serverAdapter.queueChange(group, async clock => {
-      let container = new SyncableContainer(syncableAdapter);
-
       let refs = Object.values(packet.refs).filter(
         (ref): ref is SyncableRef => !!ref && 'id' in ref,
       );
@@ -172,6 +172,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
         undefined,
         options,
       );
+
+      let container = new SyncableContainer(syncableAdapter);
 
       for (let syncable of [...directSyncables, ...dependentSyncables]) {
         container.addSyncable(syncable);
@@ -205,7 +207,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
         removals: removedSyncableRefs,
       };
 
-      await serverAdapter.broadcast(group, broadcastResult);
+      await serverAdapter.broadcast(broadcastResult);
 
       await serverAdapter.handleNotifications(group, notifications, id);
     });

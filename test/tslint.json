@@ -4,6 +4,10 @@
     "@magicspace/configs/tslint-override-dev"
   ],
   "rules": {
-    "no-implicit-dependencies": [true, "dev", ["@syncable/core"]]
+    "no-implicit-dependencies": [
+      true,
+      "dev",
+      ["@syncable/core", "@syncable/server", "@syncable/client"]
+    ]
   }
 }

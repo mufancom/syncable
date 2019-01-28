@@ -11,12 +11,13 @@ export type ContextType = 'server' | 'user';
 export type ContextEnvironment = 'server' | 'client';
 
 abstract class Context<TData> {
+  readonly data!: TData;
+
   constructor(
     readonly type: ContextType,
     readonly environment: ContextEnvironment,
   ) {}
 
-  abstract getData(): TData;
   abstract setData(data: TData): void;
 }
 

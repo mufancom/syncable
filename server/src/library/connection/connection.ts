@@ -11,12 +11,12 @@ import {
   SyncDataUpdateEntry,
   SyncUpdateSource,
   SyncableRef,
-  UpdateViewQueryObject,
   getSyncableKey,
   getSyncableRef,
 } from '@syncable/core';
 import {Observable, Subject, Subscription} from 'rxjs';
 import {concatMap, ignoreElements} from 'rxjs/operators';
+import {Dict} from 'tslang';
 
 import {filterReadableSyncables} from '../@utils';
 import {BroadcastChangeResult, IServerGenericParams, Server} from '../server';
@@ -25,11 +25,14 @@ import {ViewQueryFilter} from '../view-query';
 import {IConnectionAdapter} from './connection-adapter';
 
 interface SyncableLoadingQueryOptions {
-  query: UpdateViewQueryObject;
+  queryUpdate: object;
+  initialize: boolean;
+  resolve(): void;
 }
 
 interface SyncableLoadingRequestOptions {
   refs: SyncableRef[];
+  resolve(): void;
 }
 
 type SyncableLoadingOptions =
@@ -41,7 +44,6 @@ export class Connection<TGenericParams extends IServerGenericParams>
   implements RPCPeerType<ConnectionRPCDefinition> {
   readonly close$: Observable<void>;
 
-  private viewQueryMap = new Map<string, object>();
   private viewQueryFilterMap = new Map<string, ViewQueryFilter>();
 
   private loadedKeySet = new Set<string>();
@@ -53,11 +55,15 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
   private subscription = new Subscription();
 
+  private initializeSubject$ = new Subject<void>();
+
+  readonly ready = this.initializeSubject$.toPromise();
+
   constructor(
     readonly server: Server<TGenericParams>,
     readonly group: string,
     readonly context: TGenericParams['context'],
-    connectionAdapter: IConnectionAdapter,
+    private connectionAdapter: IConnectionAdapter<TGenericParams>,
     private syncableAdapter: ISyncableAdapter,
   ) {
     super(connectionAdapter);
@@ -77,12 +83,14 @@ export class Connection<TGenericParams extends IServerGenericParams>
             if ('refs' in options) {
               await this.load(options.refs);
             } else {
-              await this.query(options.query);
+              await this.query(options.queryUpdate, options.initialize);
             }
 
             this.flushPendingChangeResults();
 
             this.loading = false;
+
+            options.resolve();
           }),
         )
         .subscribe(),
@@ -95,7 +103,17 @@ export class Connection<TGenericParams extends IServerGenericParams>
     return syncable => filters.some(filter => filter(syncable));
   }
 
-  async initialize(): Promise<void> {}
+  async initialize(): Promise<void> {
+    await new Promise<void>(resolve => {
+      this.loadingScheduler.next({
+        queryUpdate: this.connectionAdapter.viewQuery,
+        initialize: true,
+        resolve,
+      });
+    });
+
+    this.initializeSubject$.complete();
+  }
 
   dispose(): void {
     super.dispose();
@@ -106,7 +124,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
   handleBroadcastChangeResult(result: BroadcastChangeResult): void {
     if (this.loading) {
       this.pendingChangeResults.push(result);
-      return;
+    } else {
+      this.syncChange(result);
     }
   }
 
@@ -116,13 +135,28 @@ export class Connection<TGenericParams extends IServerGenericParams>
   }
 
   @RPCMethod()
-  request(refs: SyncableRef[]): void {
-    this.loadingScheduler.next({refs});
+  async request(refs: SyncableRef[]): Promise<void> {
+    await this.ready;
+
+    return new Promise(resolve => {
+      this.loadingScheduler.next({
+        refs,
+        resolve,
+      });
+    });
   }
 
   @RPCMethod()
-  'update-view-query'(data: UpdateViewQueryObject): void {
-    this.loadingScheduler.next({query: data});
+  async 'update-view-query'(update: object): Promise<void> {
+    await this.ready;
+
+    return new Promise(resolve => {
+      this.loadingScheduler.next({
+        queryUpdate: update,
+        initialize: false,
+        resolve,
+      });
+    });
   }
 
   private flushPendingChangeResults(): void {
@@ -203,16 +237,17 @@ export class Connection<TGenericParams extends IServerGenericParams>
     this.call('sync', data, source).catch(console.error);
   }
 
-  private async query(queryObject: UpdateViewQueryObject): Promise<void> {
-    let viewQueryMap = this.viewQueryMap;
+  private async query(update: object, toInitialize: boolean): Promise<void> {
+    let viewQueryObject: Dict<object> = {};
+
     let viewQueryFilterMap = this.viewQueryFilterMap;
 
-    for (let [name, query] of Object.entries(queryObject)) {
-      if (query) {
-        let filter = this.server.getViewQueryFilter(name, query);
+    for (let [name, queryDescriptor] of Object.entries(update)) {
+      if (queryDescriptor) {
+        let filter = this.server.getViewQueryFilter(name, queryDescriptor);
 
         viewQueryFilterMap.set(name, filter);
-        viewQueryMap.set(name, query);
+        viewQueryObject[name] = queryDescriptor;
       } else {
         viewQueryFilterMap.delete(name);
       }
@@ -223,7 +258,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let syncables = await this.server.loadSyncablesByQuery(
       this.group,
       this.context,
-      viewQueryMap,
+      viewQueryObject,
       loadedKeySet,
     );
 
@@ -233,24 +268,28 @@ export class Connection<TGenericParams extends IServerGenericParams>
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
-    await this.call('sync', {
+    let data: SyncData = {
       syncables,
       removals: [],
       updates: [],
-    });
+    };
+
+    if (toInitialize) {
+      await this.call('initialize', data, this.context.data);
+    } else {
+      await this.call('sync', data);
+    }
   }
 
   private async load(refs: SyncableRef[]): Promise<void> {
+    let loadedKeySet = this.loadedKeySet;
+
     let syncables = await this.server.loadSyncablesByRefs(
       this.group,
       this.context,
       refs,
-      this.loadedKeySet,
+      loadedKeySet,
     );
-
-    let loadedKeySet = this.loadedKeySet;
-
-    syncables = syncables.filter(this.viewQueryFilter);
 
     for (let syncable of syncables) {
       loadedKeySet.add(getSyncableKey(syncable));

@@ -2,7 +2,6 @@ import {ChangePacket} from '../change';
 import {SyncableRef} from '../syncable';
 
 import {SyncData, SyncUpdateSource} from './sync';
-import {UpdateViewQueryObject} from './view-query';
 
 ////////////////
 // Connection //
@@ -27,7 +26,7 @@ export interface ConnectionRequestRPCDefinition {
 
 export interface ConnectionUpdateViewQueryRPCDefinition {
   name: 'update-view-query';
-  args: [UpdateViewQueryObject];
+  args: [object];
   return: void;
 }
 
