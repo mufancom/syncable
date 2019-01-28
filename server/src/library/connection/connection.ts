@@ -11,7 +11,7 @@ import {
   SyncDataUpdateEntry,
   SyncUpdateSource,
   SyncableRef,
-  UpdateViewQueryData,
+  UpdateViewQueryObject,
   getSyncableKey,
   getSyncableRef,
 } from '@syncable/core';
@@ -25,7 +25,7 @@ import {ViewQueryFilter} from '../view-query';
 import {IConnectionAdapter} from './connection-adapter';
 
 interface SyncableLoadingQueryOptions {
-  queryMap: Map<string, object>;
+  query: UpdateViewQueryObject;
 }
 
 interface SyncableLoadingRequestOptions {
@@ -41,6 +41,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
   implements RPCPeerType<ConnectionRPCDefinition> {
   readonly close$: Observable<void>;
 
+  private viewQueryMap = new Map<string, object>();
   private viewQueryFilterMap = new Map<string, ViewQueryFilter>();
 
   private loadedKeySet = new Set<string>();
@@ -76,7 +77,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
             if ('refs' in options) {
               await this.load(options.refs);
             } else {
-              await this.query(options.queryMap);
+              await this.query(options.query);
             }
 
             this.flushPendingChangeResults();
@@ -120,24 +121,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
   }
 
   @RPCMethod()
-  'update-view-query'(data: UpdateViewQueryData): void {
-    let filterMap = this.viewQueryFilterMap;
-
-    let queryMap = new Map<string, object>();
-
-    for (let [name, query] of Object.entries(data)) {
-      if (query) {
-        let filter = this.server.getViewQueryFilter(name, query);
-        filterMap.set(name, filter);
-        queryMap.set(name, query);
-      } else {
-        filterMap.delete(name);
-      }
-    }
-
-    if (queryMap.size) {
-      this.loadingScheduler.next({queryMap});
-    }
+  'update-view-query'(data: UpdateViewQueryObject): void {
+    this.loadingScheduler.next({query: data});
   }
 
   private flushPendingChangeResults(): void {
@@ -218,7 +203,63 @@ export class Connection<TGenericParams extends IServerGenericParams>
     this.call('sync', data, source).catch(console.error);
   }
 
-  private async query(_queryMap: Map<string, object>): Promise<void> {}
+  private async query(queryObject: UpdateViewQueryObject): Promise<void> {
+    let viewQueryMap = this.viewQueryMap;
+    let viewQueryFilterMap = this.viewQueryFilterMap;
 
-  private async load(_refs: SyncableRef[]): Promise<void> {}
+    for (let [name, query] of Object.entries(queryObject)) {
+      if (query) {
+        let filter = this.server.getViewQueryFilter(name, query);
+
+        viewQueryFilterMap.set(name, filter);
+        viewQueryMap.set(name, query);
+      } else {
+        viewQueryFilterMap.delete(name);
+      }
+    }
+
+    let loadedKeySet = this.loadedKeySet;
+
+    let syncables = await this.server.loadSyncablesByQuery(
+      this.group,
+      this.context,
+      viewQueryMap,
+      loadedKeySet,
+    );
+
+    syncables = syncables.filter(this.viewQueryFilter);
+
+    for (let syncable of syncables) {
+      loadedKeySet.add(getSyncableKey(syncable));
+    }
+
+    await this.call('sync', {
+      syncables,
+      removals: [],
+      updates: [],
+    });
+  }
+
+  private async load(refs: SyncableRef[]): Promise<void> {
+    let syncables = await this.server.loadSyncablesByRefs(
+      this.group,
+      this.context,
+      refs,
+      this.loadedKeySet,
+    );
+
+    let loadedKeySet = this.loadedKeySet;
+
+    syncables = syncables.filter(this.viewQueryFilter);
+
+    for (let syncable of syncables) {
+      loadedKeySet.add(getSyncableKey(syncable));
+    }
+
+    await this.call('sync', {
+      syncables,
+      removals: [],
+      updates: [],
+    });
+  }
 }

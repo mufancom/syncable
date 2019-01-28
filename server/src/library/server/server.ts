@@ -64,7 +64,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     return this.serverAdapter.getViewQueryFilter(name, query);
   }
 
-  async querySyncables(
+  async loadSyncablesByQuery(
     group: string,
     context: IContext,
     queryMap: Map<string, object>,
@@ -78,6 +78,36 @@ export class Server<TGenericParams extends IServerGenericParams> {
       queryMap,
       loadedKeySet,
     );
+
+    directSyncables = filterReadableSyncables(
+      context,
+      syncableAdapter,
+      directSyncables,
+    );
+
+    let dependentSyncables = await this.loadDependentSyncables(
+      group,
+      context,
+      directSyncables,
+      loadedKeySet,
+      undefined,
+    );
+
+    return [...directSyncables, ...dependentSyncables];
+  }
+
+  async loadSyncablesByRefs(
+    group: string,
+    context: IContext,
+    refs: SyncableRef[],
+    loadedKeySet: Set<string>,
+  ): Promise<ISyncable[]> {
+    let serverAdapter = this.serverAdapter;
+    let syncableAdapter = this.syncableAdapter;
+
+    refs = refs.filter(ref => !loadedKeySet.has(getSyncableKey(ref)));
+
+    let directSyncables = await serverAdapter.loadSyncablesByRefs(group, refs);
 
     directSyncables = filterReadableSyncables(
       context,

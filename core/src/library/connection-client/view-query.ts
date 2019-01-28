@@ -1,3 +1,3 @@
-export interface UpdateViewQueryData {
+export interface UpdateViewQueryObject {
   [name: string]: object | false;
 }
