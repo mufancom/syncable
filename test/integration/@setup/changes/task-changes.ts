@@ -18,7 +18,6 @@ export interface TaskUpdateTaskBriefChange {
 export interface ChangePlantTaskBlueprintGenericParams {
   context: Context;
   change: TaskChange;
-  dependencyResolveOptions: never;
   notification: never;
 }
 

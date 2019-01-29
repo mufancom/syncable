@@ -1,11 +1,10 @@
 import {ISyncableAdapter} from '@syncable/core';
 
 import {Task} from './@syncables';
-import {SyncableDependencyResolveOptions, SyncableObject} from './@types';
+import {SyncableObject} from './@types';
 
 export interface SyncableAdapterGenericParams {
   syncableObject: SyncableObject;
-  dependencyResolveOptions: SyncableDependencyResolveOptions;
 }
 
 export const syncableAdapter: ISyncableAdapter<SyncableAdapterGenericParams> = {
@@ -14,8 +13,5 @@ export const syncableAdapter: ISyncableAdapter<SyncableAdapterGenericParams> = {
       case 'task':
         return new Task(syncable, container);
     }
-  },
-  resolveDependencyRefs(_syncable) {
-    return [];
   },
 };

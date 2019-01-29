@@ -107,6 +107,21 @@ export interface ChangePlantProcessorExtra<
   createdAt: NumericTimestamp;
 }
 
+export type ChangePlantResolver<
+  TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
+> = (
+  syncables: ChangeToSyncableOrCreationRefDict<TGenericParams['change']>,
+) => SyncableRef[];
+
+type ChangePlantSpecificResolver<
+  TGenericParams extends IChangePlantBlueprintGenericParams,
+  TType extends string
+> = ChangePlantResolver<{
+  context: TGenericParams['context'];
+  change: Extract<TGenericParams['change'], {type: TType}>;
+  notification: TGenericParams['notification'];
+}>;
+
 export type ChangePlantProcessor<
   TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
 > = (
@@ -121,7 +136,6 @@ type ChangePlantSpecificProcessor<
 > = ChangePlantProcessor<{
   context: TGenericParams['context'];
   change: Extract<TGenericParams['change'], {type: TType}>;
-  dependencyResolveOptions: TGenericParams['dependencyResolveOptions'];
   notification: TGenericParams['notification'];
 }>;
 
@@ -129,8 +143,8 @@ export interface ChangePlantSpecificProcessorOptions<
   TGenericParams extends IChangePlantBlueprintGenericParams,
   TType extends string
 > {
-  dependency: TGenericParams['dependencyResolveOptions'];
   processor: ChangePlantSpecificProcessor<TGenericParams, TType>;
+  resolver: ChangePlantSpecificResolver<TGenericParams, TType>;
 }
 
 export type ChangePlantBlueprint<
@@ -144,7 +158,6 @@ export type ChangePlantBlueprint<
 export interface IChangePlantBlueprintGenericParams {
   context: IContext;
   change: IChange;
-  dependencyResolveOptions: unknown;
   notification: unknown;
 }
 
@@ -160,12 +173,34 @@ export type ChangePlantResolveSyncableLoader = (
 export class ChangePlant {
   constructor(private blueprint: ChangePlantBlueprint) {}
 
-  getDependencyOptions(type: string): unknown {
+  resolve(
+    {type, refs: refDict}: ChangePacket,
+    syncables: ISyncable[],
+  ): SyncableRef[] {
     let processorOptions = this.blueprint[type];
 
-    return typeof processorOptions === 'object'
-      ? processorOptions.dependency
-      : undefined;
+    let resolver =
+      typeof processorOptions === 'object'
+        ? processorOptions.resolver
+        : undefined;
+
+    if (!resolver) {
+      return [];
+    }
+
+    let syncableMap = new Map(
+      syncables.map(
+        (syncable): [string, ISyncable] => [getSyncableKey(syncable), syncable],
+      ),
+    );
+
+    let syncableDict: Dict<ISyncable> = {};
+
+    for (let [name, ref] of Object.entries(refDict)) {
+      syncableDict[name] = syncableMap.get(getSyncableKey(ref))!;
+    }
+
+    return resolver(syncableDict);
   }
 
   process(

@@ -21,7 +21,6 @@ import {
 import {SyncableContainer} from './syncable-container';
 
 export type AccessControlRuleTester = (
-  target: ISyncableObject,
   context: IContext,
   options?: object,
 ) => boolean;
@@ -81,6 +80,13 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return container;
   }
 
+  /**
+   * Override to specify.
+   */
+  resolveDependencyRefs(): SyncableRef[] {
+    return [];
+  }
+
   require<T extends ISyncableObject>(ref: SyncableRef<T>): T {
     return this.container.requireSyncableObject(ref);
   }
@@ -89,10 +95,16 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return this.container.getSyncableObject(ref);
   }
 
+  /**
+   * Override to specify.
+   */
   getSecuringFieldNames(): string[] {
     return [];
   }
 
+  /**
+   * Override to specify.
+   */
   getDefaultACL(): AccessControlEntry[] {
     return [];
   }
@@ -122,7 +134,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
     if (acl.length) {
       for (let entry of acl) {
-        if (!this.testAccessControlEntry(this, entry, context)) {
+        if (!this.testAccessControlEntry(entry, context)) {
           continue;
         }
 
@@ -180,12 +192,11 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 
   @AccessControlRule('basic')
-  protected testBasic(_target: ISyncableObject, _context: IContext): boolean {
+  protected testBasic(): boolean {
     return true;
   }
 
   private testAccessControlEntry(
-    target: ISyncableObject,
     entry: AccessControlEntry,
     context: IContext,
   ): boolean {
@@ -197,7 +208,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       throw new Error(`Unknown access control rule "${ruleName}"`);
     }
 
-    return rule.test.call(this, target, context, options);
+    return rule.test.call(this, context, options);
   }
 }
 

@@ -13,14 +13,14 @@ import {
 
 let lolexClock: Clock;
 
-beforeAll(() => {
+beforeEach(() => {
   lolexClock = Lolex.install({
     now: 1500000000000,
     shouldAdvanceTime: true,
   });
 });
 
-afterAll(() => {
+afterEach(() => {
   lolexClock.uninstall();
 });
 

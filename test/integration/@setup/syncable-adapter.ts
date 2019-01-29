@@ -4,7 +4,6 @@ import {SyncableObject, Task, User} from './syncables';
 
 export interface SyncableAdapterGenericParams {
   syncableObject: SyncableObject;
-  dependencyResolveOptions: unknown;
 }
 
 export const syncableAdapter: ISyncableAdapter<SyncableAdapterGenericParams> = {
@@ -15,8 +14,5 @@ export const syncableAdapter: ISyncableAdapter<SyncableAdapterGenericParams> = {
       case 'user':
         return new User(syncable, container);
     }
-  },
-  resolveDependencyRefs() {
-    return [];
   },
 };

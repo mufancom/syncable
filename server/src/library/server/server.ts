@@ -15,6 +15,7 @@ import {
   SyncableContainer,
   SyncableRef,
   generateUniqueId,
+  getNonCreationRefsFromRefDict,
   getSyncableKey,
 } from '@syncable/core';
 import _ from 'lodash';
@@ -92,7 +93,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
       context,
       directSyncables,
       loadedKeySet,
-      undefined,
     );
 
     return [...directSyncables, ...dependentSyncables];
@@ -122,7 +122,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
       context,
       directSyncables,
       loadedKeySet,
-      undefined,
     );
 
     return [...directSyncables, ...dependentSyncables];
@@ -154,28 +153,20 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let result!: ChangePlantProcessingResultWithClock;
 
     await serverAdapter.queueChange(group, async clock => {
-      let refs = Object.values(packet.refs).filter(
-        (ref): ref is SyncableRef => !!ref && 'id' in ref,
-      );
+      let refs = getNonCreationRefsFromRefDict(packet.refs);
 
-      let options = changePlant.getDependencyOptions(packet.type);
+      let syncables = await serverAdapter.loadSyncablesByRefs(group, refs);
 
-      let directSyncables = await serverAdapter.loadSyncablesByRefs(
+      let dependencyRefs = changePlant.resolve(packet, syncables);
+
+      let dependentSyncables = await serverAdapter.loadSyncablesByRefs(
         group,
-        refs,
-      );
-
-      let dependentSyncables = await this.loadDependentSyncables(
-        group,
-        context,
-        directSyncables,
-        undefined,
-        options,
+        dependencyRefs,
       );
 
       let container = new SyncableContainer(syncableAdapter);
 
-      for (let syncable of [...directSyncables, ...dependentSyncables]) {
+      for (let syncable of [...syncables, ...dependentSyncables]) {
         container.addSyncable(syncable);
       }
 
@@ -296,7 +287,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
     context: IContext,
     syncables: ISyncable[],
     loadedKeySet: Set<string> | undefined,
-    options: unknown | undefined,
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
@@ -313,7 +303,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
     while (true) {
       let refs = _.flatMap(pendingResolvingSyncables, syncable =>
-        syncableAdapter.resolveDependencyRefs(syncable, options),
+        syncableAdapter.instantiate(syncable).resolveDependencyRefs(),
       ).filter(ref => {
         let key = getSyncableKey(ref);
 
