@@ -8,3 +8,4 @@ export * from './server';
 export * from './syncable-adapter';
 export * from './syncables';
 export * from './utils';
+export * from './view-query';
