@@ -41,7 +41,7 @@ test('should initialize client with syncables and context data', async () => {
   await client.ready;
 
   expect(_.cloneDeep(client.container.getSyncables())).toMatchSnapshot();
-  expect(client.context.data).toBe('user-1');
+  expect(client.context.object.id).toBe('user-1');
 
   close();
 });

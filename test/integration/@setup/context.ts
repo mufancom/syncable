@@ -1,21 +1,22 @@
-import {AbstractContext, ContextEnvironment, ContextType} from '@syncable/core';
+import {
+  AbstractContext,
+  ContextEnvironment,
+  ContextType,
+  SyncableRef,
+} from '@syncable/core';
 
-import {UserId} from './syncables';
+import {User} from './syncables';
 
-export class Context extends AbstractContext<UserId> {
+export class Context extends AbstractContext<User> {
   constructor(
     type: ContextType,
     environment: ContextEnvironment,
-    private userId: UserId,
+    userRef?: SyncableRef<User>,
   ) {
-    super(type, environment);
+    super(type, environment, userRef);
   }
 
-  get data(): UserId {
-    return this.userId;
-  }
-
-  setData(userId: UserId): void {
-    this.userId = userId;
+  get disabled(): boolean {
+    return false;
   }
 }

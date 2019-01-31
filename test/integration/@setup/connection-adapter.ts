@@ -1,4 +1,4 @@
-import {RPCData} from '@syncable/core';
+import {RPCData, SyncableRef} from '@syncable/core';
 import {IConnectionAdapter} from '@syncable/server';
 import {Observable, Subject, from} from 'rxjs';
 import {delayWhen, share} from 'rxjs/operators';
@@ -6,7 +6,7 @@ import {delayWhen, share} from 'rxjs/operators';
 import {randomNap} from './@utils';
 import {Context} from './context';
 import {ServerGenericParams} from './server';
-import {UserId} from './syncables';
+import {User} from './syncables';
 import {ViewQuery} from './view-query';
 
 export class ConnectionAdapter
@@ -19,8 +19,8 @@ export class ConnectionAdapter
 
   constructor(
     readonly group: string,
-    userId: UserId,
-    incomingSource$: Observable<RPCData>,
+    userRef: SyncableRef<User>,
+    private incomingSource$: Subject<RPCData>,
     private outgoing$: Subject<RPCData>,
   ) {
     this.incoming$ = incomingSource$.pipe(
@@ -28,12 +28,17 @@ export class ConnectionAdapter
       share(),
     );
 
-    this.context = new Context('user', 'server', userId);
+    this.context = new Context('user', 'server', userRef);
   }
 
   async send(data: RPCData): Promise<void> {
     this.outgoing$.next(data);
 
     await randomNap();
+  }
+
+  close(): void {
+    this.outgoing$.complete();
+    this.incomingSource$.complete();
   }
 }

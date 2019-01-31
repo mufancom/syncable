@@ -1,5 +1,5 @@
 import {Client} from '@syncable/client';
-import {RPCData} from '@syncable/core';
+import {RPCData, SyncableRef} from '@syncable/core';
 import {BroadcastChangeResult, Connection, Server} from '@syncable/server';
 import {Subject} from 'rxjs';
 
@@ -11,7 +11,7 @@ import {Context} from './context';
 import {ServerGenericParams} from './server';
 import {ServerAdapter} from './server-adapter';
 import {syncableAdapter} from './syncable-adapter';
-import {UserId} from './syncables';
+import {User, UserId} from './syncables';
 
 export function createServer(
   connection$: Subject<Connection<ServerGenericParams>>,
@@ -32,10 +32,14 @@ export function createClientConnectionPair(
   let clientToConnection$ = new Subject<RPCData>();
   let connectionToClient$ = new Subject<RPCData>();
 
-  let clientContext = new Context('user', 'client', userId);
+  let userRef: SyncableRef<User> = {
+    type: 'user',
+    id: userId,
+  };
+
+  let clientContext = new Context('user', 'client', userRef);
   let clientAdapter = new ClientAdapter(
     group,
-    userId,
     connectionToClient$,
     clientToConnection$,
   );
@@ -47,11 +51,11 @@ export function createClientConnectionPair(
     blueprint,
   );
 
-  let connectionContext = new Context('user', 'server', userId);
+  let connectionContext = new Context('user', 'server', userRef);
 
   let connectionAdapter = new ConnectionAdapter(
     group,
-    userId,
+    userRef,
     clientToConnection$,
     connectionToClient$,
   );

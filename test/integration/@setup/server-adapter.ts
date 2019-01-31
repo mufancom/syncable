@@ -84,7 +84,9 @@ export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
     let filters: ViewQueryFilter<Syncable>[] = [];
 
     if ('default' in queryObject) {
-      filters.push(syncable => syncable._id === context.data);
+      filters.push(
+        syncable => getSyncableKey(syncable) === getSyncableKey(context.ref),
+      );
     }
 
     if ('task' in queryObject) {

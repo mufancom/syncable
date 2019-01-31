@@ -8,4 +8,6 @@ export interface IConnectionAdapter<
   group: string;
   context: IContext;
   viewQuery: TGenericParams['viewQuery'];
+
+  close(): void;
 }

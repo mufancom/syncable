@@ -176,11 +176,12 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   @RPCMethod()
   @action
-  initialize(data: SyncData, contextData: unknown): void {
+  initialize(data: SyncData, contextRef: SyncableRef): void {
     this.container.clear();
-    this.context.setData(contextData);
 
     this.sync(data);
+
+    this.context.setObject(this.requireObject(contextRef));
 
     this.initializeSubject$.complete();
   }
@@ -238,7 +239,7 @@ export class Client<TGenericParams extends IClientGenericParams>
       DeepDiff.applyChange(snapshot, undefined!, diff);
     }
 
-    this.container.updateSyncable(snapshot);
+    this.container.addSyncable(snapshot);
   }
 
   private shiftChangePacket(id: ChangePacketId): boolean {
@@ -275,7 +276,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     }
 
     for (let {snapshot} of updates) {
-      container.updateSyncable(snapshot);
+      container.addSyncable(snapshot);
     }
 
     for (let ref of removals) {

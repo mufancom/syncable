@@ -98,7 +98,7 @@ export interface ChangePlantProcessorExtra<
   TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
 > {
   context: TGenericParams['context'];
-  container: SyncableContainer;
+  container: SyncableContainer<TGenericParams['syncableObject']>;
   options: TGenericParams['change']['options'];
   create: ChangePlantProcessorCreateOperation;
   remove: ChangePlantProcessorRemoveOperation;
@@ -111,13 +111,15 @@ export type ChangePlantResolver<
   TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
 > = (
   syncables: ChangeToSyncableOrCreationRefDict<TGenericParams['change']>,
-) => SyncableRef[];
+  options: TGenericParams['change']['options'],
+) => SyncableRef<TGenericParams['syncableObject']>[];
 
 type ChangePlantSpecificResolver<
   TGenericParams extends IChangePlantBlueprintGenericParams,
   TType extends string
 > = ChangePlantResolver<{
   context: TGenericParams['context'];
+  syncableObject: TGenericParams['syncableObject'];
   change: Extract<TGenericParams['change'], {type: TType}>;
   notification: TGenericParams['notification'];
 }>;
@@ -135,11 +137,19 @@ type ChangePlantSpecificProcessor<
   TType extends string
 > = ChangePlantProcessor<{
   context: TGenericParams['context'];
+  syncableObject: TGenericParams['syncableObject'];
   change: Extract<TGenericParams['change'], {type: TType}>;
   notification: TGenericParams['notification'];
 }>;
 
-export interface ChangePlantSpecificProcessorOptions<
+export interface ChangePlantProcessorOptions<
+  TGenericParams extends IChangePlantBlueprintGenericParams = IChangePlantBlueprintGenericParams
+> {
+  processor: ChangePlantProcessor<TGenericParams>;
+  resolver: ChangePlantResolver<TGenericParams>;
+}
+
+interface ChangePlantSpecificProcessorOptions<
   TGenericParams extends IChangePlantBlueprintGenericParams,
   TType extends string
 > {
@@ -157,6 +167,7 @@ export type ChangePlantBlueprint<
 
 export interface IChangePlantBlueprintGenericParams {
   context: IContext;
+  syncableObject: ISyncableObject;
   change: IChange;
   notification: unknown;
 }
@@ -174,7 +185,7 @@ export class ChangePlant {
   constructor(private blueprint: ChangePlantBlueprint) {}
 
   resolve(
-    {type, refs: refDict}: ChangePacket,
+    {type, refs: refDict, options}: ChangePacket,
     syncables: ISyncable[],
   ): SyncableRef[] {
     let processorOptions = this.blueprint[type];
@@ -200,7 +211,7 @@ export class ChangePlant {
       syncableDict[name] = syncableMap.get(getSyncableKey(ref))!;
     }
 
-    return resolver(syncableDict);
+    return resolver(syncableDict, options);
   }
 
   process(

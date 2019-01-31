@@ -1,7 +1,7 @@
 import {ChangePlantBlueprint, SyncableRef} from '@syncable/core';
 
 import {Context} from '../context';
-import {Task} from '../syncables';
+import {SyncableObject, Task} from '../syncables';
 
 export type TaskChange = TaskUpdateTaskBriefChange;
 
@@ -17,6 +17,7 @@ export interface TaskUpdateTaskBriefChange {
 
 export interface ChangePlantTaskBlueprintGenericParams {
   context: Context;
+  syncableObject: SyncableObject;
   change: TaskChange;
   notification: never;
 }

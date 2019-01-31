@@ -6,7 +6,6 @@ import {delayWhen, share} from 'rxjs/operators';
 import {randomNap} from './@utils';
 import {ClientGenericParams} from './client';
 import {Context} from './context';
-import {UserId} from './syncables';
 
 export class ClientAdapter implements IClientAdapter<ClientGenericParams> {
   incoming$: Observable<RPCData>;
@@ -15,7 +14,6 @@ export class ClientAdapter implements IClientAdapter<ClientGenericParams> {
 
   constructor(
     readonly group: string,
-    userId: UserId,
     incomingSource$: Observable<RPCData>,
     private outgoing$: Subject<RPCData>,
   ) {
@@ -24,7 +22,7 @@ export class ClientAdapter implements IClientAdapter<ClientGenericParams> {
       share(),
     );
 
-    this.context = new Context('user', 'client', userId);
+    this.context = new Context('user', 'client');
   }
 
   async send(data: RPCData): Promise<void> {

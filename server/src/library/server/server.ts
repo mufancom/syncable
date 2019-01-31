@@ -207,7 +207,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
   }
 
   private onConnection = (connection: Connection<TGenericParams>): void => {
-    this.addConnection(connection).catch();
+    this.addConnection(connection).catch(console.error);
   };
 
   private onBroadcast = (result: BroadcastChangeResult): void => {

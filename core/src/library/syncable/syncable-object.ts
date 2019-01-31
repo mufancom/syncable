@@ -87,11 +87,13 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return [];
   }
 
-  require<T extends ISyncableObject>(ref: SyncableRef<T>): T {
+  require<T extends ISyncableObject>(ref: SyncableRef<T>): T;
+  require(ref: SyncableRef): ISyncableObject {
     return this.container.requireSyncableObject(ref);
   }
 
-  get<T extends ISyncableObject>(ref: SyncableRef<T>): T | undefined {
+  get<T extends ISyncableObject>(ref: SyncableRef<T>): T | undefined;
+  get(ref: SyncableRef): ISyncableObject | undefined {
     return this.container.getSyncableObject(ref);
   }
 

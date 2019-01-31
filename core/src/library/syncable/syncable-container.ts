@@ -6,7 +6,9 @@ import {ISyncable, SyncableId, SyncableRef} from './syncable';
 import {ISyncableAdapter} from './syncable-adapter';
 import {ISyncableObject} from './syncable-object';
 
-export class SyncableContainer {
+export class SyncableContainer<
+  TSyncableObject extends ISyncableObject = ISyncableObject
+> {
   private typeToIdToSyncableMapMap = observable.map<
     string,
     ObservableMap<SyncableId, ISyncable>
@@ -19,6 +21,9 @@ export class SyncableContainer {
 
   constructor(readonly adapter: ISyncableAdapter) {}
 
+  getSyncables<TType extends TSyncableObject['syncable']['_type']>(
+    type?: TType,
+  ): Extract<TSyncableObject['syncable'], {_type: TType}>[];
   getSyncables(type?: string): ISyncable[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
 
@@ -39,6 +44,34 @@ export class SyncableContainer {
     }
   }
 
+  getSyncable<TRef extends TSyncableObject['ref']>({
+    type,
+    id,
+  }: TRef): Extract<TSyncableObject, {ref: TRef}>['syncable'] | undefined {
+    let syncableMap = this.typeToIdToSyncableMapMap.get(type);
+    return syncableMap && syncableMap.get(id);
+  }
+
+  requireSyncable<TRef extends TSyncableObject['ref']>(
+    ref: TRef,
+  ): Extract<TSyncableObject, {ref: TRef}>['syncable'] {
+    let syncable = this.getSyncable(ref);
+
+    if (!syncable) {
+      throw new Error(`Syncable "${JSON.stringify(ref)}" not added to context`);
+    }
+
+    return syncable;
+  }
+
+  existsSyncable({type, id}: SyncableRef<TSyncableObject>): boolean {
+    let syncableMap = this.typeToIdToSyncableMapMap.get(type);
+    return !!syncableMap && syncableMap.has(id);
+  }
+
+  getSyncableObjects<TType extends TSyncableObject['syncable']['_type']>(
+    type?: TType,
+  ): Extract<TSyncableObject, {syncable: {_type: TType}}>[];
   getSyncableObjects(type?: string): ISyncableObject[] {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
 
@@ -63,29 +96,52 @@ export class SyncableContainer {
     }
   }
 
-  existsSyncable({type, id}: SyncableRef): boolean {
-    let syncableMap = this.typeToIdToSyncableMapMap.get(type);
-    return !!syncableMap && syncableMap.has(id);
-  }
+  getSyncableObject<TRef extends TSyncableObject['ref']>(
+    ref: TRef,
+  ): Extract<TSyncableObject, {ref: TRef}> | undefined;
+  getSyncableObject(ref: SyncableRef): ISyncableObject | undefined {
+    let {type, id} = ref;
 
-  getSyncable<T extends ISyncableObject>({
-    type,
-    id,
-  }: SyncableRef<T>): T['syncable'] | undefined {
-    let syncableMap = this.typeToIdToSyncableMapMap.get(type);
-    return syncableMap && syncableMap.get(id);
-  }
+    let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
 
-  requireSyncable<T extends ISyncableObject>(
-    ref: SyncableRef<T>,
-  ): T['syncable'] {
+    let syncableObjectMap = typeToIdToSyncableObjectMapMap.get(type);
+
+    let object: ISyncableObject | undefined;
+
+    if (syncableObjectMap) {
+      object = syncableObjectMap.get(id);
+
+      if (object) {
+        return object;
+      }
+    } else {
+      syncableObjectMap = observable.map();
+      typeToIdToSyncableObjectMapMap.set(type, syncableObjectMap);
+    }
+
     let syncable = this.getSyncable(ref);
 
     if (!syncable) {
+      return undefined;
+    }
+
+    object = this.adapter.instantiate(syncable, this);
+
+    syncableObjectMap.set(id, object);
+
+    return object;
+  }
+
+  requireSyncableObject<TRef extends TSyncableObject['ref']>(
+    ref: TRef,
+  ): Extract<TSyncableObject, {ref: TRef}> {
+    let object = this.getSyncableObject(ref);
+
+    if (!object) {
       throw new Error(`Syncable "${JSON.stringify(ref)}" not added to context`);
     }
 
-    return syncable;
+    return object;
   }
 
   /**
@@ -102,40 +158,18 @@ export class SyncableContainer {
     let syncableMap = typeToIdToSyncableMapMap.get(type);
 
     if (syncableMap) {
-      if (syncableMap.has(id)) {
-        this.updateSyncable(snapshot);
+      let syncable = syncableMap.get(id);
+
+      if (syncable) {
+        replaceObject(syncable, snapshot);
+        return;
       }
     } else {
       syncableMap = observable.map();
       typeToIdToSyncableMapMap.set(type, syncableMap);
     }
 
-    let syncable = observable(snapshot);
-
-    syncableMap.set(id, syncable);
-  }
-
-  /**
-   * Update a syncable stored by this manager, please notice that it won't change
-   * the reference of the originally stored syncable. Instead, differences will
-   * be applied to it.
-   */
-  @action
-  updateSyncable(snapshot: ISyncable): void {
-    snapshot = _.cloneDeep(snapshot);
-
-    let {_id: id, _type: type} = snapshot;
-
-    let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
-    let syncableMap = typeToIdToSyncableMapMap.get(type);
-
-    let syncable = syncableMap && syncableMap.get(id);
-
-    if (!syncable) {
-      throw new Error(`Syncable with ID "${id}" does not exists in context`);
-    }
-
-    replaceObject(syncable, snapshot);
+    syncableMap.set(id, observable(snapshot));
   }
 
   @action
@@ -162,51 +196,6 @@ export class SyncableContainer {
     if (syncableObjectMap) {
       syncableObjectMap.delete(id);
     }
-  }
-
-  getSyncableObject<T extends ISyncableObject>(
-    ref: SyncableRef<T>,
-  ): T | undefined {
-    let {type, id} = ref;
-
-    let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
-
-    let syncableObjectMap = typeToIdToSyncableObjectMapMap.get(type);
-
-    let object: T | undefined;
-
-    if (syncableObjectMap) {
-      object = syncableObjectMap.get(id) as T | undefined;
-
-      if (object) {
-        return object;
-      }
-    } else {
-      syncableObjectMap = observable.map();
-      typeToIdToSyncableObjectMapMap.set(type, syncableObjectMap);
-    }
-
-    let syncable = this.getSyncable(ref);
-
-    if (!syncable) {
-      return undefined;
-    }
-
-    object = this.adapter.instantiate(syncable, this) as T;
-
-    syncableObjectMap.set(id, object);
-
-    return object;
-  }
-
-  requireSyncableObject<T extends ISyncableObject>(ref: SyncableRef<T>): T {
-    let object = this.getSyncableObject(ref);
-
-    if (!object) {
-      throw new Error(`Syncable "${JSON.stringify(ref)}" not added to context`);
-    }
-
-    return object;
   }
 
   @action
