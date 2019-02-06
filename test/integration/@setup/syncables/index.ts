@@ -1,9 +1,11 @@
-import {Task, TaskSyncable} from './task';
-import {User, UserSyncable} from './user';
+import {Kanban} from './kanban';
+import {Task} from './task';
+import {User} from './user';
 
-export type Syncable = UserSyncable | TaskSyncable;
+export type SyncableObject = User | Task | Kanban;
 
-export type SyncableObject = User | Task;
+export type Syncable = SyncableObject['syncable'];
 
 export * from './task';
 export * from './user';
+export * from './kanban';

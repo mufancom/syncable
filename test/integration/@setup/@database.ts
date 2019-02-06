@@ -1,6 +1,14 @@
 import {createSyncable} from '@syncable/core';
 
-import {Syncable, Task, TaskId, User, UserId} from './syncables';
+import {
+  Kanban,
+  KanbanId,
+  Syncable,
+  Task,
+  TaskId,
+  User,
+  UserId,
+} from './syncables';
 
 export const syncablesInDatabase: Syncable[] = [
   createSyncable<User>(
@@ -32,6 +40,16 @@ export const syncablesInDatabase: Syncable[] = [
     {
       group: 'group-1',
       brief: 'This is task 2',
+    },
+  ),
+  createSyncable<Kanban>(
+    {
+      type: 'kanban',
+      create: {id: 'kanban-1' as KanbanId},
+    },
+    {
+      group: 'group-1',
+      tasks: ['task-1' as TaskId],
     },
   ),
 ];

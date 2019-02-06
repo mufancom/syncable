@@ -1,6 +1,6 @@
 import {ISyncableAdapter} from '@syncable/core';
 
-import {SyncableObject, Task, User} from './syncables';
+import {Kanban, SyncableObject, Task, User} from './syncables';
 
 export interface SyncableAdapterGenericParams {
   syncableObject: SyncableObject;
@@ -9,10 +9,12 @@ export interface SyncableAdapterGenericParams {
 export const syncableAdapter: ISyncableAdapter<SyncableAdapterGenericParams> = {
   instantiate(syncable, container) {
     switch (syncable._type) {
-      case 'task':
-        return new Task(syncable, container);
       case 'user':
         return new User(syncable, container);
+      case 'task':
+        return new Task(syncable, container);
+      case 'kanban':
+        return new Kanban(syncable, container);
     }
   },
 };

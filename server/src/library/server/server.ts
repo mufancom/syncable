@@ -73,7 +73,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
   async loadSyncablesByQuery(
     group: string,
     context: IContext,
-    queryObject: object,
+    resolvedViewQueryDict: object,
     loadedKeySet: Set<string>,
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
@@ -82,7 +82,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let directSyncables = await serverAdapter.loadSyncablesByQuery(
       group,
       context,
-      queryObject,
+      resolvedViewQueryDict,
       loadedKeySet,
     );
 

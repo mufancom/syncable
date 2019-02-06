@@ -4,6 +4,7 @@ import Lolex, {Clock} from 'lolex';
 import {Subject} from 'rxjs';
 
 import {
+  KanbanId,
   ServerGenericParams,
   TaskId,
   UserId,
@@ -58,6 +59,32 @@ test('should query tasks', async () => {
   await client.query({
     task: {
       refs: {},
+      options: {},
+    },
+  });
+
+  expect(_.cloneDeep(client.container.getSyncables('task'))).toMatchSnapshot();
+
+  close();
+});
+
+test('should query by kanban', async () => {
+  let [client, connection, close] = createClientConnectionPair(
+    server,
+    'group-1',
+    'user-1' as UserId,
+  );
+
+  connection$.next(connection);
+
+  await client.query({
+    kanban: {
+      refs: {
+        kanban: {
+          type: 'kanban',
+          id: 'kanban-1' as KanbanId,
+        },
+      },
       options: {},
     },
   });

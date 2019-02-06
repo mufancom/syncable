@@ -5,6 +5,7 @@ import {
   IServerAdapter,
   QueuedChangeProcessor,
   ViewQueryFilter,
+  ViewQueryObjectToResolvedViewQueryObject,
 } from '@syncable/server';
 import _ from 'lodash';
 import {Observable, Subject, from} from 'rxjs';
@@ -76,21 +77,33 @@ export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
   async loadSyncablesByQuery(
     group: string,
     context: Context,
-    queryObject: Partial<ViewQuery>,
+    resolvedViewQueryDict: Partial<
+      ViewQueryObjectToResolvedViewQueryObject<ViewQuery>
+    >,
     loadedKeySet: Set<string>,
   ): Promise<Syncable[]> {
     await randomNap();
 
     let filters: ViewQueryFilter<Syncable>[] = [];
 
-    if ('default' in queryObject) {
+    if ('default' in resolvedViewQueryDict) {
       filters.push(
         syncable => getSyncableKey(syncable) === getSyncableKey(context.ref),
       );
     }
 
-    if ('task' in queryObject) {
+    if ('task' in resolvedViewQueryDict) {
       filters.push(syncable => syncable._type === 'task');
+    }
+
+    if ('kanban' in resolvedViewQueryDict) {
+      let {kanban: kanbanSyncable} = resolvedViewQueryDict.kanban!.syncables;
+
+      filters.push(
+        syncable =>
+          syncable._type === 'task' &&
+          kanbanSyncable.tasks.includes(syncable._id),
+      );
     }
 
     return this.syncables.filter(

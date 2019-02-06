@@ -13,6 +13,20 @@ Array [
 ]
 `;
 
+exports[`should query by kanban 1`] = `
+Array [
+  Object {
+    "_clock": 0,
+    "_createdAt": 0,
+    "_id": "task-1",
+    "_type": "task",
+    "_updatedAt": 0,
+    "brief": "This is task 1",
+    "group": "group-1",
+  },
+]
+`;
+
 exports[`should query tasks 1`] = `
 Array [
   Object {

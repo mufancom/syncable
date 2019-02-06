@@ -7,7 +7,10 @@ import {
 import {Observable} from 'rxjs';
 
 import {Connection} from '../connection';
-import {ViewQueryFilter} from '../view-query';
+import {
+  ViewQueryFilter,
+  ViewQueryObjectToResolvedViewQueryObject as ViewQueryDictToResolvedViewQueryDict,
+} from '../view-query';
 
 import {IServerGenericParams} from './server';
 
@@ -45,7 +48,9 @@ export interface IServerAdapter<
   loadSyncablesByQuery(
     group: string,
     context: TGenericParams['context'],
-    queryObject: Partial<TGenericParams['viewQuery']>,
+    resolvedViewQueryDict: Partial<
+      ViewQueryDictToResolvedViewQueryDict<TGenericParams['viewQuery']>
+    >,
     loadedKeySet: Set<string>,
   ): Promise<ISyncable[]>;
 

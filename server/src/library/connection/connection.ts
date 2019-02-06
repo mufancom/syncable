@@ -272,7 +272,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let context = this.context;
     let container = this.container;
 
-    let viewQueryOptionsDict: Dict<object> = {};
+    let resolvedViewQueryDict: Dict<object> = {};
 
     let viewQueryFilterMap = this.viewQueryFilterMap;
 
@@ -310,7 +310,11 @@ export class Connection<TGenericParams extends IServerGenericParams>
         );
 
         viewQueryFilterMap.set(name, filter);
-        viewQueryOptionsDict[name] = descriptor;
+
+        resolvedViewQueryDict[name] = {
+          syncables: syncableDict,
+          options,
+        };
       } else {
         viewQueryFilterMap.delete(name);
       }
@@ -321,7 +325,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let syncables = await this.server.loadSyncablesByQuery(
       this.group,
       context,
-      viewQueryOptionsDict,
+      resolvedViewQueryDict,
       loadedKeySet,
     );
 
