@@ -13,7 +13,12 @@ export class ConnectionAdapter
   implements IConnectionAdapter<ServerGenericParams> {
   incoming$: Observable<RPCData>;
 
-  readonly viewQuery: Partial<ViewQuery> = {default: {}};
+  readonly viewQuery: Partial<ViewQuery> = {
+    default: {
+      refs: {},
+      options: {},
+    },
+  };
 
   readonly context: Context;
 

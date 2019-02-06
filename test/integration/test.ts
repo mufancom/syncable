@@ -56,7 +56,10 @@ test('should query tasks', async () => {
   connection$.next(connection);
 
   await client.query({
-    task: {},
+    task: {
+      refs: {},
+      options: {},
+    },
   });
 
   expect(_.cloneDeep(client.container.getSyncables('task'))).toMatchSnapshot();
@@ -111,12 +114,15 @@ test('should update task brief', async () => {
   connection$.next(connection);
 
   await client.query({
-    task: {},
+    task: {
+      refs: {},
+      options: {},
+    },
   });
 
   let task = client.requireObject({type: 'task', id: 'task-2' as TaskId});
 
-  await client.updateAndConfirm({
+  let {promise} = client.update({
     type: 'task:update-task-brief',
     refs: {
       task: task.ref,
@@ -126,7 +132,13 @@ test('should update task brief', async () => {
     },
   });
 
-  expect(_.cloneDeep(task && task.syncable)).toMatchSnapshot();
+  expect(_.cloneDeep(task && task.syncable)).toMatchSnapshot('local-update');
+
+  await promise;
+
+  expect(_.cloneDeep(task && task.syncable)).toMatchSnapshot(
+    'confirmed-update',
+  );
 
   close();
 });

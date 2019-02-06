@@ -192,16 +192,19 @@ export class Client<TGenericParams extends IClientGenericParams>
     {syncables, removals, updates}: SyncData,
     source?: SyncUpdateSource,
   ): void {
+    let clock: number | undefined;
+
     if (source) {
+      clock = source.clock;
       this.shiftChangePacket(source.id);
     }
 
     for (let syncable of syncables) {
-      this.onUpdateCreate(syncable);
+      this.onUpdateCreate(syncable, clock);
     }
 
     for (let {ref, diffs} of updates) {
-      this.onUpdateChange(ref, diffs);
+      this.onUpdateChange(ref, diffs, clock);
     }
 
     for (let ref of removals) {
@@ -219,8 +222,8 @@ export class Client<TGenericParams extends IClientGenericParams>
     }
   }
 
-  private onUpdateCreate(syncable: ISyncable): void {
-    this.container.addSyncable(syncable);
+  private onUpdateCreate(syncable: ISyncable, clock: number | undefined): void {
+    this.container.addSyncable(syncable, clock);
 
     let snapshot = _.cloneDeep(syncable);
 
@@ -228,18 +231,22 @@ export class Client<TGenericParams extends IClientGenericParams>
   }
 
   private onUpdateRemove(ref: SyncableRef): void {
-    this.container.removeSyncable(ref, true);
+    this.container.removeSyncable(ref);
     this.syncableSnapshotMap.delete(ref.id);
   }
 
-  private onUpdateChange(ref: SyncableRef, diffs: Diff<ISyncable>[]): void {
+  private onUpdateChange(
+    ref: SyncableRef,
+    diffs: Diff<ISyncable>[],
+    clock: number | undefined,
+  ): void {
     let snapshot = this.syncableSnapshotMap.get(ref.id)!;
 
     for (let diff of diffs) {
       DeepDiff.applyChange(snapshot, undefined!, diff);
     }
 
-    this.container.addSyncable(snapshot);
+    this.container.addSyncable(snapshot, clock);
   }
 
   private shiftChangePacket(id: ChangePacketId): boolean {

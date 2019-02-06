@@ -1,4 +1,10 @@
 export interface ViewQuery {
-  default: object;
-  task: object;
+  default: {
+    refs: {};
+    options: {};
+  };
+  task: {
+    refs: {};
+    options: {};
+  };
 }

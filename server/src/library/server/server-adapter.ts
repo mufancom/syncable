@@ -36,7 +36,11 @@ export interface IServerAdapter<
 
   queueChange(group: string, processor: QueuedChangeProcessor): Promise<void>;
 
-  getViewQueryFilter(name: string, query: object): ViewQueryFilter;
+  getViewQueryFilter(
+    name: string,
+    syncableDict: object,
+    options: object,
+  ): ViewQueryFilter;
 
   loadSyncablesByQuery(
     group: string,

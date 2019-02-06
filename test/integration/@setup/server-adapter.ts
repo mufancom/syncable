@@ -69,7 +69,7 @@ export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
     await randomNap();
   }
 
-  getViewQueryFilter(_name: string, _query: object): ViewQueryFilter {
+  getViewQueryFilter(): ViewQueryFilter {
     return () => true;
   }
 

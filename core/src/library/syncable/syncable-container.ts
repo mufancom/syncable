@@ -1,10 +1,17 @@
 import _ from 'lodash';
 import {ObservableMap, action, observable} from 'mobx';
 import replaceObject from 'replace-object';
+import {Dict} from 'tslang';
 
 import {ISyncable, SyncableId, SyncableRef} from './syncable';
 import {ISyncableAdapter} from './syncable-adapter';
 import {ISyncableObject} from './syncable-object';
+
+type RefDictToSyncableDict<TRefDict extends object> = {
+  [TName in keyof TRefDict]: TRefDict[TName] extends ISyncableObject
+    ? TRefDict[TName]['syncable']
+    : never
+};
 
 export class SyncableContainer<
   TSyncableObject extends ISyncableObject = ISyncableObject
@@ -20,6 +27,13 @@ export class SyncableContainer<
   >();
 
   constructor(readonly adapter: ISyncableAdapter) {}
+
+  buildSyncableDict<TRefDict extends object>(
+    refDict: TRefDict,
+  ): RefDictToSyncableDict<TRefDict>;
+  buildSyncableDict(refDict: Dict<SyncableRef>): Dict<ISyncable> {
+    return _.mapValues(refDict, ref => this.requireSyncable(ref));
+  }
 
   getSyncables<TType extends TSyncableObject['syncable']['_type']>(
     type?: TType,
@@ -149,9 +163,7 @@ export class SyncableContainer<
    * originally stored syncable. Instead, differences will be applied to it.
    */
   @action
-  addSyncable(snapshot: ISyncable): void {
-    snapshot = _.cloneDeep(snapshot);
-
+  addSyncable(snapshot: ISyncable, clock?: number): void {
     let {_id: id, _type: type} = snapshot;
 
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
@@ -161,7 +173,10 @@ export class SyncableContainer<
       let syncable = syncableMap.get(id);
 
       if (syncable) {
-        replaceObject(syncable, snapshot);
+        if (clock === undefined || syncable._clock < clock) {
+          replaceObject(syncable, snapshot);
+        }
+
         return;
       }
     } else {
@@ -169,11 +184,29 @@ export class SyncableContainer<
       typeToIdToSyncableMapMap.set(type, syncableMap);
     }
 
-    syncableMap.set(id, observable(snapshot));
+    syncableMap.set(id, observable(_.cloneDeep(snapshot)));
   }
 
   @action
-  removeSyncable({type, id}: SyncableRef, syncing = false): void {
+  updateMatchingSyncable(snapshot: ISyncable, clock?: number): void {
+    let {_id: id, _type: type} = snapshot;
+
+    let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
+    let syncableMap = typeToIdToSyncableMapMap.get(type);
+
+    if (!syncableMap) {
+      return;
+    }
+
+    let syncable = syncableMap.get(id);
+
+    if (syncable && (clock === undefined || syncable._clock < clock)) {
+      replaceObject(syncable, snapshot);
+    }
+  }
+
+  @action
+  removeSyncable({type, id}: SyncableRef): void {
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
     let typeToIdToSyncableObjectMapMap = this.typeToIdToSyncableObjectMapMap;
 
@@ -182,11 +215,7 @@ export class SyncableContainer<
     let syncable = syncableMap && syncableMap.get(id);
 
     if (!syncable) {
-      if (syncing) {
-        return;
-      }
-
-      throw new Error(`Syncable with ID "${id}" does not exists in context`);
+      return;
     }
 
     syncableMap!.delete(id);

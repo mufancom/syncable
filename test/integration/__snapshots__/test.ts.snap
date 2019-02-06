@@ -71,13 +71,25 @@ Array [
 ]
 `;
 
-exports[`should update task brief 1`] = `
+exports[`should update task brief: confirmed-update 1`] = `
 Object {
   "_clock": 1,
   "_createdAt": 0,
   "_id": "task-2",
   "_type": "task",
   "_updatedAt": 1500000000240,
+  "brief": "New brief for task 2",
+  "group": "group-1",
+}
+`;
+
+exports[`should update task brief: local-update 1`] = `
+Object {
+  "_clock": 0,
+  "_createdAt": 0,
+  "_id": "task-2",
+  "_type": "task",
+  "_updatedAt": 1500000000160,
   "brief": "New brief for task 2",
   "group": "group-1",
 }

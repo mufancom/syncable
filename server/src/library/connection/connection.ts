@@ -11,17 +11,19 @@ import {
   SyncData,
   SyncDataUpdateEntry,
   SyncUpdateSource,
+  SyncableContainer,
   SyncableRef,
   getSyncableKey,
   getSyncableRef,
 } from '@syncable/core';
+import _ from 'lodash';
 import {Observable, Subject, Subscription} from 'rxjs';
 import {concatMap, ignoreElements} from 'rxjs/operators';
 import {Dict} from 'tslang';
 
 import {filterReadableSyncables} from '../@utils';
 import {BroadcastChangeResult, IServerGenericParams, Server} from '../server';
-import {ViewQueryFilter} from '../view-query';
+import {GeneralViewQuery, ViewQueryFilter} from '../view-query';
 
 import {IConnectionAdapter} from './connection-adapter';
 
@@ -47,6 +49,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
   extends RPCPeer<ClientRPCDefinition>
   implements RPCPeerType<ConnectionRPCDefinition> {
   readonly close$: Observable<void>;
+
+  private container: SyncableContainer;
 
   private viewQueryFilterMap = new Map<string, ViewQueryFilter>();
 
@@ -75,6 +79,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
     if (context.type !== 'user' || context.environment !== 'server') {
       throw new Error('Invalid context');
     }
+
+    this.container = new SyncableContainer(syncableAdapter);
 
     this.close$ = connectionAdapter.incoming$.pipe(ignoreElements());
 
@@ -184,34 +190,23 @@ export class Connection<TGenericParams extends IServerGenericParams>
     updates: updateItems,
   }: BroadcastChangeResult): void {
     let context = this.context;
+    let container = this.container;
+
     let syncableAdapter = this.syncableAdapter;
     let connectionAdapter = this.connectionAdapter;
 
-    let contextKey = getSyncableKey(context.ref);
-
     for (let ref of removedSyncableRefs) {
-      let key = getSyncableKey(ref);
-
-      if (key === contextKey) {
-        connectionAdapter.close();
-        return;
-      }
+      container.removeSyncable(ref);
     }
 
     for (let {snapshot} of updateItems) {
-      let key = getSyncableKey(snapshot);
+      container.updateMatchingSyncable(snapshot);
+    }
 
-      if (key === contextKey) {
-        let contextObject = syncableAdapter.instantiate(snapshot);
-        context.setObject(contextObject);
+    let contextObject = container.getSyncableObject(context.ref);
 
-        if (context.disabled) {
-          connectionAdapter.close();
-          return;
-        }
-
-        break;
-      }
+    if (!contextObject || context.disabled) {
+      connectionAdapter.close();
     }
 
     let loadedKeySet = this.loadedKeySet;
@@ -273,19 +268,49 @@ export class Connection<TGenericParams extends IServerGenericParams>
   }
 
   private async query(update: object, toInitialize: boolean): Promise<void> {
+    let group = this.group;
     let context = this.context;
-    let syncableAdapter = this.syncableAdapter;
+    let container = this.container;
 
-    let viewQueryObject: Dict<object> = {};
+    let viewQueryOptionsDict: Dict<object> = {};
 
     let viewQueryFilterMap = this.viewQueryFilterMap;
 
-    for (let [name, queryDescriptor] of Object.entries(update)) {
-      if (queryDescriptor) {
-        let filter = this.server.getViewQueryFilter(name, queryDescriptor);
+    let queryEntries = Object.entries(update) as [string, GeneralViewQuery][];
+
+    let refs = _.uniqBy(
+      _.flatMap(queryEntries, ([, query]) => Object.values(query.refs)),
+      ref => getSyncableKey(ref),
+    ).filter(ref => !container.existsSyncable(ref));
+
+    if (refs.length) {
+      let syncables = await this.server.loadSyncablesByRefs(
+        group,
+        context,
+        refs,
+        undefined,
+        false,
+      );
+
+      for (let syncable of syncables) {
+        container.addSyncable(syncable);
+      }
+    }
+
+    for (let [name, descriptor] of queryEntries) {
+      if (descriptor) {
+        let {refs: refDict, options} = descriptor;
+
+        let syncableDict = container.buildSyncableDict(refDict);
+
+        let filter = this.server.getViewQueryFilter(
+          name,
+          syncableDict,
+          options,
+        );
 
         viewQueryFilterMap.set(name, filter);
-        viewQueryObject[name] = queryDescriptor;
+        viewQueryOptionsDict[name] = descriptor;
       } else {
         viewQueryFilterMap.delete(name);
       }
@@ -296,7 +321,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let syncables = await this.server.loadSyncablesByQuery(
       this.group,
       context,
-      viewQueryObject,
+      viewQueryOptionsDict,
       loadedKeySet,
     );
 
@@ -311,7 +336,10 @@ export class Connection<TGenericParams extends IServerGenericParams>
       loadedKeySet.add(key);
 
       if (key === contextKey) {
-        let contextObject = syncableAdapter.instantiate(syncable);
+        container.addSyncable(syncable);
+
+        let contextObject = container.requireSyncableObject(contextRef);
+
         context.setObject(contextObject);
       }
     }
@@ -345,6 +373,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       this.context,
       refs,
       loadedKeySet,
+      true,
     );
 
     for (let syncable of syncables) {
