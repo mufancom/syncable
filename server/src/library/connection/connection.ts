@@ -64,7 +64,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
   private container: SyncableContainer;
 
-  private viewQueryFilterMap = new Map<string, ViewQueryFilter>();
+  private nameToViewQueryFilterMap = new Map<string, ViewQueryFilter>();
 
   private loadedKeySet = new Set<string>();
 
@@ -115,12 +115,24 @@ export class Connection<TGenericParams extends IServerGenericParams>
             options.resolve();
           }),
         )
-        .subscribe(),
+        .subscribe({
+          error(error) {
+            console.error(
+              error instanceof RPCError
+                ? error.message
+                : error instanceof Error
+                ? error.stack
+                : error,
+            );
+
+            connectionAdapter.close();
+          },
+        }),
     );
   }
 
   private get viewQueryFilter(): ViewQueryFilter {
-    let filters = Array.from(this.viewQueryFilterMap.values());
+    let filters = Array.from(this.nameToViewQueryFilterMap.values());
 
     return syncable => filters.some(filter => filter(syncable));
   }
@@ -291,7 +303,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       clock,
     };
 
-    this.call('sync', data, source).catch(console.error);
+    await this.call('sync', data, source);
   }
 
   private async query(update: object, toInitialize: boolean): Promise<void> {
@@ -299,7 +311,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let context = this.context;
     let container = this.container;
     let server = this.server;
-    let connectionAdapter = this.connectionAdapter;
+
+    let syncableAdapter = this.syncableAdapter;
 
     let resolvedViewQueryDict: Dict<object> = {};
 
@@ -324,7 +337,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       }
     }
 
-    let viewQueryFilterMap = this.viewQueryFilterMap;
+    let viewQueryFilterMap = this.nameToViewQueryFilterMap;
 
     for (let [name, descriptor] of queryEntries) {
       if (descriptor) {
@@ -337,7 +350,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
           options,
         };
 
-        let filter = server.getViewQueryFilter(
+        let filter = syncableAdapter.getViewQueryFilter(
           context,
           name,
           resolvedViewQuery,
@@ -377,6 +390,12 @@ export class Connection<TGenericParams extends IServerGenericParams>
       }
     }
 
+    let data: SyncData = {
+      syncables,
+      removals: [],
+      updates: [],
+    };
+
     if (toInitialize) {
       if (!context.object) {
         throw new RPCError('INVALID_CONTEXT');
@@ -386,20 +405,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
         throw new RPCError('CONTEXT_DISABLED');
       }
 
-      let data: SyncData = {
-        syncables: [...connectionAdapter.builtInSyncables, ...syncables],
-        removals: [],
-        updates: [],
-      };
-
       await this.call('initialize', data, contextRef);
     } else {
-      let data: SyncData = {
-        syncables,
-        removals: [],
-        updates: [],
-      };
-
       await this.call('sync', data);
     }
   }

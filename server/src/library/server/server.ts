@@ -12,10 +12,8 @@ import {
   ISyncableAdapter,
   ISyncableObject,
   NumericTimestamp,
-  ResolvedViewQuery,
   SyncableContainer,
   SyncableRef,
-  ViewQueryFilter,
   generateUniqueId,
   getNonCreationRefsFromRefDict,
   getSyncableKey,
@@ -60,14 +58,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
     serverAdapter.broadcast$.subscribe(this.onBroadcast);
 
     this.changePlant = new ChangePlant(blueprint);
-  }
-
-  getViewQueryFilter(
-    context: IContext,
-    name: string,
-    query: ResolvedViewQuery,
-  ): ViewQueryFilter {
-    return this.serverAdapter.getViewQueryFilter(context, name, query);
   }
 
   async loadSyncablesByQuery(

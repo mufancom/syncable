@@ -11,6 +11,7 @@ import {
   ISyncable,
   ISyncableAdapter,
   ISyncableObject,
+  IViewQuery,
   NumericTimestamp,
   RPCMethod,
   RPCPeer,
@@ -20,17 +21,24 @@ import {
   SyncableContainer,
   SyncableId,
   SyncableRef,
+  ViewQueryFilter,
   ViewQueryUpdateObject,
   generateUniqueId,
 } from '@syncable/core';
 import DeepDiff, {Diff} from 'deep-diff';
 import _ from 'lodash';
-import {action, observable, when} from 'mobx';
+import {action, observable, runInAction, when} from 'mobx';
 import {Subject} from 'rxjs';
+import {Dict} from 'tslang';
 
 import {IClientAdapter} from './client-adapter';
 
-export interface ClientUpdateResult {
+interface ViewQueryInfo {
+  filter: ViewQueryFilter;
+  query: IViewQuery;
+}
+
+export interface ClientApplyChangeResult {
   id: ChangePacketId;
   promise: Promise<void>;
 }
@@ -55,6 +63,9 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
 
+  @observable
+  private nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
+
   private changePlant: ChangePlant;
 
   private initializeSubject$ = new Subject<void>();
@@ -64,7 +75,7 @@ export class Client<TGenericParams extends IClientGenericParams>
   constructor(
     readonly context: TGenericParams['context'],
     private clientAdapter: IClientAdapter<TGenericParams>,
-    syncableAdapter: ISyncableAdapter<TGenericParams>,
+    private syncableAdapter: ISyncableAdapter<TGenericParams>,
     blueprint: ChangePlantBlueprint<TGenericParams>,
   ) {
     super(clientAdapter);
@@ -112,9 +123,15 @@ export class Client<TGenericParams extends IClientGenericParams>
   ): Promise<
     (Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined)[]
   > {
-    await this.call('request-syncables', refs);
-
     let container = this.container;
+
+    let missingSyncableRefs = refs.filter(
+      ref => !container.existsSyncable(ref),
+    );
+
+    if (missingSyncableRefs.length) {
+      await this.call('request-syncables', missingSyncableRefs);
+    }
 
     return refs
       .map(ref => container.getSyncableObject(ref))
@@ -135,14 +152,74 @@ export class Client<TGenericParams extends IClientGenericParams>
     return object;
   }
 
+  getViewQueryFilter(
+    name: Extract<keyof TGenericParams['viewQueryDict'], string>,
+  ): ViewQueryFilter<TGenericParams['syncableObject']['syncable']> {
+    let info = this.nameToViewQueryInfoMap.get(name);
+
+    return info ? info.filter : () => false;
+  }
+
   async query(
     update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
+    force = false,
   ): Promise<void> {
-    await this.call('update-view-query', update);
+    await this.ready;
+
+    update = _.cloneDeep(update);
+
+    let context = this.context;
+    let container = this.container;
+    let syncableAdapter = this.syncableAdapter;
+
+    let queryEntries = Object.entries(update);
+
+    let viewQueryInfoMap = this.nameToViewQueryInfoMap;
+
+    for (let [name, query] of queryEntries) {
+      let info = viewQueryInfoMap.get(name);
+
+      if (!force && info && _.isEqual(info.query, query)) {
+        delete (update as any)[name];
+        continue;
+      }
+
+      if (query) {
+        let {refs: refDict, options} = query;
+
+        let syncableDict = container.buildSyncableDict(refDict);
+
+        let resolvedViewQuery = {
+          syncables: syncableDict,
+          options,
+        };
+
+        let filter = syncableAdapter.getViewQueryFilter(
+          context,
+          name,
+          resolvedViewQuery,
+        );
+
+        runInAction(() => {
+          viewQueryInfoMap.set(name, {
+            query,
+            filter,
+          });
+        });
+      } else {
+        runInAction(() => {
+          viewQueryInfoMap.delete(name);
+        });
+      }
+    }
+
+    if (Object.keys(update).length) {
+      await this.call('update-view-query', update);
+    }
   }
 
   @action
-  applyChange(change: TGenericParams['change']): ClientUpdateResult {
+  applyChange(change: TGenericParams['change']): ClientApplyChangeResult {
     change = _.cloneDeep(change);
 
     let id = generateUniqueId<ChangePacketId>();
@@ -184,6 +261,16 @@ export class Client<TGenericParams extends IClientGenericParams>
     this.context.setObject(this.requireObject(contextRef));
 
     this.initializeSubject$.complete();
+
+    let update = Array.from(this.nameToViewQueryInfoMap).reduce(
+      (update, [name, {query}]) => {
+        (update as Dict<IViewQuery>)[name] = query;
+        return update;
+      },
+      {} as ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
+    );
+
+    this.query(update, true).catch(console.error);
   }
 
   @RPCMethod()

@@ -1,12 +1,9 @@
 import {
   ChangePacketId,
   ChangePlantProcessingResultUpdateItem,
-  IContext,
   ISyncable,
-  ResolvedViewQuery,
   SyncableRef,
   ViewQueryDictToResolvedViewQueryDict,
-  ViewQueryFilter,
 } from '@syncable/core';
 import {Observable} from 'rxjs';
 
@@ -38,12 +35,6 @@ export interface IServerAdapter<
   broadcast(data: BroadcastChangeResult): Promise<void>;
 
   queueChange(group: string, processor: QueuedChangeProcessor): Promise<void>;
-
-  getViewQueryFilter(
-    context: IContext,
-    name: string,
-    query: ResolvedViewQuery,
-  ): ViewQueryFilter;
 
   loadSyncablesByQuery(
     group: string,

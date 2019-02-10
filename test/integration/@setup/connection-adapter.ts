@@ -20,8 +20,6 @@ export class ConnectionAdapter
     },
   };
 
-  builtInSyncables = [];
-
   readonly context: Context;
 
   constructor(

@@ -167,7 +167,13 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     }
 
     return ACCESS_RIGHTS.filter(right => {
-      let {type} = _.maxBy(dict[right], item => item.priority)!;
+      let items = dict[right];
+
+      if (!items.length) {
+        return false;
+      }
+
+      let {type} = _.maxBy(items, item => item.priority)!;
 
       return type === 'allow';
     });

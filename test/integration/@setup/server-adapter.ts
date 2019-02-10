@@ -73,10 +73,6 @@ export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
     await randomNap();
   }
 
-  getViewQueryFilter(): ViewQueryFilter {
-    return () => true;
-  }
-
   async loadSyncablesByQuery(
     group: string,
     context: Context,

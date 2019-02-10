@@ -1,9 +1,11 @@
+import {SyncableRef} from '@syncable/core';
 import {BroadcastChangeResult, Connection} from '@syncable/server';
 import _ from 'lodash';
 import Lolex, {Clock} from 'lolex';
 import {Subject} from 'rxjs';
 
 import {
+  Kanban,
   KanbanId,
   ServerGenericParams,
   TaskId,
@@ -77,13 +79,17 @@ test('should query by kanban', async () => {
 
   connection$.next(connection);
 
+  let kanbanRef: SyncableRef<Kanban> = {
+    type: 'kanban',
+    id: 'kanban-1' as KanbanId,
+  };
+
+  await client.requestObject(kanbanRef);
+
   await client.query({
     kanban: {
       refs: {
-        kanban: {
-          type: 'kanban',
-          id: 'kanban-1' as KanbanId,
-        },
+        kanban: kanbanRef,
       },
       options: {},
     },

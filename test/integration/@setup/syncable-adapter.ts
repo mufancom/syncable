@@ -1,8 +1,10 @@
 import {ISyncableAdapter} from '@syncable/core';
 
+import {Context} from './context';
 import {Kanban, SyncableObject, Task, User} from './syncables';
 
 export interface SyncableAdapterGenericParams {
+  context: Context;
   syncableObject: SyncableObject;
 }
 
@@ -16,5 +18,8 @@ export const syncableAdapter: ISyncableAdapter<SyncableAdapterGenericParams> = {
       case 'kanban':
         return new Kanban(syncable, container);
     }
+  },
+  getViewQueryFilter() {
+    return () => true;
   },
 };
