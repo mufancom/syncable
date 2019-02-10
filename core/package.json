@@ -1,6 +1,6 @@
 {
   "name": "@syncable/core",
-  "version": "3.0.0-wip.0",
+  "version": "3.0.0-wip.1",
   "publishConfig": {
     "access": "public"
   },
