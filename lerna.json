@@ -5,5 +5,10 @@
     "publish": {
       "npmClient": "npm"
     }
-  }
+  },
+  "packages": [
+    "core",
+    "client",
+    "server"
+  ]
 }
