@@ -5,6 +5,7 @@ import {
   GeneralViewQuery,
   ISyncable,
   ISyncableAdapter,
+  IViewQuery,
   RPCError,
   RPCMethod,
   RPCPeer,
@@ -27,6 +28,11 @@ import {filterReadableSyncables} from '../@utils';
 import {BroadcastChangeResult, IServerGenericParams, Server} from '../server';
 
 import {IConnectionAdapter} from './connection-adapter';
+
+interface ViewQueryInfo {
+  filter: ViewQueryFilter;
+  query: IViewQuery;
+}
 
 interface ISyncableLoadingOptions {
   type: string;
@@ -64,7 +70,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
   private container: SyncableContainer;
 
-  private nameToViewQueryFilterMap = new Map<string, ViewQueryFilter>();
+  private nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
 
   private loadedKeySet = new Set<string>();
 
@@ -132,7 +138,9 @@ export class Connection<TGenericParams extends IServerGenericParams>
   }
 
   private get viewQueryFilter(): ViewQueryFilter {
-    let filters = Array.from(this.nameToViewQueryFilterMap.values());
+    let filters = Array.from(this.nameToViewQueryInfoMap).map(
+      ([, info]) => info.filter,
+    );
 
     return syncable => filters.some(filter => filter(syncable));
   }
@@ -229,6 +237,46 @@ export class Connection<TGenericParams extends IServerGenericParams>
       connectionAdapter.close();
     }
 
+    let keyToViewQueryNameSet = new Map<string, Set<string>>();
+
+    let nameToViewQueryInfoMap = this.nameToViewQueryInfoMap;
+
+    for (let [
+      name,
+      {
+        query: {refs: refDict},
+      },
+    ] of nameToViewQueryInfoMap) {
+      for (let ref of Object.values(refDict)) {
+        let key = getSyncableKey(ref);
+
+        let nameSet = keyToViewQueryNameSet.get(key);
+
+        if (nameSet) {
+          nameSet.add(name);
+        } else {
+          keyToViewQueryNameSet.set(key, new Set([name]));
+        }
+      }
+    }
+
+    let relevantViewQueryNames = _.uniq(
+      _.flatMap(updateItems, item => {
+        let nameSet = keyToViewQueryNameSet.get(getSyncableKey(item.snapshot));
+        return nameSet ? Array.from(nameSet) : [];
+      }),
+    );
+
+    let relevantViewQueryUpdate = relevantViewQueryNames.reduce(
+      (update, name) => {
+        update[name] = nameToViewQueryInfoMap.get(name)!.query;
+        return update;
+      },
+      {} as Dict<IViewQuery>,
+    );
+
+    this['update-view-query'](relevantViewQueryUpdate).catch(console.error);
+
     let loadedKeySet = this.loadedKeySet;
 
     let viewQueryFilter = this.viewQueryFilter;
@@ -247,11 +295,14 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
     let dependencyRelevantSyncables = [...syncables];
 
-    removals.push(
-      ...removedSyncableRefs.filter(ref =>
-        loadedKeySet.has(getSyncableKey(ref)),
-      ),
-    );
+    for (let ref of removedSyncableRefs) {
+      let key = getSyncableKey(ref);
+
+      if (loadedKeySet.has(key)) {
+        loadedKeySet.delete(key);
+        removals.push(ref);
+      }
+    }
 
     for (let {snapshot, diffs} of updateItems) {
       let readable = syncableAdapter
@@ -267,12 +318,12 @@ export class Connection<TGenericParams extends IServerGenericParams>
           updates.push({ref, diffs});
           dependencyRelevantSyncables.push(snapshot);
         } else {
+          loadedKeySet.delete(key);
           removals.push(ref);
         }
       } else {
         if (readable && viewQueryFilter(snapshot)) {
           loadedKeySet.add(key);
-
           syncables.push(snapshot);
           dependencyRelevantSyncables.push(snapshot);
         }
@@ -337,11 +388,11 @@ export class Connection<TGenericParams extends IServerGenericParams>
       }
     }
 
-    let viewQueryFilterMap = this.nameToViewQueryFilterMap;
+    let viewQueryInfoMap = this.nameToViewQueryInfoMap;
 
-    for (let [name, descriptor] of queryEntries) {
-      if (descriptor) {
-        let {refs: refDict, options} = descriptor;
+    for (let [name, query] of queryEntries) {
+      if (query) {
+        let {refs: refDict, options} = query;
 
         let syncableDict = container.buildSyncableDict(refDict);
 
@@ -356,11 +407,14 @@ export class Connection<TGenericParams extends IServerGenericParams>
           resolvedViewQuery,
         );
 
-        viewQueryFilterMap.set(name, filter);
+        viewQueryInfoMap.set(name, {
+          filter,
+          query,
+        });
 
         resolvedViewQueryDict[name] = resolvedViewQuery;
       } else {
-        viewQueryFilterMap.delete(name);
+        viewQueryInfoMap.delete(name);
       }
     }
 
