@@ -149,7 +149,7 @@ test('should update task brief', async () => {
 
   let task = client.requireObject({type: 'task', id: 'task-2' as TaskId});
 
-  let {promise} = client.update({
+  let {promise} = client.applyChange({
     type: 'task:update-task-brief',
     refs: {
       task: task.ref,

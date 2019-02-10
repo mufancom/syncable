@@ -1,6 +1,6 @@
 import {ChangePlantBlueprintGenericParams} from './changes';
 
 export interface ServerGenericParams extends ChangePlantBlueprintGenericParams {
-  viewQuery: object;
+  viewQueryDict: object;
   customRPCDefinition: never;
 }

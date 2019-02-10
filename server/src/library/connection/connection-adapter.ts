@@ -1,4 +1,4 @@
-import {IContext, IRPCAdapter} from '@syncable/core';
+import {IContext, IRPCAdapter, ISyncable} from '@syncable/core';
 
 import {IServerGenericParams} from '../server';
 
@@ -7,7 +7,8 @@ export interface IConnectionAdapter<
 > extends IRPCAdapter {
   group: string;
   context: IContext;
-  viewQuery: TGenericParams['viewQuery'];
+  viewQueryDict: Partial<TGenericParams['viewQueryDict']>;
+  builtInSyncables: ISyncable[];
 
   close(): void;
 }

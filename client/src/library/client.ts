@@ -38,7 +38,7 @@ export interface ClientUpdateResult {
 export interface IClientGenericParams
   extends IChangePlantBlueprintGenericParams {
   syncableObject: ISyncableObject;
-  viewQuery: object;
+  viewQueryDict: object;
   customRPCDefinition: IRPCDefinition;
 }
 
@@ -112,7 +112,7 @@ export class Client<TGenericParams extends IClientGenericParams>
   ): Promise<
     (Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined)[]
   > {
-    await this.call('request', refs);
+    await this.call('request-syncables', refs);
 
     let container = this.container;
 
@@ -136,13 +136,13 @@ export class Client<TGenericParams extends IClientGenericParams>
   }
 
   async query(
-    update: ViewQueryUpdateObject<TGenericParams['viewQuery']>,
+    update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
   ): Promise<void> {
     await this.call('update-view-query', update);
   }
 
   @action
-  update(change: TGenericParams['change']): ClientUpdateResult {
+  applyChange(change: TGenericParams['change']): ClientUpdateResult {
     change = _.cloneDeep(change);
 
     let id = generateUniqueId<ChangePacketId>();
@@ -159,13 +159,13 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     this._syncing = true;
 
-    let promise = this.call('change', packet);
+    let promise = this.call('apply-change', packet);
 
     return {id, promise};
   }
 
-  async updateAndConfirm(change: TGenericParams['change']): Promise<void> {
-    let {id, promise} = this.update(change);
+  async applyChangeAndConfirm(change: TGenericParams['change']): Promise<void> {
+    let {id, promise} = this.applyChange(change);
 
     await promise;
 

@@ -1,16 +1,16 @@
 import {
   ChangePacketId,
   ChangePlantProcessingResultUpdateItem,
+  IContext,
   ISyncable,
+  ResolvedViewQuery,
   SyncableRef,
+  ViewQueryDictToResolvedViewQueryDict,
+  ViewQueryFilter,
 } from '@syncable/core';
 import {Observable} from 'rxjs';
 
 import {Connection} from '../connection';
-import {
-  ViewQueryFilter,
-  ViewQueryObjectToResolvedViewQueryObject as ViewQueryDictToResolvedViewQueryDict,
-} from '../view-query';
 
 import {IServerGenericParams} from './server';
 
@@ -40,16 +40,16 @@ export interface IServerAdapter<
   queueChange(group: string, processor: QueuedChangeProcessor): Promise<void>;
 
   getViewQueryFilter(
+    context: IContext,
     name: string,
-    syncableDict: object,
-    options: object,
+    query: ResolvedViewQuery,
   ): ViewQueryFilter;
 
   loadSyncablesByQuery(
     group: string,
     context: TGenericParams['context'],
     resolvedViewQueryDict: Partial<
-      ViewQueryDictToResolvedViewQueryDict<TGenericParams['viewQuery']>
+      ViewQueryDictToResolvedViewQueryDict<TGenericParams['viewQueryDict']>
     >,
     loadedKeySet: Set<string>,
   ): Promise<ISyncable[]>;

@@ -51,8 +51,6 @@ export function createClientConnectionPair(
     blueprint,
   );
 
-  let connectionContext = new Context('user', 'server', userRef);
-
   let connectionAdapter = new ConnectionAdapter(
     group,
     userRef,
@@ -63,7 +61,6 @@ export function createClientConnectionPair(
   let connection = new Connection(
     server,
     group,
-    connectionContext,
     connectionAdapter,
     syncableAdapter,
   );

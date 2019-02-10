@@ -7,18 +7,20 @@ import {randomNap} from './@utils';
 import {Context} from './context';
 import {ServerGenericParams} from './server';
 import {User} from './syncables';
-import {ViewQuery} from './view-query';
+import {ViewQueryDict} from './view-query';
 
 export class ConnectionAdapter
   implements IConnectionAdapter<ServerGenericParams> {
   incoming$: Observable<RPCData>;
 
-  readonly viewQuery: Partial<ViewQuery> = {
+  readonly viewQueryDict: Partial<ViewQueryDict> = {
     default: {
       refs: {},
       options: {},
     },
   };
+
+  builtInSyncables = [];
 
   readonly context: Context;
 

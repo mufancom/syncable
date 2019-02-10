@@ -1,11 +1,14 @@
-import {SyncableRef, getSyncableKey} from '@syncable/core';
+import {
+  SyncableRef,
+  ViewQueryDictToResolvedViewQueryDict,
+  ViewQueryFilter,
+  getSyncableKey,
+} from '@syncable/core';
 import {
   BroadcastChangeResult,
   Connection,
   IServerAdapter,
   QueuedChangeProcessor,
-  ViewQueryFilter,
-  ViewQueryObjectToResolvedViewQueryObject,
 } from '@syncable/server';
 import _ from 'lodash';
 import {Observable, Subject, from} from 'rxjs';
@@ -17,7 +20,7 @@ import {randomNap} from './@utils';
 import {Context} from './context';
 import {ServerGenericParams} from './server';
 import {Syncable, SyncableObject} from './syncables';
-import {ViewQuery} from './view-query';
+import {ViewQueryDict} from './view-query';
 
 export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
   private clock = 0;
@@ -78,7 +81,7 @@ export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
     group: string,
     context: Context,
     resolvedViewQueryDict: Partial<
-      ViewQueryObjectToResolvedViewQueryObject<ViewQuery>
+      ViewQueryDictToResolvedViewQueryDict<ViewQueryDict>
     >,
     loadedKeySet: Set<string>,
   ): Promise<Syncable[]> {

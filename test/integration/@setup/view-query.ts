@@ -2,7 +2,7 @@ import {SyncableRef} from '@syncable/core';
 
 import {Kanban} from './syncables';
 
-export interface ViewQuery {
+export interface ViewQueryDict {
   default: {
     refs: {};
     options: {};

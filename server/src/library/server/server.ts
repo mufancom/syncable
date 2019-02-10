@@ -12,8 +12,10 @@ import {
   ISyncableAdapter,
   ISyncableObject,
   NumericTimestamp,
+  ResolvedViewQuery,
   SyncableContainer,
   SyncableRef,
+  ViewQueryFilter,
   generateUniqueId,
   getNonCreationRefsFromRefDict,
   getSyncableKey,
@@ -22,14 +24,13 @@ import _ from 'lodash';
 
 import {filterReadableSyncables} from '../@utils';
 import {Connection} from '../connection';
-import {ViewQueryFilter} from '../view-query';
 
 import {BroadcastChangeResult, IServerAdapter} from './server-adapter';
 
 export interface IServerGenericParams
   extends IChangePlantBlueprintGenericParams {
   syncableObject: ISyncableObject;
-  viewQuery: object;
+  viewQueryDict: object;
   customRPCDefinition: IRPCDefinition;
 }
 
@@ -61,13 +62,12 @@ export class Server<TGenericParams extends IServerGenericParams> {
     this.changePlant = new ChangePlant(blueprint);
   }
 
-  /** @internal */
   getViewQueryFilter(
+    context: IContext,
     name: string,
-    syncableDict: object,
-    options: object,
+    query: ResolvedViewQuery,
   ): ViewQueryFilter {
-    return this.serverAdapter.getViewQueryFilter(name, syncableDict, options);
+    return this.serverAdapter.getViewQueryFilter(context, name, query);
   }
 
   async loadSyncablesByQuery(
@@ -136,6 +136,62 @@ export class Server<TGenericParams extends IServerGenericParams> {
     );
 
     return [...directSyncables, ...dependentSyncables];
+  }
+
+  async loadDependentSyncables(
+    group: string,
+    context: IContext,
+    syncables: ISyncable[],
+    loadedKeySet: Set<string> | undefined,
+  ): Promise<ISyncable[]> {
+    let serverAdapter = this.serverAdapter;
+    let syncableAdapter = this.syncableAdapter;
+
+    loadedKeySet = new Set(loadedKeySet || []);
+
+    for (let syncable of syncables) {
+      loadedKeySet.add(getSyncableKey(syncable));
+    }
+
+    let loadedSyncables: ISyncable[] = [];
+
+    let pendingResolvingSyncables = syncables;
+
+    while (true) {
+      let refs = _.flatMap(pendingResolvingSyncables, syncable =>
+        syncableAdapter.instantiate(syncable).resolveDependencyRefs(),
+      ).filter(ref => {
+        let key = getSyncableKey(ref);
+
+        if (loadedKeySet!.has(key)) {
+          return false;
+        } else {
+          loadedKeySet!.add(key);
+          return true;
+        }
+      });
+
+      if (!refs.length) {
+        break;
+      }
+
+      let dependentSyncables = await serverAdapter.loadSyncablesByRefs(
+        group,
+        refs,
+      );
+
+      dependentSyncables = filterReadableSyncables(
+        context,
+        syncableAdapter,
+        dependentSyncables,
+      );
+
+      loadedSyncables.push(...dependentSyncables);
+
+      pendingResolvingSyncables = dependentSyncables;
+    }
+
+    return loadedSyncables;
   }
 
   async applyChange(
@@ -233,16 +289,15 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let groupToConnectionSetMap = this.groupToConnectionSetMap;
     let connectionSet = groupToConnectionSetMap.get(group);
 
-    connection.close$.subscribe(
-      undefined,
-      error => {
+    connection.close$.subscribe({
+      error: error => {
         console.error(error);
         this.removeConnection(connection).catch(console.error);
       },
-      () => {
+      complete: () => {
         this.removeConnection(connection).catch(console.error);
       },
-    );
+    });
 
     if (connectionSet) {
       connectionSet.add(connection);
@@ -291,61 +346,5 @@ export class Server<TGenericParams extends IServerGenericParams> {
     for (let connection of connectionSet) {
       connection.handleBroadcastChangeResult(result);
     }
-  }
-
-  private async loadDependentSyncables(
-    group: string,
-    context: IContext,
-    syncables: ISyncable[],
-    loadedKeySet: Set<string> | undefined,
-  ): Promise<ISyncable[]> {
-    let serverAdapter = this.serverAdapter;
-    let syncableAdapter = this.syncableAdapter;
-
-    loadedKeySet = new Set(loadedKeySet || []);
-
-    for (let syncable of syncables) {
-      loadedKeySet.add(getSyncableKey(syncable));
-    }
-
-    let loadedSyncables: ISyncable[] = [];
-
-    let pendingResolvingSyncables = syncables;
-
-    while (true) {
-      let refs = _.flatMap(pendingResolvingSyncables, syncable =>
-        syncableAdapter.instantiate(syncable).resolveDependencyRefs(),
-      ).filter(ref => {
-        let key = getSyncableKey(ref);
-
-        if (loadedKeySet!.has(key)) {
-          return false;
-        } else {
-          loadedKeySet!.add(key);
-          return true;
-        }
-      });
-
-      if (!refs.length) {
-        break;
-      }
-
-      let dependentSyncables = await serverAdapter.loadSyncablesByRefs(
-        group,
-        refs,
-      );
-
-      dependentSyncables = filterReadableSyncables(
-        context,
-        syncableAdapter,
-        dependentSyncables,
-      );
-
-      loadedSyncables.push(...dependentSyncables);
-
-      pendingResolvingSyncables = dependentSyncables;
-    }
-
-    return loadedSyncables;
   }
 }

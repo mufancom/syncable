@@ -13,13 +13,13 @@ export type ConnectionRPCDefinition =
   | ConnectionUpdateViewQueryRPCDefinition;
 
 export interface ConnectionChangeRPCDefinition {
-  name: 'change';
+  name: 'apply-change';
   args: [ChangePacket];
   return: void;
 }
 
 export interface ConnectionRequestRPCDefinition {
-  name: 'request';
+  name: 'request-syncables';
   args: [SyncableRef[]];
   return: void;
 }
