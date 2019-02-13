@@ -102,8 +102,10 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
 
+    loadedKeySet = new Set(loadedKeySet || []);
+
     if (loadedKeySet) {
-      refs = refs.filter(ref => !loadedKeySet.has(getSyncableKey(ref)));
+      refs = refs.filter(ref => !loadedKeySet!.has(getSyncableKey(ref)));
     }
 
     let directSyncables = await serverAdapter.loadSyncablesByRefs(group, refs);
@@ -148,18 +150,13 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let pendingResolvingSyncables = syncables;
 
     while (true) {
-      let refs = _.flatMap(pendingResolvingSyncables, syncable =>
-        syncableAdapter.instantiate(syncable).resolveDependencyRefs(),
-      ).filter(ref => {
-        let key = getSyncableKey(ref);
-
-        if (loadedKeySet!.has(key)) {
-          return false;
-        } else {
-          loadedKeySet!.add(key);
-          return true;
-        }
-      });
+      let refs = _.uniqBy(
+        _.flatMap(pendingResolvingSyncables, syncable =>
+          syncableAdapter.instantiate(syncable).resolveDependencyRefs(),
+        ),
+        ref => getSyncableKey(ref),
+      )
+      .filter(ref => !loadedKeySet!.has(getSyncableKey(ref)));
 
       if (!refs.length) {
         break;
@@ -175,6 +172,10 @@ export class Server<TGenericParams extends IServerGenericParams> {
         syncableAdapter,
         dependentSyncables,
       );
+
+      for (let syncable of dependentSyncables) {
+        loadedKeySet.add(getSyncableKey(syncable));
+      }
 
       loadedSyncables.push(...dependentSyncables);
 
