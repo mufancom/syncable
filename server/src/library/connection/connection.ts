@@ -337,7 +337,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       loadedKeySet,
     );
 
-    for (let syncable of dependencyRelevantSyncables) {
+    for (let syncable of dependentSyncables) {
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
