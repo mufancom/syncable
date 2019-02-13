@@ -19,11 +19,12 @@ import {
   SyncData,
   SyncUpdateSource,
   SyncableContainer,
-  SyncableId,
   SyncableRef,
   ViewQueryFilter,
   ViewQueryUpdateObject,
   generateUniqueId,
+  getSyncableKey,
+  getSyncableRef,
 } from '@syncable/core';
 import DeepDiff, {Diff} from 'deep-diff';
 import _ from 'lodash';
@@ -36,6 +37,11 @@ import {IClientAdapter} from './client-adapter';
 interface ViewQueryInfo {
   filter: ViewQueryFilter;
   query: IViewQuery;
+}
+
+interface PendingChangeInfo {
+  packet: ChangePacket;
+  refs: SyncableRef[];
 }
 
 export interface ClientApplyChangeResult {
@@ -59,9 +65,9 @@ export class Client<TGenericParams extends IClientGenericParams>
   private _syncing = false;
 
   @observable
-  private pendingChangePackets: ChangePacket[] = [];
+  private pendingChangeInfos: PendingChangeInfo[] = [];
 
-  private syncableSnapshotMap = new Map<SyncableId, ISyncable>();
+  private syncableSnapshotMap = new Map<string, ISyncable>();
 
   @observable
   private nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
@@ -230,9 +236,9 @@ export class Client<TGenericParams extends IClientGenericParams>
       ...(change as GeneralChange),
     };
 
-    this.applyChangePacket(packet);
+    let info = this.applyChangePacket(packet);
 
-    this.pendingChangePackets.push(packet);
+    this.pendingChangeInfos.push(info);
 
     this._syncing = true;
 
@@ -247,7 +253,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     await promise;
 
     return when(
-      () => !this.pendingChangePackets.some(packet => packet.id === id),
+      () => !this.pendingChangeInfos.some(info => info.packet.id === id),
     );
   }
 
@@ -279,12 +285,34 @@ export class Client<TGenericParams extends IClientGenericParams>
     {syncables, removals, updates}: SyncData,
     source?: SyncUpdateSource,
   ): void {
+    let container = this.container;
+
     let clock: number | undefined;
 
     if (source) {
       clock = source.clock;
-      this.shiftChangePacket(source.id);
+      this.shiftPendingChangeInfo(source.id);
     }
+
+    let pendingChangeInfos = this.pendingChangeInfos;
+
+    // Restore relevant syncables
+
+    let syncableSnapshotMap = this.syncableSnapshotMap;
+
+    let relevantRefs = _.flatMap(pendingChangeInfos, info => info.refs);
+
+    for (let ref of relevantRefs) {
+      let key = getSyncableKey(ref);
+
+      let snapshot = syncableSnapshotMap.get(key);
+
+      if (snapshot) {
+        container.addSyncable(snapshot);
+      }
+    }
+
+    // Apply synced change
 
     for (let syncable of syncables) {
       this.onUpdateCreate(syncable, clock);
@@ -298,13 +326,30 @@ export class Client<TGenericParams extends IClientGenericParams>
       this.onUpdateRemove(ref);
     }
 
-    let packets = this.pendingChangePackets;
+    if (pendingChangeInfos.length) {
+      // Apply pending change.
 
-    if (packets.length) {
-      for (let packet of packets) {
-        this.applyChangePacket(packet);
+      for (let i = 0; i < pendingChangeInfos.length; i++) {
+        pendingChangeInfos[i] = this.applyChangePacket(
+          pendingChangeInfos[i].packet,
+        );
       }
-    } else {
+    }
+
+    // Clean obsolete syncables.
+
+    // To avoid reference change, deletion of obsolete syncables need to be
+    // applied after updates and pending change packets.
+
+    let obsoleteRefs = relevantRefs.filter(
+      ref => !syncableSnapshotMap.has(getSyncableKey(ref)),
+    );
+
+    for (let ref of obsoleteRefs) {
+      container.removeSyncable(ref);
+    }
+
+    if (!pendingChangeInfos.length) {
       this._syncing = false;
     }
   }
@@ -314,12 +359,12 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     let snapshot = _.cloneDeep(syncable);
 
-    this.syncableSnapshotMap.set(syncable._id, snapshot);
+    this.syncableSnapshotMap.set(getSyncableKey(syncable), snapshot);
   }
 
   private onUpdateRemove(ref: SyncableRef): void {
     this.container.removeSyncable(ref);
-    this.syncableSnapshotMap.delete(ref.id);
+    this.syncableSnapshotMap.delete(getSyncableKey(ref));
   }
 
   private onUpdateChange(
@@ -327,7 +372,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     diffs: Diff<ISyncable>[],
     clock: number | undefined,
   ): void {
-    let snapshot = this.syncableSnapshotMap.get(ref.id)!;
+    let snapshot = this.syncableSnapshotMap.get(getSyncableKey(ref))!;
 
     for (let diff of diffs) {
       DeepDiff.applyChange(snapshot, undefined!, diff);
@@ -336,18 +381,19 @@ export class Client<TGenericParams extends IClientGenericParams>
     this.container.addSyncable(snapshot, clock);
   }
 
-  private shiftChangePacket(id: ChangePacketId): boolean {
-    let packets = this.pendingChangePackets;
+  private shiftPendingChangeInfo(
+    id: ChangePacketId,
+  ): PendingChangeInfo | undefined {
+    let infos = this.pendingChangeInfos;
 
-    let index = packets.findIndex(packet => packet.id === id);
+    let index = infos.findIndex(info => info.packet.id === id);
 
     if (index < 0) {
-      return false;
+      return undefined;
     }
 
     if (index === 0) {
-      packets.shift();
-      return true;
+      return infos.shift()!;
     }
 
     throw new Error(
@@ -355,7 +401,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     );
   }
 
-  private applyChangePacket(packet: ChangePacket): void {
+  private applyChangePacket(packet: ChangePacket): PendingChangeInfo {
     let container = this.container;
 
     let {
@@ -365,12 +411,16 @@ export class Client<TGenericParams extends IClientGenericParams>
       notifications,
     } = this.changePlant.process(packet, this.context, container);
 
+    let relevantRefs: SyncableRef[] = [];
+
     for (let syncable of creations) {
       container.addSyncable(syncable);
+      relevantRefs.push(getSyncableRef(syncable));
     }
 
     for (let {snapshot} of updates) {
       container.addSyncable(snapshot);
+      relevantRefs.push(getSyncableRef(snapshot));
     }
 
     for (let ref of removals) {
@@ -378,5 +428,10 @@ export class Client<TGenericParams extends IClientGenericParams>
     }
 
     this.clientAdapter.handleNotifications(notifications, packet.id);
+
+    return {
+      packet,
+      refs: relevantRefs,
+    };
   }
 }
