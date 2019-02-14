@@ -367,10 +367,12 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
     let resolvedViewQueryDict: Dict<object> = {};
 
-    let queryEntries = Object.entries(update) as [string, GeneralViewQuery][];
+    let queryEntries = Object.entries(update as Dict<GeneralViewQuery | false>);
 
     let refs = _.uniqBy(
-      _.flatMap(queryEntries, ([, query]) => Object.values(query.refs)),
+      _.flatMap(queryEntries, ([, query]) =>
+        query ? Object.values(query.refs) : [],
+      ),
       ref => getSyncableKey(ref),
     ).filter(ref => !container.existsSyncable(ref));
 

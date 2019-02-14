@@ -6,6 +6,7 @@ import {
   ClientRPCDefinition,
   ConnectionRPCDefinition,
   GeneralChange,
+  GeneralViewQuery,
   IChangePlantBlueprintGenericParams,
   IRPCDefinition,
   ISyncable,
@@ -181,7 +182,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     let viewQueryInfoMap = this.nameToViewQueryInfoMap;
 
     let queryEntries = Object.entries(update as Dict<
-      IViewQuery | false
+      GeneralViewQuery | false
     >).filter(([name, query]) => {
       let info = viewQueryInfoMap.get(name);
 
@@ -194,7 +195,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     });
 
     let refs = _.flatMap(queryEntries, ([, query]) => {
-      return query ? Object.values(query.refs as Dict<SyncableRef>) : [];
+      return query ? Object.values(query.refs) : [];
     });
 
     await this.requestObjects(refs);
