@@ -178,18 +178,28 @@ export class Client<TGenericParams extends IClientGenericParams>
     let container = this.container;
     let syncableAdapter = this.syncableAdapter;
 
-    let queryEntries = Object.entries(update);
-
     let viewQueryInfoMap = this.nameToViewQueryInfoMap;
 
-    for (let [name, query] of queryEntries) {
+    let queryEntries = Object.entries(update as Dict<
+      IViewQuery | false
+    >).filter(([name, query]) => {
       let info = viewQueryInfoMap.get(name);
 
       if (!force && info && _.isEqual(info.query, query)) {
         delete (update as any)[name];
-        continue;
+        return false;
+      } else {
+        return true;
       }
+    });
 
+    let refs = _.flatMap(queryEntries, ([, query]) => {
+      return query ? Object.values(query.refs as Dict<SyncableRef>) : [];
+    });
+
+    await this.requestObjects(refs);
+
+    for (let [name, query] of queryEntries) {
       if (query) {
         let {refs: refDict, options} = query;
 
@@ -208,7 +218,7 @@ export class Client<TGenericParams extends IClientGenericParams>
 
         runInAction(() => {
           viewQueryInfoMap.set(name, {
-            query,
+            query: query as IViewQuery,
             filter,
           });
         });
