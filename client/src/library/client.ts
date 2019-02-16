@@ -17,6 +17,7 @@ import {
   RPCMethod,
   RPCPeer,
   RPCPeerType,
+  ResolvedViewQuery,
   SyncData,
   SyncUpdateSource,
   SyncableContainer,
@@ -161,10 +162,22 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   getViewQueryFilter(
     name: Extract<keyof TGenericParams['viewQueryDict'], string>,
+    resolvedViewQuery?: ResolvedViewQuery,
   ): ViewQueryFilter<TGenericParams['syncableObject']['syncable']> {
-    let info = this.nameToViewQueryInfoMap.get(name);
+    if (resolvedViewQuery) {
+      let context = this.context;
+      let syncableAdapter = this.syncableAdapter;
 
-    return info ? info.filter : () => false;
+      return syncableAdapter.getViewQueryFilter(
+        context,
+        name,
+        resolvedViewQuery,
+      );
+    } else {
+      let info = this.nameToViewQueryInfoMap.get(name);
+
+      return info ? info.filter : () => false;
+    }
   }
 
   async query(
