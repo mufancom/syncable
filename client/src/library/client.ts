@@ -22,6 +22,7 @@ import {
   SyncUpdateSource,
   SyncableContainer,
   SyncableRef,
+  ViewQueryDictToResolvedViewQueryDict,
   ViewQueryFilter,
   ViewQueryUpdateObject,
   generateUniqueId,
@@ -160,9 +161,14 @@ export class Client<TGenericParams extends IClientGenericParams>
     return object;
   }
 
-  getViewQueryFilter(
-    name: Extract<keyof TGenericParams['viewQueryDict'], string>,
-    resolvedViewQuery?: ResolvedViewQuery,
+  getViewQueryFilter<
+    TName extends Extract<keyof TGenericParams['viewQueryDict'], string>,
+    T extends ViewQueryDictToResolvedViewQueryDict<
+      TGenericParams['viewQueryDict']
+    >[TName]
+  >(
+    name: TName,
+    resolvedViewQuery?: T extends IViewQuery ? ResolvedViewQuery<T> : never,
   ): ViewQueryFilter<TGenericParams['syncableObject']['syncable']> {
     if (resolvedViewQuery) {
       let context = this.context;
