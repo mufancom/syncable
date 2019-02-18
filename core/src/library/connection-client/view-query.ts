@@ -28,6 +28,10 @@ export interface ResolvedViewQuery<T extends IViewQuery = IViewQuery> {
   options: T['options'];
 }
 
+export type ResolvedViewQueryType<TViewQuery> = TViewQuery extends IViewQuery
+  ? ResolvedViewQuery<TViewQuery>
+  : never;
+
 export type ViewQueryResolvedSyncableDict<
   T extends IViewQuery
 > = ViewQueryRefDictToViewQuerySyncableDict<T['refs']>;
