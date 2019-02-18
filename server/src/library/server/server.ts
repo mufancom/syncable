@@ -155,8 +155,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
           syncableAdapter.instantiate(syncable).resolveDependencyRefs(),
         ),
         ref => getSyncableKey(ref),
-      )
-      .filter(ref => !loadedKeySet!.has(getSyncableKey(ref)));
+      ).filter(ref => !loadedKeySet!.has(getSyncableKey(ref)));
 
       if (!refs.length) {
         break;
