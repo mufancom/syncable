@@ -288,7 +288,11 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   @RPCMethod()
   @action
-  initialize(data: SyncData, contextRef: SyncableRef, update: object): void {
+  initialize(
+    data: SyncData,
+    contextRef: SyncableRef,
+    viewQueryUpdateObject: object,
+  ): void {
     this.container.clear();
 
     this.sync(data);
@@ -297,12 +301,12 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     this.initializeSubject$.complete();
 
-    update = Array.from(this.nameToViewQueryInfoMap).reduce(
+    let update = Array.from(this.nameToViewQueryInfoMap).reduce(
       (update, [name, {query}]) => {
         (update as Dict<IViewQuery>)[name] = query;
         return update;
       },
-      _.cloneDeep(update),
+      _.cloneDeep(viewQueryUpdateObject),
     );
 
     this.query(update, true).catch(console.error);
