@@ -288,11 +288,7 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   @RPCMethod()
   @action
-  initialize(
-    data: SyncData,
-    contextRef: SyncableRef,
-    update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
-  ): void {
+  initialize(data: SyncData, contextRef: SyncableRef, update: object): void {
     this.container.clear();
 
     this.sync(data);

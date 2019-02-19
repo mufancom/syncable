@@ -41,9 +41,9 @@ export type ClientRPCDefinition =
 export interface ClientInitializeRPCDefinition {
   name: 'initialize';
   /**
-   * [syncing data, context data, default viewQuery data]
+   * [syncing data, context refs, default viewQuery dict]
    */
-  args: [SyncData, unknown, object];
+  args: [SyncData, SyncableRef, object];
   return: void;
 }
 
