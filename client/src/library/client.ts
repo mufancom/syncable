@@ -306,7 +306,7 @@ export class Client<TGenericParams extends IClientGenericParams>
         (update as Dict<IViewQuery>)[name] = query;
         return update;
       },
-      _.cloneDeep(viewQueryUpdateObject),
+      viewQueryUpdateObject,
     );
 
     this.query(update, true).catch(console.error);
