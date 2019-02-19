@@ -43,7 +43,7 @@ export interface ClientInitializeRPCDefinition {
   /**
    * [syncing data, context data]
    */
-  args: [SyncData, unknown];
+  args: [SyncData, unknown, object];
   return: void;
 }
 

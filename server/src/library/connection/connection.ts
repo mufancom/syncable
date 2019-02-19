@@ -461,7 +461,14 @@ export class Connection<TGenericParams extends IServerGenericParams>
         throw new RPCError('CONTEXT_DISABLED');
       }
 
-      await this.call('initialize', data, contextRef);
+      let connectionAdapter = this.connectionAdapter;
+
+      await this.call(
+        'initialize',
+        data,
+        contextRef,
+        connectionAdapter.viewQueryDict,
+      );
     } else {
       await this.call('sync', data);
     }
