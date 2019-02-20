@@ -301,13 +301,11 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     this.initializeSubject$.complete();
 
-    let update = Array.from(this.nameToViewQueryInfoMap).reduce(
-      (update, [name, {query}]) => {
-        (update as Dict<IViewQuery>)[name] = query;
-        return update;
-      },
-      _.cloneDeep(viewQueryUpdateObject),
-    );
+    let update = _.cloneDeep(viewQueryUpdateObject);
+
+    for (let [name, {query}] of this.nameToViewQueryInfoMap) {
+      (update as Dict<IViewQuery>)[name] = query;
+    }
 
     this.query(update, true).catch(console.error);
   }
