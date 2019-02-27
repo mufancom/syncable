@@ -25,6 +25,11 @@ import {Connection} from '../connection';
 
 import {BroadcastChangeResult, IServerAdapter} from './server-adapter';
 
+export interface LoadSyncablesByRefsOptions {
+  loadedKeySet?: Set<string>;
+  loadRequisiteDependencyOnly?: boolean;
+}
+
 export interface IServerGenericParams
   extends IChangePlantBlueprintGenericParams {
   syncableObject: ISyncableObject;
@@ -87,6 +92,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
       context,
       directSyncables,
       loadedKeySet,
+      false,
     );
 
     return [...directSyncables, ...dependentSyncables];
@@ -96,8 +102,10 @@ export class Server<TGenericParams extends IServerGenericParams> {
     group: string,
     context: IContext,
     refs: SyncableRef[],
-    loadedKeySet: Set<string> | undefined,
-    toLoadDependencies: boolean,
+    {
+      loadedKeySet,
+      loadRequisiteDependencyOnly = false,
+    }: LoadSyncablesByRefsOptions,
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
@@ -116,15 +124,12 @@ export class Server<TGenericParams extends IServerGenericParams> {
       directSyncables,
     );
 
-    if (!toLoadDependencies) {
-      return directSyncables;
-    }
-
     let dependentSyncables = await this.loadDependentSyncables(
       group,
       context,
       directSyncables,
       loadedKeySet,
+      loadRequisiteDependencyOnly,
     );
 
     return [...directSyncables, ...dependentSyncables];
@@ -135,6 +140,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     context: IContext,
     syncables: ISyncable[],
     loadedKeySet: Set<string> | undefined,
+    requisiteOnly: boolean,
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
@@ -151,9 +157,14 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
     while (true) {
       let refs = _.uniqBy(
-        _.flatMap(pendingResolvingSyncables, syncable =>
-          syncableAdapter.instantiate(syncable).resolveDependencyRefs(),
-        ),
+        _.flatMap(pendingResolvingSyncables, syncable => {
+          let object = syncableAdapter.instantiate(syncable);
+
+          return [
+            ...object.resolveRequisiteDependencyRefs(),
+            ...(requisiteOnly ? [] : object.resolveDependencyRefs()),
+          ];
+        }),
         ref => getSyncableKey(ref),
       ).filter(ref => !loadedKeySet!.has(getSyncableKey(ref)));
 
@@ -212,18 +223,20 @@ export class Server<TGenericParams extends IServerGenericParams> {
     await serverAdapter.queueChange(group, async clock => {
       let refs = getNonCreationRefsFromRefDict(packet.refs);
 
-      let syncables = await serverAdapter.loadSyncablesByRefs(group, refs);
+      let syncables = await this.loadSyncablesByRefs(group, context, refs, {
+        loadRequisiteDependencyOnly: true,
+      });
 
-      let dependencyRefs = changePlant.resolve(packet, syncables);
+      let relatedRefs = changePlant.resolve(packet, syncables);
 
-      let dependentSyncables = await serverAdapter.loadSyncablesByRefs(
+      let relatedSyncables = await serverAdapter.loadSyncablesByRefs(
         group,
-        dependencyRefs,
+        relatedRefs,
       );
 
       let container = new SyncableContainer(syncableAdapter);
 
-      for (let syncable of [...syncables, ...dependentSyncables]) {
+      for (let syncable of [...syncables, ...relatedSyncables]) {
         container.addSyncable(syncable);
       }
 

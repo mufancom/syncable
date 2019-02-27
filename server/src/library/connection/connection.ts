@@ -335,6 +335,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       context,
       dependencyRelevantSyncables,
       loadedKeySet,
+      false,
     );
 
     for (let syncable of dependentSyncables) {
@@ -377,13 +378,9 @@ export class Connection<TGenericParams extends IServerGenericParams>
     ).filter(ref => !container.existsSyncable(ref));
 
     if (refs.length) {
-      let syncables = await server.loadSyncablesByRefs(
-        group,
-        context,
-        refs,
-        undefined,
-        false,
-      );
+      let syncables = await server.loadSyncablesByRefs(group, context, refs, {
+        loadRequisiteDependencyOnly: true,
+      });
 
       for (let syncable of syncables) {
         container.addSyncable(syncable);
@@ -481,8 +478,9 @@ export class Connection<TGenericParams extends IServerGenericParams>
       this.group,
       this.context,
       refs,
-      loadedKeySet,
-      true,
+      {
+        loadedKeySet,
+      },
     );
 
     for (let syncable of syncables) {
