@@ -129,9 +129,7 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   async requestObjects<TRef extends TGenericParams['syncableObject']['ref']>(
     refs: TRef[],
-  ): Promise<
-    (Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined)[]
-  > {
+  ): Promise<(Extract<TGenericParams['syncableObject'], {ref: TRef}>)[]> {
     let container = this.container;
 
     let missingSyncableRefs = refs.filter(
