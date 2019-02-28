@@ -81,6 +81,10 @@ export type ChangePlantProcessorRemoveOperation = (
   object: ISyncableObject,
 ) => void;
 
+export type ChangePlantProcessorIsBeingRemovedTest = (
+  object: ISyncableObject,
+) => boolean;
+
 declare function __changePlantProcessorPrepareOperation<
   T extends ISyncableObject
 >(object: T): T['syncable'];
@@ -102,6 +106,7 @@ export interface ChangePlantProcessorExtra<
   options: TGenericParams['change']['options'];
   create: ChangePlantProcessorCreateOperation;
   remove: ChangePlantProcessorRemoveOperation;
+  isBeingRemoved: ChangePlantProcessorIsBeingRemovedTest;
   prepare: ChangePlantProcessorPrepareOperation;
   notify: ChangePlantProcessorNotifyOperation<TGenericParams['notification']>;
   createdAt: NumericTimestamp;
@@ -273,6 +278,10 @@ export class ChangePlant {
       removalObjectSet.add(object);
     };
 
+    let isBeingRemoved: ChangePlantProcessorIsBeingRemovedTest = object => {
+      return removalObjectSet.has(object);
+    };
+
     let prepare: ChangePlantProcessorPrepareOperation = object => {
       let clone = preparedSyncableObjectToSyncableMap.get(object);
 
@@ -336,6 +345,7 @@ export class ChangePlant {
       options,
       create,
       remove,
+      isBeingRemoved,
       prepare,
       notify,
       createdAt: now,
