@@ -27,7 +27,14 @@ import {BroadcastChangeResult, IServerAdapter} from './server-adapter';
 
 export interface LoadSyncablesByRefsOptions {
   loadedKeySet?: Set<string>;
+  changeType?: string;
   loadRequisiteDependencyOnly?: boolean;
+}
+
+export interface LoadDependentSyncablesOptions {
+  loadedKeySet?: Set<string>;
+  changeType?: string;
+  requisiteOnly?: boolean;
 }
 
 export interface IServerGenericParams
@@ -65,6 +72,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     this.changePlant = new ChangePlant(blueprint);
   }
 
+  /** @internal */
   async loadSyncablesByQuery(
     group: string,
     context: IContext,
@@ -91,19 +99,23 @@ export class Server<TGenericParams extends IServerGenericParams> {
       group,
       context,
       directSyncables,
-      loadedKeySet,
-      false,
+      {
+        loadedKeySet,
+        requisiteOnly: false,
+      },
     );
 
     return [...directSyncables, ...dependentSyncables];
   }
 
+  /** @internal */
   async loadSyncablesByRefs(
     group: string,
     context: IContext,
     refs: SyncableRef[],
     {
       loadedKeySet,
+      changeType,
       loadRequisiteDependencyOnly = false,
     }: LoadSyncablesByRefsOptions,
   ): Promise<ISyncable[]> {
@@ -128,19 +140,22 @@ export class Server<TGenericParams extends IServerGenericParams> {
       group,
       context,
       directSyncables,
-      loadedKeySet,
-      loadRequisiteDependencyOnly,
+      {
+        loadedKeySet,
+        changeType,
+        requisiteOnly: loadRequisiteDependencyOnly,
+      },
     );
 
     return [...directSyncables, ...dependentSyncables];
   }
 
+  /** @internal */
   async loadDependentSyncables(
     group: string,
     context: IContext,
     syncables: ISyncable[],
-    loadedKeySet: Set<string> | undefined,
-    requisiteOnly: boolean,
+    {loadedKeySet, changeType, requisiteOnly}: LoadDependentSyncablesOptions,
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
@@ -161,7 +176,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
           let object = syncableAdapter.instantiate(syncable);
 
           return [
-            ...object.resolveRequisiteDependencyRefs(),
+            ...object.resolveRequisiteDependencyRefs(changeType),
             ...(requisiteOnly ? [] : object.resolveDependencyRefs()),
           ];
         }),
@@ -224,15 +239,18 @@ export class Server<TGenericParams extends IServerGenericParams> {
       let refs = getNonCreationRefsFromRefDict(packet.refs);
 
       let syncables = await this.loadSyncablesByRefs(group, context, refs, {
+        changeType: packet.type,
         loadRequisiteDependencyOnly: true,
       });
 
       let relatedRefs = changePlant.resolve(packet, syncables);
 
-      let relatedSyncables = await serverAdapter.loadSyncablesByRefs(
-        group,
-        relatedRefs,
-      );
+      let relatedSyncables = relatedRefs.length
+        ? await this.loadSyncablesByRefs(group, context, relatedRefs, {
+          changeType: packet.type,
+          loadRequisiteDependencyOnly: true,
+        })
+        : [];
 
       let container = new SyncableContainer(syncableAdapter);
 

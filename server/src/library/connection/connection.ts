@@ -334,8 +334,10 @@ export class Connection<TGenericParams extends IServerGenericParams>
       this.group,
       context,
       dependencyRelevantSyncables,
-      loadedKeySet,
-      false,
+      {
+        loadedKeySet,
+        requisiteOnly: false,
+      },
     );
 
     for (let syncable of dependentSyncables) {
