@@ -1,6 +1,6 @@
 import * as DeepDiff from 'deep-diff';
 import _ from 'lodash';
-import {Dict} from 'tslang';
+import {Dict, KeyOfValueWithType} from 'tslang';
 
 import {IContext} from '../context';
 import {
@@ -8,7 +8,6 @@ import {
   ISyncable,
   ISyncableObject,
   RefDictToSyncableObjectDict,
-  RefDictToSyncableOrCreationRefDict,
   SyncableContainer,
   SyncableRef,
   getSyncableKey,
@@ -22,6 +21,26 @@ import {
   IChange,
   SyncableCreationRef,
 } from './change';
+
+export type RefDictToSyncableOrCreationRefDict<
+  T extends object
+> = T extends object
+  ? {
+      [TName in KeyOfValueWithType<Required<T>, SyncableRef>]: NonNullable<
+        T[TName]
+      > extends SyncableRef<infer TSyncableObject>
+        ?
+            | TSyncableObject['syncable']
+            | (undefined extends T[TName] ? undefined : never)
+        : never
+    } &
+      {
+        [TName in KeyOfValueWithType<
+          Required<T>,
+          SyncableCreationRef
+        >]: T[TName]
+      }
+  : never;
 
 type ChangeToSyncableObjectRefDict<
   T extends IChange

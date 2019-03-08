@@ -3,8 +3,6 @@ import {ObservableMap, action, observable} from 'mobx';
 import replaceObject from 'replace-object';
 import {Dict, KeyOfValueWithType} from 'tslang';
 
-import {SyncableCreationRef} from '../change';
-
 import {ISyncable, SyncableId, SyncableRef} from './syncable';
 import {ISyncableAdapter} from './syncable-adapter';
 import {ISyncableObject} from './syncable-object';
@@ -23,26 +21,6 @@ export type RefDictToSyncableObjectDict<T extends object> = T extends object
         ? TSyncableObject | (undefined extends T[TName] ? undefined : never)
         : never
     }
-  : never;
-
-export type RefDictToSyncableOrCreationRefDict<
-  T extends object
-> = T extends object
-  ? {
-      [TName in KeyOfValueWithType<Required<T>, SyncableRef>]: NonNullable<
-        T[TName]
-      > extends SyncableRef<infer TSyncableObject>
-        ?
-            | TSyncableObject['syncable']
-            | (undefined extends T[TName] ? undefined : never)
-        : never
-    } &
-      {
-        [TName in KeyOfValueWithType<
-          Required<T>,
-          SyncableCreationRef
-        >]: T[TName]
-      }
   : never;
 
 export class SyncableContainer<

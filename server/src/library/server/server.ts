@@ -216,8 +216,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     group: string,
     refDict: TRefDict,
   ): Promise<RefDictToSyncableObjectDict<TRefDict>> {
-    let syncableAdapter = this.syncableAdapter;
-    let container = new SyncableContainer(syncableAdapter);
+    let container = new SyncableContainer(this.syncableAdapter);
     let refs = getNonCreationRefsFromRefDict(refDict as Dict<SyncableRef>);
 
     let syncables = await this.loadSyncablesByRefs(group, this.context, refs, {
