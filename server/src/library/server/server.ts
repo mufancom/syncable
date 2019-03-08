@@ -228,9 +228,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
       container.addSyncable(syncable);
     }
 
-    return container.buildSyncableObjectDict(refDict as Dict<
-      SyncableRef
-    >) as RefDictToSyncableObjectDict<TRefDict>;
+    return container.buildSyncableObjectDict(refDict);
   }
 
   async applyChange(
@@ -270,9 +268,9 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
       let relatedSyncables = relatedRefs.length
         ? await this.loadSyncablesByRefs(group, context, relatedRefs, {
-          changeType: packet.type,
-          loadRequisiteDependencyOnly: true,
-        })
+            changeType: packet.type,
+            loadRequisiteDependencyOnly: true,
+          })
         : [];
 
       let container = new SyncableContainer(syncableAdapter);

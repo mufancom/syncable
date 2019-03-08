@@ -67,6 +67,9 @@ export class SyncableContainer<
     return _.mapValues(refDict, ref => this.requireSyncable(ref));
   }
 
+  buildSyncableObjectDict<TRefDict extends object>(
+    refDict: TRefDict,
+  ): RefDictToSyncableObjectDict<TRefDict>;
   buildSyncableObjectDict(refDict: Dict<SyncableRef>): Dict<TSyncableObject> {
     return _.mapValues(refDict, ref => this.requireSyncableObject(ref));
   }
