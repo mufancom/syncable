@@ -1,7 +1,9 @@
 import _ from 'lodash';
 import {ObservableMap, action, observable} from 'mobx';
 import replaceObject from 'replace-object';
-import {Dict} from 'tslang';
+import {Dict, KeyOfValueWithType} from 'tslang';
+
+import {SyncableCreationRef} from '../change';
 
 import {ISyncable, SyncableId, SyncableRef} from './syncable';
 import {ISyncableAdapter} from './syncable-adapter';
@@ -12,6 +14,36 @@ type RefDictToSyncableDict<TRefDict extends object> = {
     ? TRefDict[TName]['syncable']
     : never
 };
+
+export type RefDictToSyncableObjectDict<T extends object> = T extends object
+  ? {
+      [TName in KeyOfValueWithType<Required<T>, SyncableRef>]: NonNullable<
+        T[TName]
+      > extends SyncableRef<infer TSyncableObject>
+        ? TSyncableObject | (undefined extends T[TName] ? undefined : never)
+        : never
+    }
+  : never;
+
+export type RefDictToSyncableOrCreationRefDict<
+  T extends object
+> = T extends object
+  ? {
+      [TName in KeyOfValueWithType<Required<T>, SyncableRef>]: NonNullable<
+        T[TName]
+      > extends SyncableRef<infer TSyncableObject>
+        ?
+            | TSyncableObject['syncable']
+            | (undefined extends T[TName] ? undefined : never)
+        : never
+    } &
+      {
+        [TName in KeyOfValueWithType<
+          Required<T>,
+          SyncableCreationRef
+        >]: T[TName]
+      }
+  : never;
 
 export class SyncableContainer<
   TSyncableObject extends ISyncableObject = ISyncableObject
@@ -33,6 +65,10 @@ export class SyncableContainer<
   ): RefDictToSyncableDict<TRefDict>;
   buildSyncableDict(refDict: Dict<SyncableRef>): Dict<ISyncable> {
     return _.mapValues(refDict, ref => this.requireSyncable(ref));
+  }
+
+  buildSyncableObjectDict(refDict: Dict<SyncableRef>): Dict<TSyncableObject> {
+    return _.mapValues(refDict, ref => this.requireSyncableObject(ref));
   }
 
   getSyncables<TType extends TSyncableObject['syncable']['_type']>(
