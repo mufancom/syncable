@@ -83,7 +83,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   /**
    * Override to specify.
    */
-  resolveRequisiteDependencyRefs(): SyncableRef[] {
+  resolveRequisiteDependencyRefs(_changeType?: string): SyncableRef[] {
     return [];
   }
 
