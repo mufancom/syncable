@@ -7,6 +7,7 @@ import {
   AccessRight,
   ISyncable,
   ISyncableObject,
+  RefDictToSyncableObjectDict,
   SyncableContainer,
   SyncableRef,
   getSyncableKey,
@@ -21,21 +22,9 @@ import {
   SyncableCreationRef,
 } from './change';
 
-type RefDictToSyncableObjectDict<T extends object> = T extends object
-  ? {
-      [TName in KeyOfValueWithType<Required<T>, SyncableRef>]: NonNullable<
-        T[TName]
-      > extends SyncableRef<infer TSyncableObject>
-        ? TSyncableObject | (undefined extends T[TName] ? undefined : never)
-        : never
-    }
-  : never;
-
-type ChangeToSyncableObjectRefDict<
-  T extends IChange
-> = RefDictToSyncableObjectDict<T['refs']>;
-
-type RefDictToSyncableOrCreationRefDict<T extends object> = T extends object
+export type RefDictToSyncableOrCreationRefDict<
+  T extends object
+> = T extends object
   ? {
       [TName in KeyOfValueWithType<Required<T>, SyncableRef>]: NonNullable<
         T[TName]
@@ -52,6 +41,10 @@ type RefDictToSyncableOrCreationRefDict<T extends object> = T extends object
         >]: T[TName]
       }
   : never;
+
+type ChangeToSyncableObjectRefDict<
+  T extends IChange
+> = RefDictToSyncableObjectDict<T['refs']>;
 
 type ChangeToSyncableOrCreationRefDict<
   T extends IChange

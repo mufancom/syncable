@@ -12,6 +12,7 @@ import {
   ISyncableAdapter,
   ISyncableObject,
   NumericTimestamp,
+  RefDictToSyncableObjectDict,
   SyncableContainer,
   SyncableRef,
   generateUniqueId,
@@ -19,6 +20,7 @@ import {
   getSyncableKey,
 } from '@syncable/core';
 import _ from 'lodash';
+import {Dict} from 'tslang';
 
 import {filterReadableSyncables} from '../@utils';
 import {Connection} from '../connection';
@@ -210,6 +212,24 @@ export class Server<TGenericParams extends IServerGenericParams> {
     return loadedSyncables;
   }
 
+  async load<TRefDict extends object>(
+    group: string,
+    refDict: TRefDict,
+  ): Promise<RefDictToSyncableObjectDict<TRefDict>> {
+    let container = new SyncableContainer(this.syncableAdapter);
+    let refs = getNonCreationRefsFromRefDict(refDict as Dict<SyncableRef>);
+
+    let syncables = await this.loadSyncablesByRefs(group, this.context, refs, {
+      loadRequisiteDependencyOnly: true,
+    });
+
+    for (let syncable of syncables) {
+      container.addSyncable(syncable);
+    }
+
+    return container.buildSyncableObjectDict(refDict);
+  }
+
   async applyChange(
     group: string,
     change: TGenericParams['change'],
@@ -247,9 +267,9 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
       let relatedSyncables = relatedRefs.length
         ? await this.loadSyncablesByRefs(group, context, relatedRefs, {
-          changeType: packet.type,
-          loadRequisiteDependencyOnly: true,
-        })
+            changeType: packet.type,
+            loadRequisiteDependencyOnly: true,
+          })
         : [];
 
       let container = new SyncableContainer(syncableAdapter);
