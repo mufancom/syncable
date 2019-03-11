@@ -62,7 +62,9 @@ type SyncableLoadingOptions =
   | SyncableLoadingChangeOptions;
 
 export class Connection<TGenericParams extends IServerGenericParams>
-  extends RPCPeer<ClientRPCDefinition>
+  extends RPCPeer<
+    ClientRPCDefinition | TGenericParams['customClientRPCDefinition']
+  >
   implements RPCPeerType<ConnectionRPCDefinition> {
   readonly context: TGenericParams['context'];
 

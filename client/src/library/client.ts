@@ -56,11 +56,13 @@ export interface IClientGenericParams
   extends IChangePlantBlueprintGenericParams {
   syncableObject: ISyncableObject;
   viewQueryDict: object;
-  customRPCDefinition: IRPCDefinition;
+  customConnectionRPCDefinition: IRPCDefinition;
 }
 
 export class Client<TGenericParams extends IClientGenericParams>
-  extends RPCPeer<ConnectionRPCDefinition>
+  extends RPCPeer<
+    ConnectionRPCDefinition | TGenericParams['customConnectionRPCDefinition']
+  >
   implements RPCPeerType<ClientRPCDefinition> {
   readonly container: SyncableContainer;
 

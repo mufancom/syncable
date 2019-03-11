@@ -43,7 +43,7 @@ export interface IServerGenericParams
   extends IChangePlantBlueprintGenericParams {
   syncableObject: ISyncableObject;
   viewQueryDict: object;
-  customRPCDefinition: IRPCDefinition;
+  customClientRPCDefinition: IRPCDefinition;
 }
 
 export class Server<TGenericParams extends IServerGenericParams> {
