@@ -62,7 +62,9 @@ type SyncableLoadingOptions =
   | SyncableLoadingChangeOptions;
 
 export class Connection<TGenericParams extends IServerGenericParams>
-  extends RPCPeer<ClientRPCDefinition>
+  extends RPCPeer<
+    ClientRPCDefinition | TGenericParams['customClientRPCDefinition']
+  >
   implements RPCPeerType<ConnectionRPCDefinition> {
   readonly context: TGenericParams['context'];
 
@@ -357,7 +359,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       clock,
     };
 
-    await this.call('sync', data, source);
+    await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
   }
 
   private async query(update: object, toInitialize: boolean): Promise<void> {
@@ -462,14 +464,14 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
       let connectionAdapter = this.connectionAdapter;
 
-      await this.call(
+      await (this as RPCPeer<ClientRPCDefinition>).call(
         'initialize',
         data,
         contextRef,
         connectionAdapter.viewQueryDict,
       );
     } else {
-      await this.call('sync', data);
+      await (this as RPCPeer<ClientRPCDefinition>).call('sync', data);
     }
   }
 
@@ -489,7 +491,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
-    await this.call('sync', {
+    await (this as RPCPeer<ClientRPCDefinition>).call('sync', {
       syncables,
       removals: [],
       updates: [],
