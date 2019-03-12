@@ -1,7 +1,8 @@
 import _ from 'lodash';
 import {ObservableMap, action, observable} from 'mobx';
-import replaceObject from 'replace-object';
 import {Dict, KeyOfValueWithType} from 'tslang';
+
+import {replaceSyncable} from '../@utils';
 
 import {ISyncable, SyncableId, SyncableRef} from './syncable';
 import {ISyncableAdapter} from './syncable-adapter';
@@ -191,7 +192,7 @@ export class SyncableContainer<
 
       if (syncable) {
         if (clock === undefined || syncable._clock < clock) {
-          replaceObject(syncable, snapshot);
+          replaceSyncable(syncable, snapshot);
         }
 
         return;
@@ -218,7 +219,7 @@ export class SyncableContainer<
     let syncable = syncableMap.get(id);
 
     if (syncable && (clock === undefined || syncable._clock < clock)) {
-      replaceObject(syncable, snapshot);
+      replaceSyncable(syncable, snapshot);
     }
   }
 
