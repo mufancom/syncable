@@ -139,7 +139,10 @@ export class Client<TGenericParams extends IClientGenericParams>
     );
 
     if (missingSyncableRefs.length) {
-      await this.call('request-syncables', missingSyncableRefs);
+      await (this as RPCPeer<ConnectionRPCDefinition>).call(
+        'request-syncables',
+        missingSyncableRefs,
+      );
     }
 
     return refs
@@ -249,7 +252,10 @@ export class Client<TGenericParams extends IClientGenericParams>
     }
 
     if (Object.keys(update).length) {
-      await this.call('update-view-query', update);
+      await (this as RPCPeer<ConnectionRPCDefinition>).call(
+        'update-view-query',
+        update,
+      );
     }
   }
 
@@ -271,7 +277,10 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     this._syncing = true;
 
-    let promise = this.call('apply-change', packet);
+    let promise = (this as RPCPeer<ConnectionRPCDefinition>).call(
+      'apply-change',
+      packet,
+    );
 
     return {id, promise};
   }
