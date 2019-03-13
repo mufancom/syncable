@@ -233,6 +233,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
   async applyChange(
     group: string,
     change: TGenericParams['change'],
+    context = this.context,
   ): Promise<ChangePlantProcessingResultWithClock> {
     let packet: ChangePacket = {
       id: generateUniqueId<ChangePacketId>(),
@@ -240,7 +241,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
       ...(change as GeneralChange),
     };
 
-    return this.applyChangePacket(group, packet, this.context);
+    return this.applyChangePacket(group, packet, context);
   }
 
   /** @internal */
