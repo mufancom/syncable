@@ -2,7 +2,6 @@ import {
   ChangePacket,
   ClientRPCDefinition,
   ConnectionRPCDefinition,
-  GeneralViewQuery,
   ISyncable,
   ISyncableAdapter,
   IViewQuery,
@@ -10,12 +9,14 @@ import {
   RPCMethod,
   RPCPeer,
   RPCPeerType,
+  ResolvedViewQuery,
   SyncData,
   SyncDataUpdateEntry,
   SyncUpdateSource,
   SyncableContainer,
   SyncableRef,
   ViewQueryFilter,
+  ViewQueryUpdateObject,
   getSyncableKey,
   getSyncableRef,
 } from '@syncable/core';
@@ -34,16 +35,20 @@ interface ViewQueryInfo {
   query: IViewQuery;
 }
 
-interface ISyncableLoadingOptions {
+interface ISyncableLoadingOptions<T = void> {
   type: string;
-  resolve(): void;
+  resolve(value: T): void;
   reject(error: RPCError): void;
+}
+
+interface SyncableLoadingInitializeOptions extends ISyncableLoadingOptions {
+  type: 'initialize';
+  queryUpdate: ViewQueryUpdateObject;
 }
 
 interface SyncableLoadingQueryOptions extends ISyncableLoadingOptions {
   type: 'query';
-  queryUpdate: object;
-  initialize: boolean;
+  queryUpdate: ViewQueryUpdateObject;
 }
 
 interface SyncableLoadingRequestOptions extends ISyncableLoadingOptions {
@@ -57,6 +62,7 @@ interface SyncableLoadingChangeOptions extends ISyncableLoadingOptions {
 }
 
 type SyncableLoadingOptions =
+  | SyncableLoadingInitializeOptions
   | SyncableLoadingQueryOptions
   | SyncableLoadingRequestOptions
   | SyncableLoadingChangeOptions;
@@ -108,19 +114,24 @@ export class Connection<TGenericParams extends IServerGenericParams>
       this.loadingScheduler
         .pipe(
           concatMap(async options => {
+            let ret: unknown;
+
             switch (options.type) {
               case 'request':
                 await this.request(options.refs);
                 break;
+              case 'initialize':
+                await this.query(options.queryUpdate, true);
+                break;
               case 'query':
-                await this.query(options.queryUpdate, options.initialize);
+                ret = await this.query(options.queryUpdate, false);
                 break;
               case 'change':
                 await this.change(options.result);
                 break;
             }
 
-            options.resolve();
+            options.resolve(ret as any);
           }),
         )
         .subscribe({
@@ -165,9 +176,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
   async initialize(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       this.loadingScheduler.next({
-        type: 'query',
-        queryUpdate: this.connectionAdapter.viewQueryDict,
-        initialize: true,
+        type: 'initialize',
+        queryUpdate: this.connectionAdapter.viewQueryDict as Dict<IViewQuery>,
         resolve,
         reject,
       });
@@ -198,14 +208,13 @@ export class Connection<TGenericParams extends IServerGenericParams>
   }
 
   @RPCMethod()
-  async 'update-view-query'(update: object): Promise<void> {
+  async 'update-view-query'(update: ViewQueryUpdateObject): Promise<void> {
     await this.ready;
 
     return new Promise((resolve, reject) => {
       this.loadingScheduler.next({
         type: 'query',
         queryUpdate: update,
-        initialize: false,
         resolve,
         reject,
       });
@@ -362,7 +371,10 @@ export class Connection<TGenericParams extends IServerGenericParams>
     await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
   }
 
-  private async query(update: object, toInitialize: boolean): Promise<void> {
+  private async query(
+    update: ViewQueryUpdateObject,
+    toInitialize: boolean,
+  ): Promise<void> {
     let group = this.group;
     let context = this.context;
     let container = this.container;
@@ -370,9 +382,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
     let syncableAdapter = this.syncableAdapter;
 
-    let resolvedViewQueryDict: Dict<object> = {};
-
-    let queryEntries = Object.entries(update as Dict<GeneralViewQuery | false>);
+    let queryEntries = Object.entries(update);
 
     let refs = _.uniqBy(
       _.flatMap(queryEntries, ([, query]) =>
@@ -392,6 +402,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
     }
 
     let viewQueryInfoMap = this.nameToViewQueryInfoMap;
+
+    let resolvedViewQueryDict: Dict<ResolvedViewQuery> = {};
 
     for (let [name, query] of queryEntries) {
       if (query) {
@@ -430,21 +442,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
       loadedKeySet,
     );
 
-    let contextRef = context.ref;
-    let contextKey = getSyncableKey(contextRef);
-
     for (let syncable of syncables) {
-      let key = getSyncableKey(syncable);
-
-      loadedKeySet.add(key);
-
-      if (key === contextKey) {
-        container.addSyncable(syncable);
-
-        let contextObject = container.requireSyncableObject(contextRef);
-
-        context.setObject(contextObject);
-      }
+      loadedKeySet.add(getSyncableKey(syncable));
     }
 
     let data: SyncData = {
@@ -454,6 +453,19 @@ export class Connection<TGenericParams extends IServerGenericParams>
     };
 
     if (toInitialize) {
+      let contextRef = context.ref;
+      let contextKey = getSyncableKey(contextRef);
+
+      for (let syncable of syncables) {
+        if (getSyncableKey(syncable) === contextKey) {
+          container.addSyncable(syncable);
+
+          let contextObject = container.requireSyncableObject(contextRef);
+
+          context.setObject(contextObject);
+        }
+      }
+
       if (!context.object) {
         throw new RPCError('INVALID_CONTEXT');
       }

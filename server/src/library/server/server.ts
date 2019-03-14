@@ -84,6 +84,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
 
+    loadedKeySet = new Set(loadedKeySet);
+
     let directSyncables = await serverAdapter.loadSyncablesByQuery(
       group,
       context,
@@ -96,6 +98,10 @@ export class Server<TGenericParams extends IServerGenericParams> {
       syncableAdapter,
       directSyncables,
     );
+
+    for (let syncable of directSyncables) {
+      loadedKeySet.add(getSyncableKey(syncable));
+    }
 
     let dependentSyncables = await this.loadDependentSyncables(
       group,

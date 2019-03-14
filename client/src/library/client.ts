@@ -190,8 +190,9 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   async query(
     update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
-    force = false,
-  ): Promise<void> {
+    force?: boolean,
+  ): Promise<void>;
+  async query(update: ViewQueryUpdateObject, force = false): Promise<void> {
     await this.ready;
 
     update = _.cloneDeep(update);
@@ -251,12 +252,14 @@ export class Client<TGenericParams extends IClientGenericParams>
       }
     }
 
-    if (Object.keys(update).length) {
-      await (this as RPCPeer<ConnectionRPCDefinition>).call(
-        'update-view-query',
-        update,
-      );
+    if (Object.keys(update).length === 0) {
+      return;
     }
+
+    await (this as RPCPeer<ConnectionRPCDefinition>).call(
+      'update-view-query',
+      update,
+    );
   }
 
   @action

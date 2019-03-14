@@ -2,9 +2,9 @@ import {Dict} from 'tslang';
 
 import {ISyncable, SyncableRef, SyncableType} from '../syncable';
 
-export type ViewQueryUpdateObject<TViewQueryObject extends object> = {
-  [TName in keyof TViewQueryObject]?: TViewQueryObject[TName] | false
-};
+export type ViewQueryUpdateObject<
+  TViewQueryObject extends object = Dict<IViewQuery>
+> = {[TName in keyof TViewQueryObject]?: TViewQueryObject[TName] | false};
 
 export type ViewQueryFilter<T extends ISyncable = ISyncable> = (
   syncable: T,
