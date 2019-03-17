@@ -332,9 +332,11 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     let clock: number | undefined;
 
+    let matchedPendingChangeInfo: PendingChangeInfo | undefined;
+
     if (source) {
       clock = source.clock;
-      this.shiftPendingChangeInfo(source.id);
+      matchedPendingChangeInfo = this.shiftPendingChangeInfo(source.id);
     }
 
     let pendingChangeInfos = this.pendingChangeInfos;
@@ -369,6 +371,21 @@ export class Client<TGenericParams extends IClientGenericParams>
       this.onUpdateRemove(ref);
     }
 
+    // Clean obsolete syncables.
+
+    // To avoid reference change, deletion of obsolete syncables need to be
+    // applied after updates and pending change packets.
+
+    if (matchedPendingChangeInfo) {
+      let obsoleteRefs = matchedPendingChangeInfo.refs.filter(
+        ref => !syncableSnapshotMap.has(getSyncableKey(ref)),
+      );
+
+      for (let ref of obsoleteRefs) {
+        container.removeSyncable(ref);
+      }
+    }
+
     if (pendingChangeInfos.length) {
       // Apply pending change.
 
@@ -377,19 +394,6 @@ export class Client<TGenericParams extends IClientGenericParams>
           pendingChangeInfos[i].packet,
         );
       }
-    }
-
-    // Clean obsolete syncables.
-
-    // To avoid reference change, deletion of obsolete syncables need to be
-    // applied after updates and pending change packets.
-
-    let obsoleteRefs = relevantRefs.filter(
-      ref => !syncableSnapshotMap.has(getSyncableKey(ref)),
-    );
-
-    for (let ref of obsoleteRefs) {
-      container.removeSyncable(ref);
     }
 
     if (!pendingChangeInfos.length) {
