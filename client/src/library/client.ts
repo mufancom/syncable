@@ -330,8 +330,10 @@ export class Client<TGenericParams extends IClientGenericParams>
   ): void {
     let container = this.container;
 
-    let clock: number | undefined;
+    let pendingChangeInfos = this.pendingChangeInfos;
+    let relevantRefs = _.flatMap(pendingChangeInfos, info => info.refs);
 
+    let clock: number | undefined;
     let matchedPendingChangeInfo: PendingChangeInfo | undefined;
 
     if (source) {
@@ -339,13 +341,9 @@ export class Client<TGenericParams extends IClientGenericParams>
       matchedPendingChangeInfo = this.shiftPendingChangeInfo(source.id);
     }
 
-    let pendingChangeInfos = this.pendingChangeInfos;
-
     // Restore relevant syncables
 
     let syncableSnapshotMap = this.syncableSnapshotMap;
-
-    let relevantRefs = _.flatMap(pendingChangeInfos, info => info.refs);
 
     for (let ref of relevantRefs) {
       let key = getSyncableKey(ref);
