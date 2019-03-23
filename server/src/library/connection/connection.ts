@@ -25,7 +25,7 @@ import {Observable, Subject, Subscription} from 'rxjs';
 import {concatMap, ignoreElements} from 'rxjs/operators';
 import {Dict} from 'tslang';
 
-import {filterReadableSyncables} from '../@utils';
+import {filterReadableSyncablesAndSanitize} from '../@utils';
 import {BroadcastChangeResult, IServerGenericParams, Server} from '../server';
 
 import {IConnectionAdapter} from './connection-adapter';
@@ -297,7 +297,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let updates: SyncDataUpdateEntry[] = [];
 
     syncables.push(
-      ...filterReadableSyncables(
+      ...filterReadableSyncablesAndSanitize(
         context,
         syncableAdapter,
         createdSyncables.filter(viewQueryFilter),
@@ -316,9 +316,12 @@ export class Connection<TGenericParams extends IServerGenericParams>
     }
 
     for (let {snapshot, diffs} of updateItems) {
-      let readable = syncableAdapter
-        .instantiate(snapshot)
-        .testAccessRights(['read'], context);
+      let object = syncableAdapter.instantiate(snapshot);
+
+      let readable = object.testAccessRights(['read'], context);
+      let sanitizedFieldNames = object.getSanitizedFieldNames(context);
+
+      snapshot = _.omit(snapshot, sanitizedFieldNames) as ISyncable;
 
       let key = getSyncableKey(snapshot);
 
@@ -326,7 +329,16 @@ export class Connection<TGenericParams extends IServerGenericParams>
         let ref = getSyncableRef(snapshot);
 
         if (readable) {
-          updates.push({ref, diffs});
+          let sanitizedFieldNameSet = new Set(sanitizedFieldNames);
+
+          diffs = diffs.filter(
+            diff => !diff.path || !sanitizedFieldNameSet.has(diff.path[0]),
+          );
+
+          if (diffs.length) {
+            updates.push({ref, diffs});
+          }
+
           dependencyRelevantSyncables.push(snapshot);
         } else {
           loadedKeySet.delete(key);

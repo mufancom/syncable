@@ -107,6 +107,13 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   /**
    * Override to specify.
    */
+  getSanitizedFieldNames(_context: IContext): string[] {
+    return [];
+  }
+
+  /**
+   * Override to specify.
+   */
   getSecuringFieldNames(): string[] {
     return [];
   }
