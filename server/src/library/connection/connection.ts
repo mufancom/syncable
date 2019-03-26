@@ -492,7 +492,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
         'initialize',
         data,
         contextRef,
-        connectionAdapter.viewQueryDict,
+        connectionAdapter.viewQueryDict as ViewQueryUpdateObject,
       );
     } else {
       await (this as RPCPeer<ClientRPCDefinition>).call('sync', data);

@@ -44,7 +44,7 @@ export interface ClientInitializeRPCDefinition {
   /**
    * [syncing data, context ref, default viewQuery dict]
    */
-  args: [SyncData, SyncableRef, object];
+  args: [SyncData, SyncableRef, ViewQueryUpdateObject];
   return: void;
 }
 

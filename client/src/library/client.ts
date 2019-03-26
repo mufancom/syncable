@@ -190,89 +190,32 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   async query(
     update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
-    force?: boolean,
   ): Promise<void>;
-  async query(update: ViewQueryUpdateObject, force = false): Promise<void> {
+  async query(update: ViewQueryUpdateObject): Promise<void> {
     await this.ready;
-
-    update = _.cloneDeep(update);
-
-    let context = this.context;
-    let container = this.container;
-    let syncableAdapter = this.syncableAdapter;
-
-    let viewQueryInfoMap = this.nameToViewQueryInfoMap;
-
-    let queryEntries = Object.entries(update as Dict<
-      GeneralViewQuery | false
-    >).filter(([name, query]) => {
-      let info = viewQueryInfoMap.get(name);
-
-      if (!force && info && _.isEqual(info.query, query)) {
-        delete (update as any)[name];
-        return false;
-      } else {
-        return true;
-      }
-    });
-
-    let refs = _.flatMap(queryEntries, ([, query]) => {
-      return query ? Object.values(query.refs) : [];
-    });
-
-    await this.requestObjects(refs);
-
-    for (let [name, query] of queryEntries) {
-      if (query) {
-        let {refs: refDict, options} = query;
-
-        let syncableDict = container.buildSyncableDict(refDict);
-
-        let resolvedViewQuery = {
-          syncables: syncableDict,
-          options,
-        };
-
-        let filter = syncableAdapter.getViewQueryFilter(
-          context,
-          name,
-          resolvedViewQuery,
-        );
-
-        runInAction(() => {
-          viewQueryInfoMap.set(name, {
-            query: query as IViewQuery,
-            filter,
-          });
-        });
-      } else {
-        runInAction(() => {
-          viewQueryInfoMap.delete(name);
-        });
-      }
-    }
-
-    if (Object.keys(update).length === 0) {
-      return;
-    }
-
-    await (this as RPCPeer<ConnectionRPCDefinition>).call(
-      'update-view-query',
-      update,
-    );
+    await this._query(update);
   }
 
   @action
-  applyChange(change: TGenericParams['change']): ClientApplyChangeResult {
+  applyChange(
+    change: TGenericParams['change'] | ChangePacket,
+  ): ClientApplyChangeResult {
+    let id: ChangePacketId;
+    let packet: ChangePacket;
+
+    if ('id' in change) {
+      id = change.id;
+      packet = change;
+    } else {
+      id = generateUniqueId();
+      packet = {
+        id,
+        createdAt: Date.now() as NumericTimestamp,
+        ...(change as GeneralChange),
+      };
+    }
+
     change = _.cloneDeep(change);
-
-    let id = generateUniqueId<ChangePacketId>();
-
-    let packet: ChangePacket = {
-      id,
-      createdAt: Date.now() as NumericTimestamp,
-      ...(change as GeneralChange),
-    };
 
     let info = this.applyChangePacket(packet);
 
@@ -303,23 +246,49 @@ export class Client<TGenericParams extends IClientGenericParams>
   initialize(
     data: SyncData,
     contextRef: SyncableRef,
-    viewQueryUpdateObject: object,
+    viewQueryUpdateObject: ViewQueryUpdateObject,
   ): void {
     this.container.clear();
+
+    let pendingChangeInfos = this.pendingChangeInfos;
+
+    let pendingPackets = pendingChangeInfos.map(info => info.packet);
+
+    pendingChangeInfos.length = 0;
 
     this.sync(data);
 
     this.context.setObject(this.requireObject(contextRef));
 
-    this.initializeSubject$.complete();
+    let viewQueryInfoMap = this.nameToViewQueryInfoMap;
 
-    let update = _.cloneDeep(viewQueryUpdateObject);
+    let update: ViewQueryUpdateObject = {};
 
-    for (let [name, {query}] of this.nameToViewQueryInfoMap) {
+    for (let [name, {query}] of viewQueryInfoMap) {
       (update as Dict<IViewQuery>)[name] = query;
     }
 
-    this.query(update, true).catch(console.error);
+    viewQueryInfoMap.clear();
+
+    for (let [name, query] of Object.entries(viewQueryUpdateObject)) {
+      if (query !== undefined) {
+        this.updateViewQueryInfo(name, query);
+      }
+    }
+
+    this._query(update)
+      .then(() => {
+        this.initializeSubject$.complete();
+
+        for (let packet of pendingPackets) {
+          try {
+            this.applyChange(packet);
+          } catch (error) {
+            console.error(error);
+          }
+        }
+      })
+      .catch(console.error);
   }
 
   @RPCMethod()
@@ -424,6 +393,78 @@ export class Client<TGenericParams extends IClientGenericParams>
     }
 
     this.container.addSyncable(snapshot, clock);
+  }
+
+  private async _query(update: ViewQueryUpdateObject): Promise<void> {
+    update = _.cloneDeep(update);
+
+    let viewQueryInfoMap = this.nameToViewQueryInfoMap;
+
+    let queryEntries = Object.entries(update as Dict<
+      GeneralViewQuery | false
+    >).filter(([name, query]) => {
+      let info = viewQueryInfoMap.get(name);
+
+      if (info && _.isEqual(info.query, query)) {
+        delete (update as any)[name];
+        return false;
+      } else {
+        return true;
+      }
+    });
+
+    let refs = _.flatMap(queryEntries, ([, query]) => {
+      return query ? Object.values(query.refs) : [];
+    });
+
+    await this.requestObjects(refs);
+
+    runInAction(() => {
+      for (let [name, query] of queryEntries) {
+        this.updateViewQueryInfo(name, query);
+      }
+    });
+
+    if (Object.keys(update).length === 0) {
+      return;
+    }
+
+    await (this as RPCPeer<ConnectionRPCDefinition>).call(
+      'update-view-query',
+      update,
+    );
+  }
+
+  private updateViewQueryInfo(name: string, query: IViewQuery | false): void {
+    let context = this.context;
+    let container = this.container;
+    let syncableAdapter = this.syncableAdapter;
+
+    let viewQueryInfoMap = this.nameToViewQueryInfoMap;
+
+    if (query) {
+      let {refs: refDict, options} = query;
+
+      let syncableDict = container.buildSyncableDict(refDict);
+
+      let resolvedViewQuery = {
+        syncables: syncableDict,
+        options,
+      };
+
+      let filter = syncableAdapter.getViewQueryFilter(
+        context,
+        name,
+        resolvedViewQuery,
+      );
+
+      viewQueryInfoMap.set(name, {
+        query,
+        filter,
+      });
+    } else {
+      viewQueryInfoMap.delete(name);
+    }
   }
 
   private shiftPendingChangeInfo(
