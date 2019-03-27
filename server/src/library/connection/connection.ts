@@ -278,15 +278,17 @@ export class Connection<TGenericParams extends IServerGenericParams>
       }),
     );
 
-    let relevantViewQueryUpdate = relevantViewQueryNames.reduce(
-      (update, name) => {
-        update[name] = nameToViewQueryInfoMap.get(name)!.query;
-        return update;
-      },
-      {} as Dict<IViewQuery>,
-    );
+    if (relevantViewQueryNames.length) {
+      let relevantViewQueryUpdate = relevantViewQueryNames.reduce(
+        (update, name) => {
+          update[name] = nameToViewQueryInfoMap.get(name)!.query;
+          return update;
+        },
+        {} as Dict<IViewQuery>,
+      );
 
-    this['update-view-query'](relevantViewQueryUpdate).catch(console.error);
+      this['update-view-query'](relevantViewQueryUpdate).catch(console.error);
+    }
 
     let loadedKeySet = this.loadedKeySet;
 
@@ -296,13 +298,17 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let removals: SyncableRef[] = [];
     let updates: SyncDataUpdateEntry[] = [];
 
-    syncables.push(
-      ...filterReadableSyncablesAndSanitize(
-        context,
-        syncableAdapter,
-        createdSyncables.filter(viewQueryFilter),
-      ),
+    let filteredCreatedSyncables = filterReadableSyncablesAndSanitize(
+      context,
+      syncableAdapter,
+      createdSyncables.filter(viewQueryFilter),
     );
+
+    for (let syncable of filteredCreatedSyncables) {
+      loadedKeySet.add(getSyncableKey(syncable));
+    }
+
+    syncables.push(...filteredCreatedSyncables);
 
     let dependencyRelevantSyncables = [...syncables];
 
