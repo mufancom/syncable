@@ -1,5 +1,6 @@
 import {
   ChangePacket,
+  ChangePacketId,
   ClientRPCDefinition,
   ConnectionRPCDefinition,
   ISyncable,
@@ -81,6 +82,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
   private nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
 
   private loadedKeySet = new Set<string>();
+
+  private pendingChangePacketIdSet = new Set<ChangePacketId>();
 
   private loadingScheduler = new Subject<SyncableLoadingOptions>();
 
@@ -189,6 +192,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
   @RPCMethod()
   async 'apply-change'(packet: ChangePacket): Promise<void> {
     await this.ready;
+
+    this.pendingChangePacketIdSet.add(packet.id);
 
     await this.server.applyChangePacket(this.group, packet, this.context);
   }
@@ -380,6 +385,17 @@ export class Connection<TGenericParams extends IServerGenericParams>
       removals,
       updates,
     };
+
+    if (
+      !syncables.length &&
+      !updates.length &&
+      !removals.length &&
+      !this.pendingChangePacketIdSet.has(id)
+    ) {
+      return;
+    }
+
+    this.pendingChangePacketIdSet.delete(id);
 
     let source: SyncUpdateSource = {
       id,
