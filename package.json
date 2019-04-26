@@ -8,7 +8,7 @@
     "lint:test": "tslint --project test",
     "lint-prettier": "prettier --check \"**/*.{ts,tsx,js,jsx,json,yml,md}\"",
     "lint": "yarn lint-prettier && yarn lint:test && yarn workspace @syncable/core lint && yarn workspace @syncable/server lint && yarn workspace @syncable/client lint",
-    "test": "jest --silent --updateSnapshot"
+    "test": "jest --silent"
   },
   "devDependencies": {
     "@magicspace/configs": "^0.1.46",
