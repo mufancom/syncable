@@ -11,10 +11,14 @@ import {
   ISyncable,
   ISyncableAdapter,
   ISyncableObject,
+  IViewQuery,
   NumericTimestamp,
   RefDictToSyncableObjectDict,
+  ResolvedViewQuery,
   SyncableContainer,
   SyncableRef,
+  ViewQueryFilter,
+  ViewQueryUpdateObject,
   generateUniqueId,
   getNonCreationRefsFromRefDict,
   getSyncableKey,
@@ -44,6 +48,11 @@ export interface IServerGenericParams
   syncableObject: ISyncableObject;
   viewQueryDict: object;
   customClientRPCDefinition: IRPCDefinition;
+}
+
+export interface ViewQueryInfo {
+  filter: ViewQueryFilter;
+  query: IViewQuery;
 }
 
 export class Server<TGenericParams extends IServerGenericParams> {
@@ -236,6 +245,42 @@ export class Server<TGenericParams extends IServerGenericParams> {
     return container.buildSyncableObjectDict(refDict);
   }
 
+  async query(
+    group: string,
+    update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
+  ): Promise<
+    {
+      [TKey in TGenericParams['syncableObject']['ref']['type']]?: Extract<
+        TGenericParams['syncableObject'],
+        {ref: {type: TKey}}
+      >[]
+    }
+  >;
+  async query(
+    group: string,
+    update: ViewQueryUpdateObject,
+  ): Promise<
+    {
+      [TKey in TGenericParams['syncableObject']['ref']['type']]?: Extract<
+        TGenericParams['syncableObject'],
+        {ref: {type: TKey}}
+      >[]
+    }
+  > {
+    let container = new SyncableContainer(this.syncableAdapter);
+
+    let {syncables} = await this._query(group, update, new Set(), container);
+
+    for (let syncable of syncables) {
+      container.addSyncable(syncable);
+    }
+
+    return _.groupBy(
+      container.getSyncableObjects(),
+      syncableObject => syncableObject.ref.type,
+    ) as object;
+  }
+
   async applyChange(
     group: string,
     change: TGenericParams['change'],
@@ -319,6 +364,80 @@ export class Server<TGenericParams extends IServerGenericParams> {
     });
 
     return result;
+  }
+
+  /** @internal */
+  async _query(
+    group: string,
+    update: ViewQueryUpdateObject,
+    loadedKeySet: Set<string>,
+    container: SyncableContainer,
+  ): Promise<{
+    syncables: ISyncable[];
+    nameToViewQueryInfoMap: Map<string, ViewQueryInfo>;
+  }> {
+    let context = this.context;
+    let syncableAdapter = this.syncableAdapter;
+
+    let queryEntries = Object.entries(update);
+
+    let refs = _.uniqBy(
+      _.flatMap(queryEntries, ([, query]) =>
+        query ? Object.values(query.refs) : [],
+      ),
+      ref => getSyncableKey(ref),
+    ).filter(ref => !container.existsSyncable(ref));
+
+    if (refs.length) {
+      let syncables = await this.loadSyncablesByRefs(group, context, refs, {
+        loadRequisiteDependencyOnly: true,
+      });
+
+      for (let syncable of syncables) {
+        container.addSyncable(syncable);
+      }
+    }
+
+    let nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
+
+    let resolvedViewQueryDict: Dict<ResolvedViewQuery> = {};
+
+    for (let [name, query] of queryEntries) {
+      if (query) {
+        let {refs: refDict, options} = query;
+
+        let syncableDict = container.buildSyncableDict(refDict);
+
+        let resolvedViewQuery = {
+          syncables: syncableDict,
+          options,
+        };
+
+        let filter = syncableAdapter.getViewQueryFilter(
+          context,
+          name,
+          resolvedViewQuery,
+        );
+
+        nameToViewQueryInfoMap.set(name, {
+          filter,
+          query,
+        });
+
+        resolvedViewQueryDict[name] = resolvedViewQuery;
+      } else {
+        nameToViewQueryInfoMap.delete(name);
+      }
+    }
+
+    let syncables = await this.loadSyncablesByQuery(
+      group,
+      context,
+      resolvedViewQueryDict,
+      loadedKeySet,
+    );
+
+    return {syncables, nameToViewQueryInfoMap};
   }
 
   private onConnection = (connection: Connection<TGenericParams>): void => {

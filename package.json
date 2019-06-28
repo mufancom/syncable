@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "link-global": "yarn workspace @syncable/core link && yarn workspace @syncable/server link && yarn workspace @syncable/client link",
+    "unlink-global": "yarn workspace @syncable/core unlink && yarn workspace @syncable/server unlink && yarn workspace @syncable/client unlink",
     "lerna:publish": "lerna publish prerelease --npm-tag latest --registry=https://registry.npmjs.org",
     "build": "tsc --build tsconfig.build.json",
     "lint:test": "tslint --project test",
@@ -21,7 +22,7 @@
     "lolex": "^3.0.0",
     "mobx": "^5.8.0",
     "prettier": "^1.16.0",
-    "rxjs": "^6.4.0",
+    "rxjs": "^6.5.2",
     "ts-jest": "^24.0.0",
     "tslib": "^1.9.3",
     "tslint": "^5.12.1",

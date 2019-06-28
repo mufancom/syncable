@@ -5,7 +5,7 @@ import {
   SyncableRef,
   ViewQueryDictToResolvedViewQueryDict,
 } from '@syncable/core';
-import {Observable} from 'rxjs';
+import {Subject} from 'rxjs';
 
 import {Connection} from '../connection';
 
@@ -25,9 +25,9 @@ export interface BroadcastChangeResult {
 export interface IServerAdapter<
   TGenericParams extends IServerGenericParams = IServerGenericParams
 > {
-  connection$: Observable<Connection<TGenericParams>>;
+  connection$: Subject<Connection<TGenericParams>>;
 
-  broadcast$: Observable<BroadcastChangeResult>;
+  broadcast$: Subject<BroadcastChangeResult>;
 
   subscribe(group: string): Promise<void>;
   unsubscribe(group: string): Promise<void>;

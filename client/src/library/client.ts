@@ -511,6 +511,7 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     for (let ref of removals) {
       container.removeSyncable(ref);
+      relevantRefs.push(ref);
     }
 
     this.clientAdapter.handleNotifications(notifications, packet.id);
