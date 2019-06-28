@@ -1,4 +1,4 @@
-import {Subject, Subscription} from 'rxjs';
+import {Observable, Subscription} from 'rxjs';
 
 import {generateUniqueId} from '../utils';
 
@@ -20,7 +20,7 @@ export type RPCPeerType<TLocalDefinition extends IRPCDefinition> = {
 };
 
 export interface IRPCAdapter {
-  incoming$: Subject<RPCData>;
+  incoming$: Observable<RPCData>;
   send(outgoing: RPCData): Promise<void>;
 }
 
