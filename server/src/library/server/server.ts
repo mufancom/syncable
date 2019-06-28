@@ -269,7 +269,13 @@ export class Server<TGenericParams extends IServerGenericParams> {
   > {
     let container = new SyncableContainer(this.syncableAdapter);
 
-    let {syncables} = await this._query(group, update, new Set(), container);
+    let {syncables} = await this._query(
+      group,
+      update,
+      new Set(),
+      container,
+      this.context,
+    );
 
     for (let syncable of syncables) {
       container.addSyncable(syncable);
@@ -372,11 +378,11 @@ export class Server<TGenericParams extends IServerGenericParams> {
     update: ViewQueryUpdateObject,
     loadedKeySet: Set<string>,
     container: SyncableContainer,
+    context: TGenericParams['context'],
   ): Promise<{
     syncables: ISyncable[];
     nameToViewQueryInfoMap: Map<string, ViewQueryInfo>;
   }> {
-    let context = this.context;
     let syncableAdapter = this.syncableAdapter;
 
     let queryEntries = Object.entries(update);

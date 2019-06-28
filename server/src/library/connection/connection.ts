@@ -419,6 +419,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       update,
       loadedKeySet,
       container,
+      context,
     );
 
     this.nameToViewQueryInfoMap = new Map([
