@@ -380,8 +380,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
     context: TGenericParams['context'],
   ): Promise<{
     syncables: ISyncable[];
-    addedNameToViewQueryInfoMap: Map<string, ViewQueryInfo>;
-    removedViewQueryNames: string[];
+    nameToViewQueryMapToAdd: Map<string, ViewQueryInfo>;
+    nameToViewQueryMapToRemove: string[];
   }> {
     let syncableAdapter = this.syncableAdapter;
 
@@ -404,8 +404,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
       }
     }
 
-    let addedNameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
-    let removedViewQueryNames = [];
+    let nameToViewQueryMapToAdd = new Map<string, ViewQueryInfo>();
+    let nameToViewQueryMapToRemove = [];
 
     let resolvedViewQueryDict: Dict<ResolvedViewQuery> = {};
 
@@ -426,14 +426,14 @@ export class Server<TGenericParams extends IServerGenericParams> {
           resolvedViewQuery,
         );
 
-        addedNameToViewQueryInfoMap.set(name, {
+        nameToViewQueryMapToAdd.set(name, {
           filter,
           query,
         });
 
         resolvedViewQueryDict[name] = resolvedViewQuery;
       } else {
-        removedViewQueryNames.push(name);
+        nameToViewQueryMapToRemove.push(name);
       }
     }
 
@@ -444,7 +444,11 @@ export class Server<TGenericParams extends IServerGenericParams> {
       loadedKeySet,
     );
 
-    return {syncables, addedNameToViewQueryInfoMap, removedViewQueryNames};
+    return {
+      syncables,
+      nameToViewQueryMapToAdd,
+      nameToViewQueryMapToRemove,
+    };
   }
 
   private onConnection = (connection: Connection<TGenericParams>): void => {

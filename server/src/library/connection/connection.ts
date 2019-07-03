@@ -416,17 +416,17 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
     let {
       syncables,
-      addedNameToViewQueryInfoMap: nameToViewQueryInfoMap,
-      removedViewQueryNames,
+      nameToViewQueryMapToAdd,
+      nameToViewQueryMapToRemove,
     } = await server._query(group, update, loadedKeySet, container, context);
 
-    let removedViewQueryNameSet = new Set(removedViewQueryNames);
+    for (let [name, value] of nameToViewQueryMapToAdd) {
+      this.nameToViewQueryInfoMap.set(name, value);
+    }
 
-    this.nameToViewQueryInfoMap = new Map(
-      [...this.nameToViewQueryInfoMap, ...nameToViewQueryInfoMap].filter(
-        ([name]) => !removedViewQueryNameSet.has(name),
-      ),
-    );
+    for (let name of nameToViewQueryMapToRemove) {
+      this.nameToViewQueryInfoMap.delete(name);
+    }
 
     for (let syncable of syncables) {
       loadedKeySet.add(getSyncableKey(syncable));
