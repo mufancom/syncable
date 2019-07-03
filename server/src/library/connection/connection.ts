@@ -414,18 +414,19 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let server = this.server;
     let loadedKeySet = this.loadedKeySet;
 
-    let {syncables, nameToViewQueryInfoMap} = await server._query(
-      group,
-      update,
-      loadedKeySet,
-      container,
-      context,
-    );
+    let {
+      syncables,
+      addedNameToViewQueryInfoMap: nameToViewQueryInfoMap,
+      removedViewQueryNames,
+    } = await server._query(group, update, loadedKeySet, container, context);
 
-    this.nameToViewQueryInfoMap = new Map([
-      ...this.nameToViewQueryInfoMap,
-      ...nameToViewQueryInfoMap,
-    ]);
+    let removedViewQueryNameSet = new Set(removedViewQueryNames);
+
+    this.nameToViewQueryInfoMap = new Map(
+      [...this.nameToViewQueryInfoMap, ...nameToViewQueryInfoMap].filter(
+        ([name]) => !removedViewQueryNameSet.has(name),
+      ),
+    );
 
     for (let syncable of syncables) {
       loadedKeySet.add(getSyncableKey(syncable));

@@ -50,6 +50,15 @@ export interface IServerGenericParams
   customClientRPCDefinition: IRPCDefinition;
 }
 
+export type SyncableTypeToSyncableObjectsDict<
+  TSyncableObject extends ISyncableObject
+> = {
+  [TKey in TSyncableObject['ref']['type']]?: Extract<
+    TSyncableObject,
+    {ref: {type: TKey}}
+  >[]
+};
+
 export interface ViewQueryInfo {
   filter: ViewQueryFilter;
   query: IViewQuery;
@@ -249,23 +258,13 @@ export class Server<TGenericParams extends IServerGenericParams> {
     group: string,
     update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
   ): Promise<
-    {
-      [TKey in TGenericParams['syncableObject']['ref']['type']]?: Extract<
-        TGenericParams['syncableObject'],
-        {ref: {type: TKey}}
-      >[]
-    }
+    SyncableTypeToSyncableObjectsDict<TGenericParams['syncableObject']>
   >;
   async query(
     group: string,
     update: ViewQueryUpdateObject,
   ): Promise<
-    {
-      [TKey in TGenericParams['syncableObject']['ref']['type']]?: Extract<
-        TGenericParams['syncableObject'],
-        {ref: {type: TKey}}
-      >[]
-    }
+    SyncableTypeToSyncableObjectsDict<TGenericParams['syncableObject']>
   > {
     let container = new SyncableContainer(this.syncableAdapter);
 
@@ -381,7 +380,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
     context: TGenericParams['context'],
   ): Promise<{
     syncables: ISyncable[];
-    nameToViewQueryInfoMap: Map<string, ViewQueryInfo>;
+    addedNameToViewQueryInfoMap: Map<string, ViewQueryInfo>;
+    removedViewQueryNames: string[];
   }> {
     let syncableAdapter = this.syncableAdapter;
 
@@ -404,7 +404,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
       }
     }
 
-    let nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
+    let addedNameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
+    let removedViewQueryNames = [];
 
     let resolvedViewQueryDict: Dict<ResolvedViewQuery> = {};
 
@@ -425,14 +426,14 @@ export class Server<TGenericParams extends IServerGenericParams> {
           resolvedViewQuery,
         );
 
-        nameToViewQueryInfoMap.set(name, {
+        addedNameToViewQueryInfoMap.set(name, {
           filter,
           query,
         });
 
         resolvedViewQueryDict[name] = resolvedViewQuery;
       } else {
-        nameToViewQueryInfoMap.delete(name);
+        removedViewQueryNames.push(name);
       }
     }
 
@@ -443,7 +444,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
       loadedKeySet,
     );
 
-    return {syncables, nameToViewQueryInfoMap};
+    return {syncables, addedNameToViewQueryInfoMap, removedViewQueryNames};
   }
 
   private onConnection = (connection: Connection<TGenericParams>): void => {
