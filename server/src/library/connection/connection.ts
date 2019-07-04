@@ -10,7 +10,6 @@ import {
   RPCMethod,
   RPCPeer,
   RPCPeerType,
-  ResolvedViewQuery,
   SyncData,
   SyncDataUpdateEntry,
   SyncUpdateSource,
@@ -27,14 +26,14 @@ import {concatMap, ignoreElements} from 'rxjs/operators';
 import {Dict} from 'tslang';
 
 import {filterReadableSyncablesAndSanitize} from '../@utils';
-import {BroadcastChangeResult, IServerGenericParams, Server} from '../server';
+import {
+  BroadcastChangeResult,
+  IServerGenericParams,
+  Server,
+  ViewQueryInfo,
+} from '../server';
 
 import {IConnectionAdapter} from './connection-adapter';
-
-interface ViewQueryInfo {
-  filter: ViewQueryFilter;
-  query: IViewQuery;
-}
 
 interface ISyncableLoadingOptions<T = void> {
   type: string;
@@ -413,68 +412,21 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let context = this.context;
     let container = this.container;
     let server = this.server;
-
-    let syncableAdapter = this.syncableAdapter;
-
-    let queryEntries = Object.entries(update);
-
-    let refs = _.uniqBy(
-      _.flatMap(queryEntries, ([, query]) =>
-        query ? Object.values(query.refs) : [],
-      ),
-      ref => getSyncableKey(ref),
-    ).filter(ref => !container.existsSyncable(ref));
-
-    if (refs.length) {
-      let syncables = await server.loadSyncablesByRefs(group, context, refs, {
-        loadRequisiteDependencyOnly: true,
-      });
-
-      for (let syncable of syncables) {
-        container.addSyncable(syncable);
-      }
-    }
-
-    let viewQueryInfoMap = this.nameToViewQueryInfoMap;
-
-    let resolvedViewQueryDict: Dict<ResolvedViewQuery> = {};
-
-    for (let [name, query] of queryEntries) {
-      if (query) {
-        let {refs: refDict, options} = query;
-
-        let syncableDict = container.buildSyncableDict(refDict);
-
-        let resolvedViewQuery = {
-          syncables: syncableDict,
-          options,
-        };
-
-        let filter = syncableAdapter.getViewQueryFilter(
-          context,
-          name,
-          resolvedViewQuery,
-        );
-
-        viewQueryInfoMap.set(name, {
-          filter,
-          query,
-        });
-
-        resolvedViewQueryDict[name] = resolvedViewQuery;
-      } else {
-        viewQueryInfoMap.delete(name);
-      }
-    }
-
     let loadedKeySet = this.loadedKeySet;
 
-    let syncables = await server.loadSyncablesByQuery(
-      group,
-      context,
-      resolvedViewQueryDict,
-      loadedKeySet,
-    );
+    let {
+      syncables,
+      nameToViewQueryMapToAdd,
+      viewQueryNamesToRemove,
+    } = await server._query(group, update, loadedKeySet, container, context);
+
+    for (let [name, value] of nameToViewQueryMapToAdd) {
+      this.nameToViewQueryInfoMap.set(name, value);
+    }
+
+    for (let name of viewQueryNamesToRemove) {
+      this.nameToViewQueryInfoMap.delete(name);
+    }
 
     for (let syncable of syncables) {
       loadedKeySet.add(getSyncableKey(syncable));

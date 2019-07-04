@@ -11,10 +11,14 @@ import {
   ISyncable,
   ISyncableAdapter,
   ISyncableObject,
+  IViewQuery,
   NumericTimestamp,
   RefDictToSyncableObjectDict,
+  ResolvedViewQuery,
   SyncableContainer,
   SyncableRef,
+  ViewQueryFilter,
+  ViewQueryUpdateObject,
   generateUniqueId,
   getNonCreationRefsFromRefDict,
   getSyncableKey,
@@ -44,6 +48,20 @@ export interface IServerGenericParams
   syncableObject: ISyncableObject;
   viewQueryDict: object;
   customClientRPCDefinition: IRPCDefinition;
+}
+
+export type SyncableTypeToSyncableObjectsDict<
+  TSyncableObject extends ISyncableObject
+> = {
+  [TKey in TSyncableObject['ref']['type']]?: Extract<
+    TSyncableObject,
+    {ref: {type: TKey}}
+  >[]
+};
+
+export interface ViewQueryInfo {
+  filter: ViewQueryFilter;
+  query: IViewQuery;
 }
 
 export class Server<TGenericParams extends IServerGenericParams> {
@@ -236,6 +254,38 @@ export class Server<TGenericParams extends IServerGenericParams> {
     return container.buildSyncableObjectDict(refDict);
   }
 
+  async query(
+    group: string,
+    update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
+  ): Promise<
+    SyncableTypeToSyncableObjectsDict<TGenericParams['syncableObject']>
+  >;
+  async query(
+    group: string,
+    update: ViewQueryUpdateObject,
+  ): Promise<
+    SyncableTypeToSyncableObjectsDict<TGenericParams['syncableObject']>
+  > {
+    let container = new SyncableContainer(this.syncableAdapter);
+
+    let {syncables} = await this._query(
+      group,
+      update,
+      new Set(),
+      container,
+      this.context,
+    );
+
+    for (let syncable of syncables) {
+      container.addSyncable(syncable);
+    }
+
+    return _.groupBy(
+      container.getSyncableObjects(),
+      syncableObject => syncableObject.ref.type,
+    ) as object;
+  }
+
   async applyChange(
     group: string,
     change: TGenericParams['change'],
@@ -319,6 +369,86 @@ export class Server<TGenericParams extends IServerGenericParams> {
     });
 
     return result;
+  }
+
+  /** @internal */
+  async _query(
+    group: string,
+    update: ViewQueryUpdateObject,
+    loadedKeySet: Set<string>,
+    container: SyncableContainer,
+    context: TGenericParams['context'],
+  ): Promise<{
+    syncables: ISyncable[];
+    nameToViewQueryMapToAdd: Map<string, ViewQueryInfo>;
+    viewQueryNamesToRemove: string[];
+  }> {
+    let syncableAdapter = this.syncableAdapter;
+
+    let queryEntries = Object.entries(update);
+
+    let refs = _.uniqBy(
+      _.flatMap(queryEntries, ([, query]) =>
+        query ? Object.values(query.refs) : [],
+      ),
+      ref => getSyncableKey(ref),
+    ).filter(ref => !container.existsSyncable(ref));
+
+    if (refs.length) {
+      let syncables = await this.loadSyncablesByRefs(group, context, refs, {
+        loadRequisiteDependencyOnly: true,
+      });
+
+      for (let syncable of syncables) {
+        container.addSyncable(syncable);
+      }
+    }
+
+    let nameToViewQueryMapToAdd = new Map<string, ViewQueryInfo>();
+    let viewQueryNamesToRemove = [];
+
+    let resolvedViewQueryDict: Dict<ResolvedViewQuery> = {};
+
+    for (let [name, query] of queryEntries) {
+      if (query) {
+        let {refs: refDict, options} = query;
+
+        let syncableDict = container.buildSyncableDict(refDict);
+
+        let resolvedViewQuery = {
+          syncables: syncableDict,
+          options,
+        };
+
+        let filter = syncableAdapter.getViewQueryFilter(
+          context,
+          name,
+          resolvedViewQuery,
+        );
+
+        nameToViewQueryMapToAdd.set(name, {
+          filter,
+          query,
+        });
+
+        resolvedViewQueryDict[name] = resolvedViewQuery;
+      } else {
+        viewQueryNamesToRemove.push(name);
+      }
+    }
+
+    let syncables = await this.loadSyncablesByQuery(
+      group,
+      context,
+      resolvedViewQueryDict,
+      loadedKeySet,
+    );
+
+    return {
+      syncables,
+      nameToViewQueryMapToAdd,
+      viewQueryNamesToRemove,
+    };
   }
 
   private onConnection = (connection: Connection<TGenericParams>): void => {
