@@ -381,7 +381,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
   ): Promise<{
     syncables: ISyncable[];
     nameToViewQueryMapToAdd: Map<string, ViewQueryInfo>;
-    nameToViewQueryMapToRemove: string[];
+    viewQueryNamesToRemove: string[];
   }> {
     let syncableAdapter = this.syncableAdapter;
 
@@ -405,7 +405,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     }
 
     let nameToViewQueryMapToAdd = new Map<string, ViewQueryInfo>();
-    let nameToViewQueryMapToRemove = [];
+    let viewQueryNamesToRemove = [];
 
     let resolvedViewQueryDict: Dict<ResolvedViewQuery> = {};
 
@@ -433,7 +433,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
         resolvedViewQueryDict[name] = resolvedViewQuery;
       } else {
-        nameToViewQueryMapToRemove.push(name);
+        viewQueryNamesToRemove.push(name);
       }
     }
 
@@ -447,7 +447,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     return {
       syncables,
       nameToViewQueryMapToAdd,
-      nameToViewQueryMapToRemove,
+      viewQueryNamesToRemove,
     };
   }
 
