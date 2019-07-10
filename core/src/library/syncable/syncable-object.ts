@@ -4,10 +4,8 @@ import {computed} from 'mobx';
 import {IContext} from '../context';
 
 import {
-  ACCESS_RIGHTS,
   AccessControlEntry,
   AccessControlEntryRuleName,
-  AccessControlEntryType,
   AccessRight,
   getAccessControlEntryPriority,
 } from './access-control';
@@ -28,15 +26,6 @@ export type AccessControlRuleTester = (
 export interface AccessControlRuleEntry {
   test: AccessControlRuleTester;
 }
-
-interface AccessRightComparableItem {
-  type: AccessControlEntryType;
-  priority: number;
-}
-
-type AccessRightComparableItemsDict = {
-  [key in AccessRight]: AccessRightComparableItem[]
-};
 
 abstract class SyncableObject<T extends ISyncable = ISyncable> {
   /** @internal */
@@ -130,67 +119,54 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
     let defaultACL = this.getDefaultACL();
 
-    return Array.from(
-      new Map(
-        [...defaultACL, ..._acl].map(
-          (entry): [string, AccessControlEntry] => [entry.name, entry],
-        ),
-      ).values(),
+    return _.uniqBy([...defaultACL, ..._acl], entry => entry.name).sort(
+      (x, y) => {
+        let xPriority = getAccessControlEntryPriority(x, false);
+        let yPriority = getAccessControlEntryPriority(y, false);
+
+        if (xPriority === yPriority) {
+          return y.rights.length - x.rights.length;
+        } else {
+          return xPriority - yPriority;
+        }
+      },
     );
   }
 
   getAccessRights(context: IContext): AccessRight[] {
-    let dict: AccessRightComparableItemsDict = {
-      read: [],
-      write: [],
-      full: [],
-    };
-
     let acl = this.getACL();
 
-    if (acl.length) {
-      for (let entry of acl) {
-        if (!this.testAccessControlEntry(entry, context)) {
-          continue;
-        }
+    if (!acl.length) {
+      return ['full', 'read', 'write'];
+    }
 
-        let {type, rights} = entry;
+    let accessRightSet = new Set<AccessRight>();
 
-        let item: AccessRightComparableItem = {
-          type,
-          priority: getAccessControlEntryPriority(entry, false),
-        };
+    for (let entry of acl) {
+      let {type, rights: currentRights} = entry;
 
-        for (let right of rights) {
-          dict[right].push(item);
-        }
+      let existedAccessRights = Array.from(accessRightSet);
+
+      if (
+        (type === 'allow' &&
+          !_.difference(currentRights, existedAccessRights).length) ||
+        (type === 'deny' &&
+          existedAccessRights.every(right => !currentRights.includes(right))) ||
+        !this.testAccessControlEntry(entry, context)
+      ) {
+        continue;
       }
-    } else {
-      let item: AccessRightComparableItem = {
-        type: 'allow',
-        priority: 0,
-      };
 
-      for (let right of ACCESS_RIGHTS) {
-        dict[right].push(item);
+      for (let right of currentRights) {
+        if (type === 'allow') {
+          accessRightSet.add(right);
+        } else {
+          accessRightSet.delete(right);
+        }
       }
     }
 
-    for (let right of ACCESS_RIGHTS) {
-      dict[right] = _.sortBy(dict[right], item => -item.priority);
-    }
-
-    return ACCESS_RIGHTS.filter(right => {
-      let items = dict[right];
-
-      if (!items.length) {
-        return false;
-      }
-
-      let {type} = _.maxBy(items, item => item.priority)!;
-
-      return type === 'allow';
-    });
+    return Array.from(accessRightSet);
   }
 
   testAccessRights(rights: AccessRight[], context: IContext): boolean {
