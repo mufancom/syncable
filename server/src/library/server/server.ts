@@ -143,7 +143,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
       loadedKeySet,
       changeType,
       loadRequisiteDependencyOnly = false,
-    }: LoadSyncablesByRefsOptions,
+    }: LoadSyncablesByRefsOptions = {},
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
@@ -234,21 +234,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
     }
 
     return loadedSyncables;
-  }
-
-  /** @internal */
-  async loadContextObjectSyncable(
-    group: string,
-    context: IContext,
-  ): Promise<ISyncable | undefined> {
-    let [contextObjectSyncable] = await this.loadSyncablesByRefs(
-      group,
-      context,
-      [context.ref],
-      {},
-    );
-
-    return contextObjectSyncable;
   }
 
   async load<TRefDict extends object>(

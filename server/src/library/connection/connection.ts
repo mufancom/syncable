@@ -417,9 +417,10 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let contextRef = context.ref;
 
     if (toInitialize) {
-      let contextObjectSyncable = await server.loadContextObjectSyncable(
+      let [contextObjectSyncable] = await server.loadSyncablesByRefs(
         group,
         context,
+        [contextRef],
       );
 
       if (!contextObjectSyncable) {
