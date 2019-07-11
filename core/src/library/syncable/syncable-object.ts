@@ -130,7 +130,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     let acl = this.getACL();
 
     if (!acl.length) {
-      return ACCESS_RIGHTS;
+      return [...ACCESS_RIGHTS];
     }
 
     let accessRightSet = new Set<AccessRight>();
@@ -146,10 +146,10 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
           !this.testAccessControlEntry(entry, context)
         ) {
           continue;
-        } else {
-          for (let right of rights) {
-            accessRightSet.add(right);
-          }
+        }
+
+        for (let right of rights) {
+          accessRightSet.add(right);
         }
       } else if (type === 'deny') {
         if (
@@ -157,10 +157,10 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
           !this.testAccessControlEntry(entry, context)
         ) {
           continue;
-        } else {
-          for (let right of rights) {
-            accessRightSet.delete(right);
-          }
+        }
+
+        for (let right of rights) {
+          accessRightSet.delete(right);
         }
       }
     }
