@@ -4,6 +4,7 @@ import {computed} from 'mobx';
 import {IContext} from '../context';
 
 import {
+  ACCESS_RIGHTS,
   AccessControlEntry,
   AccessControlEntryRuleName,
   AccessRight,
@@ -119,17 +120,9 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
     let defaultACL = this.getDefaultACL();
 
-    return _.uniqBy([...defaultACL, ..._acl], entry => entry.name).sort(
-      (x, y) => {
-        let xPriority = getAccessControlEntryPriority(x, false);
-        let yPriority = getAccessControlEntryPriority(y, false);
-
-        if (xPriority === yPriority) {
-          return y.rights.length - x.rights.length;
-        } else {
-          return xPriority - yPriority;
-        }
-      },
+    return _.sortBy(
+      _.uniqBy([..._acl, ...defaultACL], entry => entry.name),
+      entry => getAccessControlEntryPriority(entry),
     );
   }
 
@@ -137,31 +130,37 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     let acl = this.getACL();
 
     if (!acl.length) {
-      return ['full', 'read', 'write'];
+      return ACCESS_RIGHTS;
     }
 
     let accessRightSet = new Set<AccessRight>();
 
     for (let entry of acl) {
-      let {type, rights: currentRights} = entry;
+      let {type, rights} = entry;
 
-      let existedAccessRights = Array.from(accessRightSet);
+      let grantedAccessRights = Array.from(accessRightSet);
 
-      if (
-        (type === 'allow' &&
-          !_.difference(currentRights, existedAccessRights).length) ||
-        (type === 'deny' &&
-          existedAccessRights.every(right => !currentRights.includes(right))) ||
-        !this.testAccessControlEntry(entry, context)
-      ) {
-        continue;
-      }
-
-      for (let right of currentRights) {
-        if (type === 'allow') {
-          accessRightSet.add(right);
+      if (type === 'allow') {
+        if (
+          !_.difference(rights, grantedAccessRights).length ||
+          !this.testAccessControlEntry(entry, context)
+        ) {
+          continue;
         } else {
-          accessRightSet.delete(right);
+          for (let right of rights) {
+            accessRightSet.add(right);
+          }
+        }
+      } else if (type === 'deny') {
+        if (
+          grantedAccessRights.every(right => !rights.includes(right)) ||
+          !this.testAccessControlEntry(entry, context)
+        ) {
+          continue;
+        } else {
+          for (let right of rights) {
+            accessRightSet.delete(right);
+          }
         }
       }
     }

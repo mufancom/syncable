@@ -20,14 +20,12 @@ export interface AccessControlEntry<TOptions extends object = object> {
   options?: TOptions;
 }
 
-export function getAccessControlEntryPriority(
-  {explicit, type}: AccessControlEntry,
-  securing: boolean,
-): number {
+export function getAccessControlEntryPriority({
+  explicit,
+  type,
+}: AccessControlEntry): number {
   return (
     // tslint:disable-next-line:no-bitwise
-    (explicit ? 0b1000 : 0) |
-    (securing ? 0b0100 : 0) |
-    (type === 'deny' ? 0b0010 : 0)
+    (explicit ? 0b1000 : 0) | (type === 'deny' ? 0b0010 : 0)
   );
 }
