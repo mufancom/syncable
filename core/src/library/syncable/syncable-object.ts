@@ -153,7 +153,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
         }
       } else if (type === 'deny') {
         if (
-          grantedAccessRights.every(right => !rights.includes(right)) ||
+          !_.intersection(grantedAccessRights, rights).length ||
           !this.testAccessControlEntry(entry, context)
         ) {
           continue;
