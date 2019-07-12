@@ -414,6 +414,30 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let server = this.server;
     let loadedKeySet = this.loadedKeySet;
 
+    let contextRef = context.ref;
+
+    if (toInitialize) {
+      let [contextObjectSyncable] = await server.loadSyncablesByRefs(
+        group,
+        context,
+        [contextRef],
+      );
+
+      if (!contextObjectSyncable) {
+        throw new RPCError('INVALID_CONTEXT');
+      }
+
+      container.addSyncable(contextObjectSyncable);
+
+      let contextObject = container.requireSyncableObject(contextRef);
+
+      context.setObject(contextObject);
+
+      if (context.disabled) {
+        throw new RPCError('CONTEXT_DISABLED');
+      }
+    }
+
     let {
       syncables,
       nameToViewQueryMapToAdd,
@@ -439,34 +463,11 @@ export class Connection<TGenericParams extends IServerGenericParams>
     };
 
     if (toInitialize) {
-      let contextRef = context.ref;
-      let contextKey = getSyncableKey(contextRef);
-
-      for (let syncable of syncables) {
-        if (getSyncableKey(syncable) === contextKey) {
-          container.addSyncable(syncable);
-
-          let contextObject = container.requireSyncableObject(contextRef);
-
-          context.setObject(contextObject);
-        }
-      }
-
-      if (!context.object) {
-        throw new RPCError('INVALID_CONTEXT');
-      }
-
-      if (context.disabled) {
-        throw new RPCError('CONTEXT_DISABLED');
-      }
-
-      let connectionAdapter = this.connectionAdapter;
-
       await (this as RPCPeer<ClientRPCDefinition>).call(
         'initialize',
         data,
         contextRef,
-        connectionAdapter.viewQueryDict as ViewQueryUpdateObject,
+        this.connectionAdapter.viewQueryDict as ViewQueryUpdateObject,
       );
     } else {
       await (this as RPCPeer<ClientRPCDefinition>).call('sync', data);

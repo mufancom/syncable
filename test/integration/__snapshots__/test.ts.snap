@@ -91,7 +91,7 @@ Object {
   "_createdAt": 0,
   "_id": "task-2",
   "_type": "task",
-  "_updatedAt": 1500000000200,
+  "_updatedAt": 1500000000220,
   "brief": "New brief for task 2",
   "group": "group-1",
 }
@@ -103,7 +103,7 @@ Object {
   "_createdAt": 0,
   "_id": "task-2",
   "_type": "task",
-  "_updatedAt": 1500000000140,
+  "_updatedAt": 1500000000160,
   "brief": "New brief for task 2",
   "group": "group-1",
 }
