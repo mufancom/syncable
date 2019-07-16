@@ -248,7 +248,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
     for (let {snapshot} of updateItems) {
       container.updateMatchingSyncable(snapshot);
 
-      if (snapshot._id === contextObjectRef.id) {
+      if (getSyncableKey(snapshot) === getSyncableKey(contextObjectRef)) {
         contextObjectChanged = true;
       }
     }
@@ -295,8 +295,8 @@ export class Connection<TGenericParams extends IServerGenericParams>
         }
       }
 
-      let relevantViewQueryNames = _.uniq(
-        _.flatMap(updateItems, item => {
+      let relevantViewQueryNames = _.union(
+        ...updateItems.map(item => {
           let nameSet = keyToViewQueryNameSet.get(
             getSyncableKey(item.snapshot),
           );
