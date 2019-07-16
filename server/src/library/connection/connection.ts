@@ -242,55 +242,80 @@ export class Connection<TGenericParams extends IServerGenericParams>
       container.removeSyncable(ref);
     }
 
+    let contextObjectRef = context.ref;
+    let contextObjectChanged = false;
+
     for (let {snapshot} of updateItems) {
       container.updateMatchingSyncable(snapshot);
+
+      if (snapshot._id === contextObjectRef.id) {
+        contextObjectChanged = true;
+      }
     }
 
-    let contextObject = container.getSyncableObject(context.ref);
+    let contextObject = container.getSyncableObject(contextObjectRef);
 
     if (!contextObject || context.disabled) {
       connectionAdapter.close();
     }
 
-    let keyToViewQueryNameSet = new Map<string, Set<string>>();
+    let relevantViewQueryUpdate: Dict<IViewQuery> | undefined;
 
     let nameToViewQueryInfoMap = this.nameToViewQueryInfoMap;
 
-    for (let [
-      name,
-      {
-        query: {refs: refDict},
-      },
-    ] of nameToViewQueryInfoMap) {
-      for (let ref of Object.values(refDict)) {
-        let key = getSyncableKey(ref);
-
-        let nameSet = keyToViewQueryNameSet.get(key);
-
-        if (nameSet) {
-          nameSet.add(name);
-        } else {
-          keyToViewQueryNameSet.set(key, new Set([name]));
-        }
-      }
-    }
-
-    let relevantViewQueryNames = _.uniq(
-      _.flatMap(updateItems, item => {
-        let nameSet = keyToViewQueryNameSet.get(getSyncableKey(item.snapshot));
-        return nameSet ? Array.from(nameSet) : [];
-      }),
-    );
-
-    if (relevantViewQueryNames.length) {
-      let relevantViewQueryUpdate = relevantViewQueryNames.reduce(
-        (update, name) => {
-          update[name] = nameToViewQueryInfoMap.get(name)!.query;
+    if (contextObjectChanged) {
+      relevantViewQueryUpdate = Array.from(
+        nameToViewQueryInfoMap.entries(),
+      ).reduce(
+        (update, [name, {query}]) => {
+          update[name] = query;
           return update;
         },
         {} as Dict<IViewQuery>,
       );
+    } else {
+      let keyToViewQueryNameSet = new Map<string, Set<string>>();
 
+      for (let [
+        name,
+        {
+          query: {refs: refDict},
+        },
+      ] of nameToViewQueryInfoMap) {
+        for (let ref of Object.values(refDict)) {
+          let key = getSyncableKey(ref);
+
+          let nameSet = keyToViewQueryNameSet.get(key);
+
+          if (nameSet) {
+            nameSet.add(name);
+          } else {
+            keyToViewQueryNameSet.set(key, new Set([name]));
+          }
+        }
+      }
+
+      let relevantViewQueryNames = _.uniq(
+        _.flatMap(updateItems, item => {
+          let nameSet = keyToViewQueryNameSet.get(
+            getSyncableKey(item.snapshot),
+          );
+          return nameSet ? Array.from(nameSet) : [];
+        }),
+      );
+
+      if (relevantViewQueryNames.length) {
+        relevantViewQueryUpdate = relevantViewQueryNames.reduce(
+          (update, name) => {
+            update[name] = nameToViewQueryInfoMap.get(name)!.query;
+            return update;
+          },
+          {} as Dict<IViewQuery>,
+        );
+      }
+    }
+
+    if (relevantViewQueryUpdate) {
       this['update-view-query'](relevantViewQueryUpdate).catch(console.error);
     }
 
