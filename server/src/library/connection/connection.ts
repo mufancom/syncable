@@ -245,10 +245,12 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let contextObjectRef = context.ref;
     let contextObjectChanged = false;
 
+    let contextObjectKey = getSyncableKey(contextObjectRef);
+
     for (let {snapshot} of updateItems) {
       container.updateMatchingSyncable(snapshot);
 
-      if (getSyncableKey(snapshot) === getSyncableKey(contextObjectRef)) {
+      if (getSyncableKey(snapshot) === contextObjectKey) {
         contextObjectChanged = true;
       }
     }
@@ -259,20 +261,12 @@ export class Connection<TGenericParams extends IServerGenericParams>
       connectionAdapter.close();
     }
 
-    let relevantViewQueryUpdate: Dict<IViewQuery> | undefined;
+    let relevantViewQueryNames: string[] = [];
 
     let nameToViewQueryInfoMap = this.nameToViewQueryInfoMap;
 
     if (contextObjectChanged) {
-      relevantViewQueryUpdate = Array.from(
-        nameToViewQueryInfoMap.entries(),
-      ).reduce(
-        (update, [name, {query}]) => {
-          update[name] = query;
-          return update;
-        },
-        {} as Dict<IViewQuery>,
-      );
+      relevantViewQueryNames = Array.from(nameToViewQueryInfoMap.keys());
     } else {
       let keyToViewQueryNameSet = new Map<string, Set<string>>();
 
@@ -295,7 +289,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
         }
       }
 
-      let relevantViewQueryNames = _.union(
+      relevantViewQueryNames = _.union(
         ...updateItems.map(item => {
           let nameSet = keyToViewQueryNameSet.get(
             getSyncableKey(item.snapshot),
@@ -303,19 +297,17 @@ export class Connection<TGenericParams extends IServerGenericParams>
           return nameSet ? Array.from(nameSet) : [];
         }),
       );
-
-      if (relevantViewQueryNames.length) {
-        relevantViewQueryUpdate = relevantViewQueryNames.reduce(
-          (update, name) => {
-            update[name] = nameToViewQueryInfoMap.get(name)!.query;
-            return update;
-          },
-          {} as Dict<IViewQuery>,
-        );
-      }
     }
 
-    if (relevantViewQueryUpdate) {
+    if (relevantViewQueryNames.length) {
+      let relevantViewQueryUpdate = relevantViewQueryNames.reduce(
+        (update, name) => {
+          update[name] = nameToViewQueryInfoMap.get(name)!.query;
+          return update;
+        },
+        {} as Dict<IViewQuery>,
+      );
+
       this['update-view-query'](relevantViewQueryUpdate).catch(console.error);
     }
 
