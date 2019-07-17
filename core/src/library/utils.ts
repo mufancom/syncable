@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import {Dict} from 'tslang';
 import uuid from 'uuid';
 
@@ -9,9 +10,9 @@ export function generateUniqueId<T extends string>(): T {
 }
 
 export function getNonCreationRefsFromRefDict(
-  refDict: Dict<SyncableRef | SyncableCreationRef>,
+  refDict: Dict<SyncableRef | SyncableRef[] | SyncableCreationRef>,
 ): SyncableRef[] {
-  return Object.values(refDict).filter(
-    (ref): ref is SyncableRef => !!ref && 'id' in ref,
+  return _.flatMap(Object.values(refDict), ref =>
+    Array.isArray(ref) ? ref : 'id' in ref ? [ref] : [],
   );
 }

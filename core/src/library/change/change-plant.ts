@@ -35,6 +35,15 @@ export type RefDictToSyncableOrCreationRefDict<
         : never
     } &
       {
+        [TName in KeyOfValueWithType<Required<T>, SyncableRef[]>]: NonNullable<
+          T[TName]
+        > extends SyncableRef<infer TSyncableObject>[]
+          ?
+              | TSyncableObject['syncable'][]
+              | (undefined extends T[TName] ? undefined : never)
+          : never
+      } &
+      {
         [TName in KeyOfValueWithType<
           Required<T>,
           SyncableCreationRef
@@ -203,10 +212,16 @@ export class ChangePlant {
       ),
     );
 
-    let syncableDict: Dict<ISyncable> = {};
+    let syncableDict: Dict<ISyncable | ISyncable[]> = {};
 
     for (let [name, ref] of Object.entries(refDict)) {
-      syncableDict[name] = syncableMap.get(getSyncableKey(ref))!;
+      if (Array.isArray(ref)) {
+        syncableDict[name] = ref.map(
+          ref => syncableMap.get(getSyncableKey(ref))!,
+        );
+      } else {
+        syncableDict[name] = syncableMap.get(getSyncableKey(ref))!;
+      }
     }
 
     return resolver(syncableDict, options);
@@ -307,9 +322,9 @@ export class ChangePlant {
     };
 
     let clonedSyncableOrCreationRefDict: Dict<
-      ISyncable | SyncableCreationRef
+      ISyncable | ISyncable[] | SyncableCreationRef
     > = {};
-    let syncableObjectDict: Dict<ISyncableObject> = {};
+    let syncableObjectDict: Dict<ISyncableObject | ISyncableObject[]> = {};
 
     for (let [name, ref] of Object.entries(refDict)) {
       if (!ref) {
@@ -321,6 +336,13 @@ export class ChangePlant {
 
         clonedSyncableOrCreationRefDict[name] = prepare(object);
         syncableObjectDict[name] = object;
+      } else if (Array.isArray(ref)) {
+        let objects = ref.map(ref => container.requireSyncableObject(ref));
+
+        clonedSyncableOrCreationRefDict[name] = objects.map(object =>
+          prepare(object),
+        );
+        syncableObjectDict[name] = objects;
       } else {
         clonedSyncableOrCreationRefDict[name] = ref;
       }

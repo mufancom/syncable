@@ -14,7 +14,10 @@ export interface SyncableCreationRef<
   };
 }
 
-export type GeneralSyncableRef = SyncableRef | SyncableCreationRef;
+export type GeneralSyncableRef =
+  | SyncableRef
+  | SyncableCreationRef
+  | SyncableRef[];
 
 export interface IChange {
   type: string;
@@ -23,7 +26,7 @@ export interface IChange {
 }
 
 export interface GeneralChange extends IChange {
-  refs: Dict<SyncableRef | SyncableCreationRef>;
+  refs: Dict<GeneralSyncableRef>;
 }
 
 export interface ChangePacket extends GeneralChange {
