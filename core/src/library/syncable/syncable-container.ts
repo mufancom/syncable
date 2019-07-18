@@ -11,6 +11,8 @@ import {ISyncableObject} from './syncable-object';
 type RefDictToSyncableDict<TRefDict extends object> = {
   [TName in keyof TRefDict]: TRefDict[TName] extends ISyncableObject
     ? TRefDict[TName]['syncable']
+    : TRefDict[TName] extends ISyncableObject[]
+    ? TRefDict[TName][number]['syncable']
     : never
 };
 
@@ -21,7 +23,14 @@ export type RefDictToSyncableObjectDict<T extends object> = T extends object
       > extends SyncableRef<infer TSyncableObject>
         ? TSyncableObject | (undefined extends T[TName] ? undefined : never)
         : never
-    }
+    } &
+      {
+        [TName in KeyOfValueWithType<Required<T>, SyncableRef[]>]: NonNullable<
+          T[TName]
+        > extends SyncableRef<infer TSyncableObject>[]
+          ? TSyncableObject[] | (undefined extends T[TName] ? undefined : never)
+          : never
+      }
   : never;
 
 export class SyncableContainer<
@@ -42,15 +51,27 @@ export class SyncableContainer<
   buildSyncableDict<TRefDict extends object>(
     refDict: TRefDict,
   ): RefDictToSyncableDict<TRefDict>;
-  buildSyncableDict(refDict: Dict<SyncableRef>): Dict<ISyncable> {
-    return _.mapValues(refDict, ref => this.requireSyncable(ref));
+  buildSyncableDict(
+    refDict: Dict<SyncableRef | SyncableRef[]>,
+  ): Dict<ISyncable | ISyncable[]> {
+    return _.mapValues(refDict, ref =>
+      Array.isArray(ref)
+        ? ref.map(ref => this.removeSyncable(ref))
+        : this.requireSyncable(ref),
+    ) as RefDictToSyncableDict<typeof refDict>;
   }
 
   buildSyncableObjectDict<TRefDict extends object>(
     refDict: TRefDict,
   ): RefDictToSyncableObjectDict<TRefDict>;
-  buildSyncableObjectDict(refDict: Dict<SyncableRef>): Dict<TSyncableObject> {
-    return _.mapValues(refDict, ref => this.requireSyncableObject(ref));
+  buildSyncableObjectDict(
+    refDict: Dict<SyncableRef | SyncableRef[]>,
+  ): RefDictToSyncableObjectDict<Dict<SyncableRef>> {
+    return _.mapValues(refDict, ref =>
+      Array.isArray(ref)
+        ? ref.map(ref => this.requireSyncableObject(ref))
+        : this.requireSyncableObject(ref),
+    ) as RefDictToSyncableObjectDict<typeof refDict>;
   }
 
   getSyncables<TType extends TSyncableObject['syncable']['_type']>(

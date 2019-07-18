@@ -414,7 +414,11 @@ export class Client<TGenericParams extends IClientGenericParams>
     });
 
     let refs = _.flatMap(queryEntries, ([, query]) => {
-      return query ? Object.values(query.refs) : [];
+      return query
+        ? _.flatMap(Object.values(query.refs), ref =>
+            Array.isArray(ref) ? ref : [ref],
+          )
+        : [];
     });
 
     await this.requestObjects(refs);
