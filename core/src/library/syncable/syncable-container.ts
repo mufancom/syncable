@@ -56,7 +56,7 @@ export class SyncableContainer<
   ): Dict<ISyncable | ISyncable[]> {
     return _.mapValues(refDict, ref =>
       Array.isArray(ref)
-        ? ref.map(ref => this.removeSyncable(ref))
+        ? ref.map(ref => this.requireSyncable(ref))
         : this.requireSyncable(ref),
     ) as RefDictToSyncableDict<typeof refDict>;
   }
