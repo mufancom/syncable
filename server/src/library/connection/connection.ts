@@ -299,16 +299,16 @@ export class Connection<TGenericParams extends IServerGenericParams>
       );
     }
 
+    let relevantViewQueryUpdate: Dict<IViewQuery> | undefined;
+
     if (relevantViewQueryNames.length) {
-      let relevantViewQueryUpdate = relevantViewQueryNames.reduce(
+      relevantViewQueryUpdate = relevantViewQueryNames.reduce(
         (update, name) => {
           update[name] = nameToViewQueryInfoMap.get(name)!.query;
           return update;
         },
         {} as Dict<IViewQuery>,
       );
-
-      this['update-view-query'](relevantViewQueryUpdate).catch(console.error);
     }
 
     let loadedKeySet = this.loadedKeySet;
@@ -408,22 +408,30 @@ export class Connection<TGenericParams extends IServerGenericParams>
       !removals.length &&
       !this.pendingChangePacketIdSet.has(id)
     ) {
-      return;
+      if (relevantViewQueryUpdate) {
+        await this.query(relevantViewQueryUpdate, false);
+      }
+    } else {
+      this.pendingChangePacketIdSet.delete(id);
+
+      let source: SyncUpdateSource = {
+        id,
+        clock,
+      };
+
+      if (relevantViewQueryUpdate) {
+        await (this as RPCPeer<ClientRPCDefinition>).call('sync', data);
+        await this.query(relevantViewQueryUpdate, false, source);
+      } else {
+        await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
+      }
     }
-
-    this.pendingChangePacketIdSet.delete(id);
-
-    let source: SyncUpdateSource = {
-      id,
-      clock,
-    };
-
-    await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
   }
 
   private async query(
     update: ViewQueryUpdateObject,
     toInitialize: boolean,
+    source?: SyncUpdateSource,
   ): Promise<void> {
     let group = this.group;
     let context = this.context;
@@ -487,7 +495,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
         this.connectionAdapter.viewQueryDict as ViewQueryUpdateObject,
       );
     } else {
-      await (this as RPCPeer<ClientRPCDefinition>).call('sync', data);
+      await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
     }
   }
 
