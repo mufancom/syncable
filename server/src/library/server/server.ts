@@ -387,13 +387,9 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
     let queryEntries = Object.entries(update);
 
-    let refs = _.uniqBy(
-      _.flatMap(queryEntries, ([, query]) =>
-        query
-          ? _.flatMap(Object.values(query.refs), ref =>
-              Array.isArray(ref) ? ref : [ref],
-            )
-          : [],
+    let refs = _.uniqBy<SyncableRef>(
+      _.flatMapDeep(queryEntries, ([, query]) =>
+        query ? Object.values(query.refs) : [],
       ),
       ref => getSyncableKey(ref),
     ).filter(ref => !container.existsSyncable(ref));
