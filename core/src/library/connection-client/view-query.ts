@@ -16,7 +16,7 @@ export interface IViewQuery {
 }
 
 export interface GeneralViewQuery extends IViewQuery {
-  refs: Dict<SyncableRef>;
+  refs: Dict<SyncableRef | SyncableRef[]>;
 }
 
 export type ViewQueryRefDictToViewQuerySyncableDict<T extends object> = {

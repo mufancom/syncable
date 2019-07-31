@@ -413,9 +413,12 @@ export class Client<TGenericParams extends IClientGenericParams>
       }
     });
 
-    let refs = _.flatMap(queryEntries, ([, query]) => {
-      return query ? Object.values(query.refs) : [];
-    });
+    let refs = _.flatMapDeep<typeof queryEntries[number], SyncableRef>(
+      queryEntries,
+      ([, query]) => {
+        return query ? Object.values(query.refs) : [];
+      },
+    );
 
     await this.requestObjects(refs);
 
