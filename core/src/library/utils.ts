@@ -13,6 +13,6 @@ export function getNonCreationRefsFromRefDict(
   refDict: Dict<SyncableRef | SyncableRef[] | SyncableCreationRef>,
 ): SyncableRef[] {
   return _.flatMap(Object.values(refDict), ref =>
-    Array.isArray(ref) ? ref : 'id' in ref ? [ref] : [],
+    Array.isArray(ref) ? ref : ref && 'id' in ref ? [ref] : [],
   );
 }
