@@ -215,6 +215,10 @@ export class ChangePlant {
     let syncableDict: Dict<ISyncable | ISyncable[]> = {};
 
     for (let [name, ref] of Object.entries(refDict)) {
+      if (!ref) {
+        continue;
+      }
+
       if (Array.isArray(ref)) {
         syncableDict[name] = ref.map(
           ref => syncableMap.get(getSyncableKey(ref))!,
