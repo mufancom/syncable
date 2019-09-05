@@ -17,15 +17,19 @@ export interface AccessControlEntry<TOptions extends object = object> {
   type: AccessControlEntryType;
   explicit: boolean;
   rights: AccessRight[];
+  fields?: string[];
   options?: TOptions;
 }
 
 export function getAccessControlEntryPriority({
   explicit,
   type,
+  fields,
 }: AccessControlEntry): number {
   return (
     // tslint:disable-next-line:no-bitwise
-    (explicit ? 0b1000 : 0) | (type === 'deny' ? 0b0010 : 0)
+    (fields ? 0b0100 : 0) |
+    (explicit ? 0b0010 : 0) |
+    (type === 'deny' ? 0b0001 : 0)
   );
 }

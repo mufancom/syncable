@@ -423,6 +423,7 @@ export class ChangePlant {
         latestSyncableObject.validateAccessRights(
           Array.from(requiredRightSet),
           context,
+          Array.from(changedFieldNameSet),
         );
       }
 

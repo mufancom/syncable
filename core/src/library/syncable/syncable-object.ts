@@ -126,65 +126,122 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     );
   }
 
-  getAccessRights(context: IContext): AccessRight[] {
+  getAccessRights(
+    context: IContext,
+    testingFieldNames?: string[],
+  ): AccessRight[] {
     let acl = this.getACL();
+    let objectACL = acl.filter(ace => !ace.fields);
+    let fieldsACL = acl.filter(ace => !!ace.fields);
 
-    if (!acl.length) {
-      return [...ACCESS_RIGHTS];
-    }
-
-    let accessRightSet = new Set<AccessRight>();
-
-    for (let entry of acl) {
+    let adjustAccessRights = (
+      entry: AccessControlEntry,
+      grantedAccessRightSet: Set<AccessRight>,
+      context: IContext,
+    ): void => {
       let {type, rights} = entry;
-
-      let grantedAccessRights = Array.from(accessRightSet);
+      let grantedAccessRights = Array.from(grantedAccessRightSet);
 
       if (type === 'allow') {
         if (
           !_.difference(rights, grantedAccessRights).length ||
           !this.testAccessControlEntry(entry, context)
         ) {
-          continue;
+          return;
         }
 
         for (let right of rights) {
-          accessRightSet.add(right);
+          grantedAccessRightSet.add(right);
         }
       } else if (type === 'deny') {
         if (
           !_.intersection(grantedAccessRights, rights).length ||
           !this.testAccessControlEntry(entry, context)
         ) {
-          continue;
+          return;
         }
 
         for (let right of rights) {
-          accessRightSet.delete(right);
+          grantedAccessRightSet.delete(right);
         }
+      }
+    };
+
+    if (!acl.length) {
+      return [...ACCESS_RIGHTS];
+    }
+
+    let objectAccessRightSet = new Set<AccessRight>();
+
+    for (let entry of objectACL) {
+      adjustAccessRights(entry, objectAccessRightSet, context);
+    }
+
+    if (!testingFieldNames) {
+      return Array.from(objectAccessRightSet);
+    }
+
+    let fieldNameToAccessRightSetMap: Map<string, Set<AccessRight>> = new Map<
+      string,
+      Set<AccessRight>
+    >(
+      testingFieldNames.map(
+        fieldName =>
+          [fieldName, new Set(objectAccessRightSet)] as [
+            string,
+            Set<AccessRight>
+          ],
+      ),
+    );
+
+    for (let entry of fieldsACL) {
+      let {fields: fieldNames} = entry;
+
+      let fieldsToTest = _.intersection(testingFieldNames, fieldNames!);
+
+      for (let fieldName of fieldsToTest) {
+        adjustAccessRights(
+          entry,
+          fieldNameToAccessRightSetMap.get(fieldName)!,
+          context,
+        );
       }
     }
 
-    return Array.from(accessRightSet);
+    return _.intersection(
+      ...Array.from(fieldNameToAccessRightSetMap.values()).map(set =>
+        Array.from(set),
+      ),
+    );
   }
 
-  testAccessRights(rights: AccessRight[], context: IContext): boolean {
-    let grantedRights = this.getAccessRights(context);
+  testAccessRights(
+    rights: AccessRight[],
+    context: IContext,
+    fieldNames?: string[],
+  ): boolean {
+    let grantedRights = this.getAccessRights(context, fieldNames);
 
     return _.difference(rights, grantedRights).length === 0;
   }
 
-  validateAccessRights(rights: AccessRight[], context: IContext): void {
-    let grantedRights = this.getAccessRights(context);
+  validateAccessRights(
+    rights: AccessRight[],
+    context: IContext,
+    fieldNames?: string[],
+  ): void {
+    let grantedRights = this.getAccessRights(context, fieldNames);
 
     if (_.difference(rights, grantedRights).length === 0) {
       return;
     }
 
     throw new Error(
-      `Granted access rights (${grantedRights.join(
+      `Granted access rights ${
+        fieldNames ? `for field [${fieldNames.join(', ')}]` : ''
+      } (${grantedRights.join(', ')}) do not match requirements (${rights.join(
         ', ',
-      )}) do not match requirements (${rights.join(', ')})`,
+      )})`,
     );
   }
 
