@@ -134,36 +134,37 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     let objectACL = acl.filter(ace => !ace.fields);
     let fieldsACL = acl.filter(ace => !!ace.fields);
 
-    let adjustAccessRights = (
+    interface AccessRightChange {
+      type: 'delete' | 'add';
+      accessRights: AccessRight[];
+    }
+
+    let getAccessRightsChange = (
       entry: AccessControlEntry,
-      grantedAccessRightSet: Set<AccessRight>,
       context: IContext,
-    ): void => {
+      grantedAccessRightSet?: Set<AccessRight>,
+    ): AccessRightChange | undefined => {
       let {type, rights} = entry;
-      let grantedAccessRights = Array.from(grantedAccessRightSet);
+      let grantedAccessRights =
+        grantedAccessRightSet && Array.from(grantedAccessRightSet);
 
-      if (type === 'allow') {
-        if (
-          !_.difference(rights, grantedAccessRights).length ||
-          !this.testAccessControlEntry(entry, context)
-        ) {
-          return;
-        }
+      rights = _.uniq(rights);
 
-        for (let right of rights) {
-          grantedAccessRightSet.add(right);
-        }
-      } else if (type === 'deny') {
-        if (
-          !_.intersection(grantedAccessRights, rights).length ||
-          !this.testAccessControlEntry(entry, context)
-        ) {
-          return;
-        }
-
-        for (let right of rights) {
-          grantedAccessRightSet.delete(right);
-        }
+      if (
+        (grantedAccessRights &&
+          ((type === 'allow' &&
+            !_.difference(rights, grantedAccessRights).length) ||
+            (type === 'deny' &&
+              !_.intersection(grantedAccessRights, rights).length))) ||
+        // ⬆ Avoid unnecessary ⬇ #testAccessControlEntry calls
+        !this.testAccessControlEntry(entry, context)
+      ) {
+        return undefined;
+      } else {
+        return {
+          type: type === 'allow' ? 'add' : 'delete',
+          accessRights: rights,
+        };
       }
     };
 
@@ -174,7 +175,9 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     let objectAccessRightSet = new Set<AccessRight>();
 
     for (let entry of objectACL) {
-      adjustAccessRights(entry, objectAccessRightSet, context);
+      let change = getAccessRightsChange(entry, context, objectAccessRightSet);
+
+      applyAccessRightChange(objectAccessRightSet, change);
     }
 
     if (!testingFieldNames) {
@@ -199,12 +202,16 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
       let fieldsToTest = _.intersection(testingFieldNames, fieldNames!);
 
+      if (!fieldsToTest.length) {
+        continue;
+      }
+
+      let change = getAccessRightsChange(entry, context);
+
       for (let fieldName of fieldsToTest) {
-        adjustAccessRights(
-          entry,
-          fieldNameToAccessRightSetMap.get(fieldName)!,
-          context,
-        );
+        let accessRightSet = fieldNameToAccessRightSetMap.get(fieldName)!;
+
+        applyAccessRightChange(accessRightSet, change);
       }
     }
 
@@ -213,6 +220,23 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
         Array.from(set),
       ),
     );
+
+    function applyAccessRightChange(
+      accessRightSet: Set<AccessRight>,
+      change: AccessRightChange | undefined,
+    ): void {
+      if (!change) {
+        return;
+      }
+
+      let {accessRights, type} = change;
+
+      for (let accessRight of accessRights) {
+        type === 'delete'
+          ? accessRightSet.delete(accessRight)
+          : accessRightSet.add(accessRight);
+      }
+    }
   }
 
   testAccessRights(
