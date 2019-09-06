@@ -316,7 +316,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
           !_.difference(rights, grantedAccessRights).length) ||
           (type === 'deny' &&
             !_.intersection(grantedAccessRights, rights).length))) ||
-      // ⬆ Avoid unnecessary ⬇ #testAccessControlEntry calls
+      // The test above is to avoid unnecessary `testAccessControlEntry` calls
       !this.testAccessControlEntry(entry, context)
     ) {
       return undefined;
