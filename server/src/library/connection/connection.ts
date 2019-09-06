@@ -25,7 +25,7 @@ import {Observable, Subject, Subscription} from 'rxjs';
 import {concatMap, ignoreElements} from 'rxjs/operators';
 import {Dict} from 'tslang';
 
-import {filterReadableSyncablesAndSanitize} from '../@utils';
+import {filterReadableSyncables} from '../@utils';
 import {
   BroadcastChangeResult,
   IServerGenericParams,
@@ -319,7 +319,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
     let removals: SyncableRef[] = [];
     let updates: SyncDataUpdateEntry[] = [];
 
-    let filteredCreatedSyncables = filterReadableSyncablesAndSanitize(
+    let filteredCreatedSyncables = filterReadableSyncables(
       context,
       syncableAdapter,
       createdSyncables.filter(viewQueryFilter),
@@ -346,6 +346,7 @@ export class Connection<TGenericParams extends IServerGenericParams>
       let object = syncableAdapter.instantiate(snapshot);
 
       let readable = object.testAccessRights(['read'], context);
+
       let sanitizedFieldNames = object.getSanitizedFieldNames(context);
 
       snapshot = _.omit(snapshot, sanitizedFieldNames) as ISyncable;
@@ -468,6 +469,13 @@ export class Connection<TGenericParams extends IServerGenericParams>
       nameToViewQueryMapToAdd,
       viewQueryNamesToRemove,
     } = await server._query(group, update, loadedKeySet, container, context);
+
+    syncables = filterReadableSyncables(
+      context,
+      this.syncableAdapter,
+      syncables,
+      true,
+    );
 
     for (let [name, value] of nameToViewQueryMapToAdd) {
       this.nameToViewQueryInfoMap.set(name, value);

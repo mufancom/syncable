@@ -26,7 +26,7 @@ import {
 import _ from 'lodash';
 import {Dict} from 'tslang';
 
-import {filterReadableSyncablesAndSanitize} from '../@utils';
+import {filterReadableSyncables} from '../@utils';
 import {Connection} from '../connection';
 
 import {BroadcastChangeResult, IServerAdapter} from './server-adapter';
@@ -111,7 +111,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
       loadedKeySet,
     );
 
-    directSyncables = filterReadableSyncablesAndSanitize(
+    directSyncables = filterReadableSyncables(
       context,
       syncableAdapter,
       directSyncables,
@@ -156,7 +156,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
     let directSyncables = await serverAdapter.loadSyncablesByRefs(group, refs);
 
-    directSyncables = filterReadableSyncablesAndSanitize(
+    directSyncables = filterReadableSyncables(
       context,
       syncableAdapter,
       directSyncables,
@@ -218,7 +218,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
         refs,
       );
 
-      dependentSyncables = filterReadableSyncablesAndSanitize(
+      dependentSyncables = filterReadableSyncables(
         context,
         syncableAdapter,
         dependentSyncables,
