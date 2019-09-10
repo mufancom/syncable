@@ -219,12 +219,10 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
     let fieldNameToAccessRightsMap = new Map(
       fieldNames &&
-        fieldNames.map(
-          (fieldName): [string, AccessRight[]] => [
-            fieldName,
-            objectAccessRights,
-          ],
-        ),
+        fieldNames.map((fieldName): [string, AccessRight[]] => [
+          fieldName,
+          objectAccessRights,
+        ]),
     );
 
     let fieldsACL = this.getFieldsACL();
@@ -248,7 +246,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
         let grantedAccessRights = fieldNameToAccessRightsMap.get(fieldName);
 
         grantedAccessRights = overrideAccessRights(
-          grantedAccessRights || [],
+          grantedAccessRights || objectAccessRights,
           entry,
         );
 
@@ -264,7 +262,9 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 
   private getFieldsACL(): FieldAccessControlEntry[] {
-    return this.getACL().filter(ace => 'fields' in ace);
+    return this.getACL().filter(
+      (ace): ace is FieldAccessControlEntry => 'fields' in ace,
+    );
   }
 
   private testAccessControlEntry(
@@ -290,10 +290,8 @@ interface AccessRightOverride {
 
 function overrideAccessRights(
   grantedAccessRights: AccessRight[],
-  override: AccessRightOverride,
+  {rights, type}: AccessRightOverride,
 ): AccessRight[] {
-  let {rights, type} = override;
-
   if (type === 'allow') {
     return _.union(grantedAccessRights, rights);
   } else {

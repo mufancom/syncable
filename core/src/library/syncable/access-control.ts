@@ -1,4 +1,4 @@
-import {Nominal} from 'tslang';
+import {Flatten, Nominal} from 'tslang';
 
 export type AccessRight = 'read' | 'write' | 'full';
 
@@ -25,9 +25,7 @@ export type AccessControlEntry =
   | FieldAccessControlEntry;
 
 export interface ObjectAccessControlEntry<TOptions extends object = object>
-  extends IAccessControlEntry<TOptions> {
-  fields: string[];
-}
+  extends IAccessControlEntry<TOptions> {}
 
 export interface FieldAccessControlEntry<TOptions extends object = object>
   extends IAccessControlEntry<TOptions> {
@@ -38,7 +36,7 @@ export function getAccessControlEntryPriority({
   explicit,
   type,
   fields,
-}: AccessControlEntry): number {
+}: Flatten<AccessControlEntry>): number {
   return (
     // tslint:disable-next-line:no-bitwise
     (fields ? 0b0100 : 0) |

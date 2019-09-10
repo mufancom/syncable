@@ -56,8 +56,8 @@ export class SyncableContainer<
   ): Dict<ISyncable | ISyncable[]> {
     return _.mapValues(refDict, ref =>
       Array.isArray(ref)
-        ? ref.map(ref => this.requireSyncable(ref))
-        : this.requireSyncable(ref),
+        ? ref.map(ref => this.requireSyncable(ref as TSyncableObject['ref']))
+        : this.requireSyncable(ref as TSyncableObject['ref']),
     ) as RefDictToSyncableDict<typeof refDict>;
   }
 
@@ -69,8 +69,10 @@ export class SyncableContainer<
   ): RefDictToSyncableObjectDict<Dict<SyncableRef>> {
     return _.mapValues(refDict, ref =>
       Array.isArray(ref)
-        ? ref.map(ref => this.requireSyncableObject(ref))
-        : this.requireSyncableObject(ref),
+        ? ref.map(ref =>
+            this.requireSyncableObject(ref as TSyncableObject['ref']),
+          )
+        : this.requireSyncableObject(ref as TSyncableObject['ref']),
     ) as RefDictToSyncableObjectDict<typeof refDict>;
   }
 
@@ -172,7 +174,7 @@ export class SyncableContainer<
       typeToIdToSyncableObjectMapMap.set(type, syncableObjectMap);
     }
 
-    let syncable = this.getSyncable(ref);
+    let syncable = this.getSyncable(ref as TSyncableObject['ref']);
 
     if (!syncable) {
       return undefined;

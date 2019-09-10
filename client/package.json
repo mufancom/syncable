@@ -36,7 +36,7 @@
   "dependencies": {
     "deep-diff": "^1.0.2",
     "lodash": "^4.17.14",
-    "tslang": "^0.1.13",
+    "tslang": "^0.1.17",
     "villa": "^0.3.1"
   },
   "devDependencies": {

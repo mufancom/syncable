@@ -37,7 +37,7 @@
     "extendable-error": "^0.1.5",
     "lodash": "^4.17.14",
     "replace-object": "^0.2.1",
-    "tslang": "^0.1.13",
+    "tslang": "^0.1.17",
     "uuid": "^3.3.2",
     "villa": "^0.3.1"
   },
