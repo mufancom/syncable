@@ -65,10 +65,7 @@ export interface ViewQueryInfo {
 }
 
 export class Server<TGenericParams extends IServerGenericParams> {
-  private groupToConnectionSetMap = new Map<
-    string,
-    Set<Connection<TGenericParams>>
-  >();
+  private groupToConnectionSetMap = new Map<string, Set<Connection>>();
 
   private changePlant: ChangePlant;
 
@@ -76,10 +73,19 @@ export class Server<TGenericParams extends IServerGenericParams> {
     /**
      * Non-user context for server-side initiated changes.
      */
-    private context: TGenericParams['context'],
-    private serverAdapter: IServerAdapter<TGenericParams>,
-    private syncableAdapter: ISyncableAdapter<TGenericParams>,
+    context: TGenericParams['context'],
+    serverAdapter: IServerAdapter<TGenericParams>,
+    syncableAdapter: ISyncableAdapter<TGenericParams>,
     blueprint: ChangePlantBlueprint<TGenericParams>,
+  );
+  constructor(
+    /**
+     * Non-user context for server-side initiated changes.
+     */
+    private context: IContext,
+    private serverAdapter: IServerAdapter,
+    private syncableAdapter: ISyncableAdapter,
+    blueprint: ChangePlantBlueprint,
   ) {
     if (context.type !== 'server' || context.environment !== 'server') {
       throw new Error('Invalid context');
@@ -451,7 +457,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     };
   }
 
-  private onConnection = (connection: Connection<TGenericParams>): void => {
+  private onConnection = (connection: Connection): void => {
     this.addConnection(connection).catch(console.error);
   };
 
@@ -459,9 +465,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     this.broadcastChangeResult(result);
   };
 
-  private async addConnection(
-    connection: Connection<TGenericParams>,
-  ): Promise<void> {
+  private async addConnection(connection: Connection): Promise<void> {
     let group = connection.group;
 
     let groupToConnectionSetMap = this.groupToConnectionSetMap;
@@ -489,9 +493,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     await connection.initialize();
   }
 
-  private async removeConnection(
-    connection: Connection<TGenericParams>,
-  ): Promise<void> {
+  private async removeConnection(connection: Connection): Promise<void> {
     let group = connection.group;
 
     let groupToConnectionSetMap = this.groupToConnectionSetMap;

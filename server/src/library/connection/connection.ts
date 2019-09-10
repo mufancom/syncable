@@ -67,7 +67,9 @@ type SyncableLoadingOptions =
   | SyncableLoadingRequestOptions
   | SyncableLoadingChangeOptions;
 
-export class Connection<TGenericParams extends IServerGenericParams>
+export class Connection<
+  TGenericParams extends IServerGenericParams = IServerGenericParams
+>
   extends RPCPeer<
     ClientRPCDefinition | TGenericParams['customClientRPCDefinition']
   >
@@ -179,7 +181,9 @@ export class Connection<TGenericParams extends IServerGenericParams>
     await new Promise<void>((resolve, reject) => {
       this.loadingScheduler.next({
         type: 'initialize',
-        queryUpdate: this.connectionAdapter.viewQueryDict as Dict<IViewQuery>,
+        queryUpdate: (this.connectionAdapter.viewQueryDict as unknown) as Dict<
+          IViewQuery
+        >,
         resolve,
         reject,
       });
@@ -344,20 +348,17 @@ export class Connection<TGenericParams extends IServerGenericParams>
 
     for (let {snapshot, diffs} of updateItems) {
       let object = syncableAdapter.instantiate(snapshot);
+      let key = object.key;
 
       let readable = object.testAccessRights(['read'], context);
-
-      let sanitizedFieldNames = object.getSanitizedFieldNames(context);
-
-      snapshot = _.omit(snapshot, sanitizedFieldNames) as ISyncable;
-
-      let key = getSyncableKey(snapshot);
 
       if (loadedKeySet.has(key)) {
         let ref = getSyncableRef(snapshot);
 
         if (readable) {
-          let sanitizedFieldNameSet = new Set(sanitizedFieldNames);
+          let sanitizedFieldNameSet = new Set(
+            object.getSanitizedFieldNames(context),
+          );
 
           diffs = diffs.filter(
             diff => !diff.path || !sanitizedFieldNameSet.has(diff.path[0]),
@@ -375,7 +376,15 @@ export class Connection<TGenericParams extends IServerGenericParams>
       } else {
         if (readable && viewQueryFilter(snapshot)) {
           loadedKeySet.add(key);
-          syncables.push(snapshot);
+
+          let sanitizedFieldNames = object.getSanitizedFieldNames(context);
+
+          let sanitizedSnapshot = _.omit(
+            snapshot,
+            sanitizedFieldNames,
+          ) as ISyncable;
+
+          syncables.push(sanitizedSnapshot);
           dependencyRelevantSyncables.push(snapshot);
         }
       }

@@ -5,7 +5,7 @@ export function filterReadableSyncables(
   context: IContext,
   adapter: ISyncableAdapter,
   syncables: ISyncable[],
-  sanitizeFields = false,
+  toSanitizeFields = false,
 ): ISyncable[] {
   return _.compact(
     syncables.map(syncable => {
@@ -15,7 +15,7 @@ export function filterReadableSyncables(
         return undefined;
       }
 
-      if (sanitizeFields) {
+      if (toSanitizeFields) {
         return _.omit(
           syncable,
           object.getSanitizedFieldNames(context),

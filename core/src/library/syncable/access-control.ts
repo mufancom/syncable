@@ -11,14 +11,27 @@ export type AccessControlEntryRuleName = Nominal<
   'access-control-entry-rule-name'
 >;
 
-export interface AccessControlEntry<TOptions extends object = object> {
+export interface IAccessControlEntry<TOptions extends object> {
   name: string;
   rule: AccessControlEntryRuleName;
   type: AccessControlEntryType;
   explicit: boolean;
   rights: AccessRight[];
-  fields?: string[];
   options?: TOptions;
+}
+
+export type AccessControlEntry =
+  | ObjectAccessControlEntry
+  | FieldAccessControlEntry;
+
+export interface ObjectAccessControlEntry<TOptions extends object = object>
+  extends IAccessControlEntry<TOptions> {
+  fields: string[];
+}
+
+export interface FieldAccessControlEntry<TOptions extends object = object>
+  extends IAccessControlEntry<TOptions> {
+  fields: string[];
 }
 
 export function getAccessControlEntryPriority({
