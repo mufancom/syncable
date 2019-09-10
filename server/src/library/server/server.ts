@@ -79,9 +79,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
     blueprint: ChangePlantBlueprint<TGenericParams>,
   );
   constructor(
-    /**
-     * Non-user context for server-side initiated changes.
-     */
     private context: IContext,
     private serverAdapter: IServerAdapter,
     private syncableAdapter: ISyncableAdapter,
