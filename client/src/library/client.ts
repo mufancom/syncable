@@ -93,7 +93,7 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     this.container = new SyncableContainer(syncableAdapter);
 
-    this.changePlant = new ChangePlant(blueprint);
+    this.changePlant = new ChangePlant(blueprint as ChangePlantBlueprint);
   }
 
   get syncing(): boolean {

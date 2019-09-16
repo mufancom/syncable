@@ -35,7 +35,7 @@
     "extendable-error": "^0.1.5",
     "lodash": "^4.17.14",
     "rxjs": "^6.5.2",
-    "tslang": "^0.1.13",
+    "tslang": "^0.1.17",
     "villa": "^0.3.1"
   },
   "devDependencies": {
