@@ -26,7 +26,7 @@ import {
 import _ from 'lodash';
 import {Dict} from 'tslang';
 
-import {filterReadableSyncablesAndSanitize} from '../@utils';
+import {filterReadableSyncables} from '../@utils';
 import {Connection} from '../connection';
 
 import {BroadcastChangeResult, IServerAdapter} from './server-adapter';
@@ -56,7 +56,7 @@ export type SyncableTypeToSyncableObjectsDict<
   [TKey in TSyncableObject['ref']['type']]?: Extract<
     TSyncableObject,
     {ref: {type: TKey}}
-  >[]
+  >[];
 };
 
 export interface ViewQueryInfo {
@@ -65,10 +65,7 @@ export interface ViewQueryInfo {
 }
 
 export class Server<TGenericParams extends IServerGenericParams> {
-  private groupToConnectionSetMap = new Map<
-    string,
-    Set<Connection<TGenericParams>>
-  >();
+  private groupToConnectionSetMap = new Map<string, Set<Connection>>();
 
   private changePlant: ChangePlant;
 
@@ -76,10 +73,16 @@ export class Server<TGenericParams extends IServerGenericParams> {
     /**
      * Non-user context for server-side initiated changes.
      */
-    private context: TGenericParams['context'],
-    private serverAdapter: IServerAdapter<TGenericParams>,
-    private syncableAdapter: ISyncableAdapter<TGenericParams>,
+    context: TGenericParams['context'],
+    serverAdapter: IServerAdapter<TGenericParams>,
+    syncableAdapter: ISyncableAdapter<TGenericParams>,
     blueprint: ChangePlantBlueprint<TGenericParams>,
+  );
+  constructor(
+    private context: IContext,
+    private serverAdapter: IServerAdapter,
+    private syncableAdapter: ISyncableAdapter,
+    blueprint: ChangePlantBlueprint,
   ) {
     if (context.type !== 'server' || context.environment !== 'server') {
       throw new Error('Invalid context');
@@ -111,7 +114,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
       loadedKeySet,
     );
 
-    directSyncables = filterReadableSyncablesAndSanitize(
+    directSyncables = filterReadableSyncables(
       context,
       syncableAdapter,
       directSyncables,
@@ -156,7 +159,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
     let directSyncables = await serverAdapter.loadSyncablesByRefs(group, refs);
 
-    directSyncables = filterReadableSyncablesAndSanitize(
+    directSyncables = filterReadableSyncables(
       context,
       syncableAdapter,
       directSyncables,
@@ -218,7 +221,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
         refs,
       );
 
-      dependentSyncables = filterReadableSyncablesAndSanitize(
+      dependentSyncables = filterReadableSyncables(
         context,
         syncableAdapter,
         dependentSyncables,
@@ -451,7 +454,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     };
   }
 
-  private onConnection = (connection: Connection<TGenericParams>): void => {
+  private onConnection = (connection: Connection): void => {
     this.addConnection(connection).catch(console.error);
   };
 
@@ -459,9 +462,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     this.broadcastChangeResult(result);
   };
 
-  private async addConnection(
-    connection: Connection<TGenericParams>,
-  ): Promise<void> {
+  private async addConnection(connection: Connection): Promise<void> {
     let group = connection.group;
 
     let groupToConnectionSetMap = this.groupToConnectionSetMap;
@@ -489,9 +490,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     await connection.initialize();
   }
 
-  private async removeConnection(
-    connection: Connection<TGenericParams>,
-  ): Promise<void> {
+  private async removeConnection(connection: Connection): Promise<void> {
     let group = connection.group;
 
     let groupToConnectionSetMap = this.groupToConnectionSetMap;

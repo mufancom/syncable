@@ -20,7 +20,7 @@ export interface GeneralViewQuery extends IViewQuery {
 }
 
 export type ViewQueryRefDictToViewQuerySyncableDict<T extends object> = {
-  [TName in keyof T]: SyncableType<T[TName]>
+  [TName in keyof T]: SyncableType<T[TName]>;
 };
 
 export interface ResolvedViewQuery<T extends IViewQuery = IViewQuery> {
@@ -39,5 +39,5 @@ export type ViewQueryResolvedSyncableDict<
 export type ViewQueryDictToResolvedViewQueryDict<T extends object> = {
   [TName in keyof T]: T[TName] extends IViewQuery
     ? ResolvedViewQuery<T[TName]>
-    : never
+    : never;
 };

@@ -16,7 +16,7 @@ import {RPCMethod} from './rpc-method-decorator';
 export type RPCPeerType<TLocalDefinition extends IRPCDefinition> = {
   [TName in TLocalDefinition['name']]: RPCMethod<
     Extract<TLocalDefinition, {name: TName}>
-  >
+  >;
 };
 
 export interface IRPCAdapter {

@@ -1,10 +1,11 @@
 import {IContext, ISyncable, ISyncableAdapter} from '@syncable/core';
 import _ from 'lodash';
 
-export function filterReadableSyncablesAndSanitize(
+export function filterReadableSyncables(
   context: IContext,
   adapter: ISyncableAdapter,
   syncables: ISyncable[],
+  toSanitizeFields = false,
 ): ISyncable[] {
   return _.compact(
     syncables.map(syncable => {
@@ -14,9 +15,14 @@ export function filterReadableSyncablesAndSanitize(
         return undefined;
       }
 
-      let sanitizedFieldNames = object.getSanitizedFieldNames(context);
+      if (toSanitizeFields) {
+        return _.omit(
+          syncable,
+          object.getSanitizedFieldNames(context),
+        ) as ISyncable;
+      }
 
-      return _.omit(syncable, sanitizedFieldNames) as ISyncable;
+      return syncable;
     }),
   );
 }

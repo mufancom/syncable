@@ -8,6 +8,8 @@ import {
   AccessControlEntry,
   AccessControlEntryRuleName,
   AccessRight,
+  FieldAccessControlEntry,
+  ObjectAccessControlEntry,
   getAccessControlEntryPriority,
 } from './access-control';
 import {AccessControlRule} from './access-control-rule-decorator';
@@ -94,17 +96,23 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return this.container.getSyncableObject(ref);
   }
 
-  /**
-   * Override to specify.
-   */
-  getSanitizedFieldNames(_context: IContext): string[] {
-    return [];
+  getSanitizedFieldNames(context: IContext): string[] {
+    return Array.from(this.getFieldNameToAccessRightsMap(context))
+      .filter(([, accessRights]) => !accessRights.includes('read'))
+      .map(([fieldName]) => fieldName);
   }
 
   /**
    * Override to specify.
    */
   getSecuringFieldNames(): string[] {
+    return [];
+  }
+
+  /**
+   * Override to specify.
+   */
+  getEssentialFieldNames(): string[] {
     return [];
   }
 
@@ -126,71 +134,137 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     );
   }
 
-  getAccessRights(context: IContext): AccessRight[] {
-    let acl = this.getACL();
-
-    if (!acl.length) {
-      return [...ACCESS_RIGHTS];
+  getAccessRights(context: IContext, fieldNames?: string[]): AccessRight[] {
+    if (!fieldNames) {
+      return this.getObjectAccessRights(context);
     }
 
-    let accessRightSet = new Set<AccessRight>();
+    let fieldNameToAccessRightsMap = this.getFieldNameToAccessRightsMap(
+      context,
+      fieldNames,
+    );
 
-    for (let entry of acl) {
-      let {type, rights} = entry;
-
-      let grantedAccessRights = Array.from(accessRightSet);
-
-      if (type === 'allow') {
-        if (
-          !_.difference(rights, grantedAccessRights).length ||
-          !this.testAccessControlEntry(entry, context)
-        ) {
-          continue;
-        }
-
-        for (let right of rights) {
-          accessRightSet.add(right);
-        }
-      } else if (type === 'deny') {
-        if (
-          !_.intersection(grantedAccessRights, rights).length ||
-          !this.testAccessControlEntry(entry, context)
-        ) {
-          continue;
-        }
-
-        for (let right of rights) {
-          accessRightSet.delete(right);
-        }
-      }
-    }
-
-    return Array.from(accessRightSet);
+    return _.intersection(...fieldNameToAccessRightsMap.values());
   }
 
-  testAccessRights(rights: AccessRight[], context: IContext): boolean {
-    let grantedRights = this.getAccessRights(context);
+  testAccessRights(
+    rights: AccessRight[],
+    context: IContext,
+    fieldNames?: string[],
+  ): boolean {
+    let grantedRights = this.getAccessRights(context, fieldNames);
 
     return _.difference(rights, grantedRights).length === 0;
   }
 
-  validateAccessRights(rights: AccessRight[], context: IContext): void {
-    let grantedRights = this.getAccessRights(context);
+  validateAccessRights(
+    rights: AccessRight[],
+    context: IContext,
+    fieldNames?: string[],
+  ): void {
+    let grantedRights = this.getAccessRights(context, fieldNames);
 
     if (_.difference(rights, grantedRights).length === 0) {
       return;
     }
 
     throw new Error(
-      `Granted access rights (${grantedRights.join(
+      `Granted access rights ${
+        fieldNames ? `for fields [${fieldNames.join(', ')}]` : ''
+      } (${grantedRights.join(', ')}) do not match requirements (${rights.join(
         ', ',
-      )}) do not match requirements (${rights.join(', ')})`,
+      )})`,
     );
   }
 
   @AccessControlRule('basic')
   protected testBasic(): boolean {
     return true;
+  }
+
+  private getObjectAccessRights(context: IContext): AccessRight[] {
+    let objectACL = this.getObjectACL();
+
+    if (!objectACL.length) {
+      return [...ACCESS_RIGHTS];
+    }
+
+    let grantedAccessRights: AccessRight[] = [];
+
+    for (let entry of objectACL) {
+      let {type, rights} = entry;
+
+      if (
+        (type === 'allow' &&
+          !_.difference(rights, grantedAccessRights).length) ||
+        (type === 'deny' &&
+          !_.intersection(grantedAccessRights, rights).length) ||
+        // The test above is to avoid unnecessary `testAccessControlEntry` calls
+        !this.testAccessControlEntry(entry, context)
+      ) {
+        continue;
+      }
+
+      grantedAccessRights = overrideAccessRights(grantedAccessRights, entry);
+    }
+
+    return grantedAccessRights;
+  }
+
+  private getFieldNameToAccessRightsMap(
+    context: IContext,
+    fieldNames?: string[],
+  ): Map<string, AccessRight[]> {
+    let objectAccessRights = this.getObjectAccessRights(context);
+
+    let fieldNameToAccessRightsMap = new Map(
+      fieldNames &&
+        fieldNames.map((fieldName): [string, AccessRight[]] => [
+          fieldName,
+          objectAccessRights,
+        ]),
+    );
+
+    let fieldsACL = this.getFieldsACL();
+
+    for (let entry of fieldsACL) {
+      let {fields: aceFieldNames} = entry;
+
+      let testingFieldNames = fieldNames
+        ? _.intersection(fieldNames, aceFieldNames)
+        : aceFieldNames;
+
+      if (!testingFieldNames.length) {
+        continue;
+      }
+
+      if (!this.testAccessControlEntry(entry, context)) {
+        continue;
+      }
+
+      for (let fieldName of testingFieldNames) {
+        let grantedAccessRights = fieldNameToAccessRightsMap.get(fieldName);
+
+        grantedAccessRights = overrideAccessRights(
+          grantedAccessRights || objectAccessRights,
+          entry,
+        );
+
+        fieldNameToAccessRightsMap.set(fieldName, grantedAccessRights);
+      }
+    }
+
+    return fieldNameToAccessRightsMap;
+  }
+
+  private getObjectACL(): ObjectAccessControlEntry[] {
+    return this.getACL().filter(ace => !('fields' in ace));
+  }
+
+  private getFieldsACL(): FieldAccessControlEntry[] {
+    return this.getACL().filter(
+      (ace): ace is FieldAccessControlEntry => 'fields' in ace,
+    );
   }
 
   private testAccessControlEntry(
@@ -206,6 +280,22 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     }
 
     return rule.test.call(this, context, options);
+  }
+}
+
+interface AccessRightOverride {
+  type: 'deny' | 'allow';
+  rights: AccessRight[];
+}
+
+function overrideAccessRights(
+  grantedAccessRights: AccessRight[],
+  {rights, type}: AccessRightOverride,
+): AccessRight[] {
+  if (type === 'allow') {
+    return _.union(grantedAccessRights, rights);
+  } else {
+    return _.difference(grantedAccessRights, rights);
   }
 }
 
