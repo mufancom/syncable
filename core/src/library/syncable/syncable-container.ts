@@ -13,7 +13,7 @@ type RefDictToSyncableDict<TRefDict extends object> = {
     ? TRefDict[TName]['syncable']
     : TRefDict[TName] extends ISyncableObject[]
     ? TRefDict[TName][number]['syncable']
-    : never
+    : never;
 };
 
 export type RefDictToSyncableObjectDict<T extends object> = T extends object
@@ -22,14 +22,14 @@ export type RefDictToSyncableObjectDict<T extends object> = T extends object
         T[TName]
       > extends SyncableRef<infer TSyncableObject>
         ? TSyncableObject | (undefined extends T[TName] ? undefined : never)
-        : never
+        : never;
     } &
       {
         [TName in KeyOfValueWithType<Required<T>, SyncableRef[]>]: NonNullable<
           T[TName]
         > extends SyncableRef<infer TSyncableObject>[]
           ? TSyncableObject[] | (undefined extends T[TName] ? undefined : never)
-          : never
+          : never;
       }
   : never;
 

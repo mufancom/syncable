@@ -32,7 +32,7 @@ export type RefDictToSyncableOrCreationRefDict<
         ?
             | TSyncableObject['syncable']
             | (undefined extends T[TName] ? undefined : never)
-        : never
+        : never;
     } &
       {
         [TName in KeyOfValueWithType<Required<T>, SyncableRef[]>]: NonNullable<
@@ -41,13 +41,13 @@ export type RefDictToSyncableOrCreationRefDict<
           ?
               | TSyncableObject['syncable'][]
               | (undefined extends T[TName] ? undefined : never)
-          : never
+          : never;
       } &
       {
         [TName in KeyOfValueWithType<
           Required<T>,
           SyncableCreationRef
-        >]: T[TName]
+        >]: T[TName];
       }
   : never;
 
@@ -169,7 +169,7 @@ export type ChangePlantBlueprint<
 > = {
   [TType in TGenericParams['change']['type']]:
     | ChangePlantSpecificProcessor<TGenericParams, TType>
-    | ChangePlantSpecificProcessorOptions<TGenericParams, TType>
+    | ChangePlantSpecificProcessorOptions<TGenericParams, TType>;
 };
 
 export interface IChangePlantBlueprintGenericParams {
@@ -207,9 +207,10 @@ export class ChangePlant {
     }
 
     let syncableMap = new Map(
-      syncables.map(
-        (syncable): [string, ISyncable] => [getSyncableKey(syncable), syncable],
-      ),
+      syncables.map((syncable): [string, ISyncable] => [
+        getSyncableKey(syncable),
+        syncable,
+      ]),
     );
 
     let syncableDict: Dict<ISyncable | ISyncable[]> = {};

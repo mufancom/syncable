@@ -26,7 +26,7 @@ export function AccessControlRule(
     } else {
       let accessControlRules: [
         AccessControlEntryRuleName,
-        AccessControlRuleEntry
+        AccessControlRuleEntry,
       ][];
 
       if (target.__accessControlRuleMap) {

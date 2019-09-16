@@ -56,7 +56,7 @@ export type SyncableTypeToSyncableObjectsDict<
   [TKey in TSyncableObject['ref']['type']]?: Extract<
     TSyncableObject,
     {ref: {type: TKey}}
-  >[]
+  >[];
 };
 
 export interface ViewQueryInfo {
