@@ -70,6 +70,7 @@ export interface ChangePlantProcessingResult {
   updates: ChangePlantProcessingResultUpdateItem[];
   removals: SyncableRef[];
   notifications: unknown[];
+  changes: GeneralChange[];
 }
 
 export interface ChangePlantProcessingResultWithClock
@@ -87,6 +88,12 @@ export type ChangePlantProcessorIsBeingRemovedTest = (
   object: ISyncableObject,
 ) => boolean;
 
+export type ChangePlantProcessorAbortOperation = () => void;
+
+export type ChangePlantProcessorChangeOperation<TChange = GeneralChange> = (
+  change: TChange,
+) => void;
+
 declare function __changePlantProcessorPrepareOperation<
   T extends ISyncableObject
 >(object: T): T['syncable'];
@@ -101,15 +108,20 @@ export type ChangePlantProcessorNotifyOperation<TNotification = unknown> = (
 ) => void;
 
 export interface ChangePlantProcessorExtra<
-  TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
+  TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams,
+  TChange extends IChange = TGenericParams['change']
 > {
   context: TGenericParams['context'];
   container: SyncableContainer<TGenericParams['syncableObject']>;
-  options: TGenericParams['change']['options'];
+  type: TChange['type'];
+  refs: TChange['refs'];
+  options: TChange['options'];
   create: ChangePlantProcessorCreateOperation;
   remove: ChangePlantProcessorRemoveOperation;
   isBeingRemoved: ChangePlantProcessorIsBeingRemovedTest;
   prepare: ChangePlantProcessorPrepareOperation;
+  abort: ChangePlantProcessorAbortOperation;
+  change: ChangePlantProcessorChangeOperation<TGenericParams['change']>;
   notify: ChangePlantProcessorNotifyOperation<TGenericParams['notification']>;
   createdAt: NumericTimestamp;
 }
@@ -132,22 +144,29 @@ type ChangePlantSpecificResolver<
 }>;
 
 export type ChangePlantProcessor<
-  TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams
+  TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams,
+  TType extends string | undefined = undefined,
+  TChange extends IChange = TType extends string
+    ? Extract<TGenericParams['change'], {type: TType}>
+    : TGenericParams['change']
 > = (
-  syncables: ChangeToSyncableOrCreationRefDict<TGenericParams['change']>,
-  objects: ChangeToSyncableObjectRefDict<TGenericParams['change']>,
-  extra: ChangePlantProcessorExtra<TGenericParams>,
+  syncables: ChangeToSyncableOrCreationRefDict<TChange>,
+  objects: ChangeToSyncableObjectRefDict<TChange>,
+  extra: ChangePlantProcessorExtra<TGenericParams, TChange>,
 ) => void;
 
 type ChangePlantSpecificProcessor<
   TGenericParams extends IChangePlantBlueprintGenericParams,
   TType extends string
-> = ChangePlantProcessor<{
-  context: TGenericParams['context'];
-  syncableObject: TGenericParams['syncableObject'];
-  change: Extract<TGenericParams['change'], {type: TType}>;
-  notification: TGenericParams['notification'];
-}>;
+> = ChangePlantProcessor<
+  {
+    context: TGenericParams['context'];
+    syncableObject: TGenericParams['syncableObject'];
+    change: TGenericParams['change'];
+    notification: TGenericParams['notification'];
+  },
+  TType
+>;
 
 export interface ChangePlantProcessorOptions<
   TGenericParams extends IChangePlantBlueprintGenericParams = IChangePlantBlueprintGenericParams
@@ -272,6 +291,7 @@ export class ChangePlant {
     let removalObjectSet = new Set<ISyncableObject>();
     let updates: ChangePlantProcessingResultUpdateItem[] = [];
     let notifications: unknown[] = [];
+    let changes: GeneralChange[] = [];
 
     let create: ChangePlantProcessorCreateOperation = creation => {
       if (clock !== undefined) {
@@ -358,17 +378,42 @@ export class ChangePlant {
       processor = processor.processor;
     }
 
+    let changeAborted = false;
+
+    let abort: ChangePlantProcessorAbortOperation = () => {
+      changeAborted = true;
+    };
+
+    let change: ChangePlantProcessorChangeOperation = appendChange => {
+      changes.push(appendChange);
+    };
+
     processor(clonedSyncableOrCreationRefDict, syncableObjectDict, {
       context,
       container,
-      options,
       create,
       remove,
       isBeingRemoved,
       prepare,
       notify,
+      abort,
+      change,
+      type,
+      options,
+      refs: refDict,
       createdAt: now,
     });
+
+    if (changeAborted) {
+      return {
+        id,
+        updates: [],
+        creations: [],
+        removals: [],
+        notifications,
+        changes,
+      };
+    }
 
     for (let {
       latest: latestSyncable,
@@ -436,6 +481,7 @@ export class ChangePlant {
       creations: creations || [],
       removals: removals || [],
       notifications,
+      changes,
     };
   }
 }
