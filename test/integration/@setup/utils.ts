@@ -1,5 +1,5 @@
 import {Client} from '@syncable/client';
-import {RPCData, SyncableRef} from '@syncable/core';
+import {ISyncableAdapter, RPCData, SyncableRef} from '@syncable/core';
 import {BroadcastChangeResult, Connection, Server} from '@syncable/server';
 import {Subject} from 'rxjs';
 
@@ -21,7 +21,12 @@ export function createServer(
 
   let serverAdapter = new ServerAdapter(connection$, broadcastSource$);
 
-  return new Server(context, serverAdapter, syncableAdapter, blueprint);
+  return new Server(
+    context,
+    serverAdapter,
+    syncableAdapter as ISyncableAdapter<ServerGenericParams>,
+    blueprint,
+  );
 }
 
 export function createClientConnectionPair(
@@ -47,7 +52,7 @@ export function createClientConnectionPair(
   let client = new Client<ClientGenericParams>(
     clientContext,
     clientAdapter,
-    syncableAdapter,
+    syncableAdapter as ISyncableAdapter<ClientGenericParams>,
     blueprint,
   );
 
