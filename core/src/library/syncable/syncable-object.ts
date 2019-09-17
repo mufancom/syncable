@@ -10,6 +10,7 @@ import {
   AccessRight,
   FieldAccessControlEntry,
   ObjectAccessControlEntry,
+  SYNCABLE_FIELD_WHITE_LIST,
   getAccessControlEntryPriority,
 } from './access-control';
 import {AccessControlRule} from './access-control-rule-decorator';
@@ -97,8 +98,18 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 
   getSanitizedFieldNames(context: IContext): string[] {
+    let fieldNameWhiteListSet = new Set([
+      ...this.getSecuringFieldNames(),
+      ...this.getEssentialFieldNames(),
+      ...SYNCABLE_FIELD_WHITE_LIST,
+    ]);
+
     return Array.from(this.getFieldNameToAccessRightsMap(context))
-      .filter(([, accessRights]) => !accessRights.includes('read'))
+      .filter(
+        ([fieldName, accessRights]) =>
+          !accessRights.includes('read') &&
+          !fieldNameWhiteListSet.has(fieldName),
+      )
       .map(([fieldName]) => fieldName);
   }
 
@@ -229,6 +240,10 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
     for (let entry of fieldsACL) {
       let {fields: aceFieldNames} = entry;
+
+      if (aceFieldNames === '*') {
+        aceFieldNames = Object.keys(this.syncable);
+      }
 
       let testingFieldNames = fieldNames
         ? _.intersection(fieldNames, aceFieldNames)

@@ -29,8 +29,10 @@ export interface ObjectAccessControlEntry<TOptions extends object = object>
 
 export interface FieldAccessControlEntry<TOptions extends object = object>
   extends IAccessControlEntry<TOptions> {
-  fields: string[];
+  fields: string[] | '*';
 }
+
+export const SYNCABLE_FIELD_WHITE_LIST = ['_type', '_id'];
 
 export function getAccessControlEntryPriority({
   explicit,
