@@ -24,7 +24,7 @@ import {
   getSyncableKey,
 } from '@syncable/core';
 import _ from 'lodash';
-import {Dict} from 'tslang';
+import {Dict, OmitValueOfKey} from 'tslang';
 
 import {filterReadableSyncables} from '../@utils';
 import {Connection} from '../connection';
@@ -62,6 +62,11 @@ export type SyncableTypeToSyncableObjectsDict<
 export interface ViewQueryInfo {
   filter: ViewQueryFilter;
   query: IViewQuery;
+}
+
+export interface ServerApplyChangeResult
+  extends OmitValueOfKey<ChangePlantProcessingResultWithClock, 'changes'> {
+  subsequent?: Promise<ServerApplyChangeResult>[];
 }
 
 export class Server<TGenericParams extends IServerGenericParams> {
@@ -293,7 +298,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     group: string,
     change: TGenericParams['change'],
     context = this.context,
-  ): Promise<ChangePlantProcessingResultWithClock> {
+  ): Promise<ServerApplyChangeResult> {
     let packet: ChangePacket = {
       id: generateUniqueId<ChangePacketId>(),
       createdAt: Date.now() as NumericTimestamp,
@@ -308,7 +313,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     group: string,
     packet: ChangePacket,
     context: TGenericParams['context'],
-  ): Promise<ChangePlantProcessingResultWithClock> {
+  ): Promise<ServerApplyChangeResult> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
@@ -371,7 +376,14 @@ export class Server<TGenericParams extends IServerGenericParams> {
       await serverAdapter.handleNotifications(group, notifications, id);
     });
 
-    return result;
+    let {changes: subsequentChanges, ...rest} = result;
+
+    return {
+      subsequent: subsequentChanges.length
+        ? subsequentChanges.map(change => this.applyChange(group, change))
+        : undefined,
+      ...rest,
+    };
   }
 
   /** @internal */
