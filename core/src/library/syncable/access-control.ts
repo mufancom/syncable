@@ -32,7 +32,7 @@ export interface FieldAccessControlEntry<TOptions extends object = object>
   fields: string[] | '*';
 }
 
-export const SYNCABLE_FIELD_WHITE_LIST = ['_type', '_id'];
+export const SYNCABLE_ESSENTIAL_FIELD_NAMES = ['_type', '_id'];
 
 export function getAccessControlEntryPriority({
   explicit,

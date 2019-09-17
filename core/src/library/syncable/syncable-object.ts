@@ -10,7 +10,7 @@ import {
   AccessRight,
   FieldAccessControlEntry,
   ObjectAccessControlEntry,
-  SYNCABLE_FIELD_WHITE_LIST,
+  SYNCABLE_ESSENTIAL_FIELD_NAMES,
   getAccessControlEntryPriority,
 } from './access-control';
 import {AccessControlRule} from './access-control-rule-decorator';
@@ -98,17 +98,17 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 
   getSanitizedFieldNames(context: IContext): string[] {
-    let fieldNameWhiteListSet = new Set([
+    let whitelistedFieldNameSet = new Set([
       ...this.getSecuringFieldNames(),
       ...this.getEssentialFieldNames(),
-      ...SYNCABLE_FIELD_WHITE_LIST,
+      ...SYNCABLE_ESSENTIAL_FIELD_NAMES,
     ]);
 
     return Array.from(this.getFieldNameToAccessRightsMap(context))
       .filter(
         ([fieldName, accessRights]) =>
           !accessRights.includes('read') &&
-          !fieldNameWhiteListSet.has(fieldName),
+          !whitelistedFieldNameSet.has(fieldName),
       )
       .map(([fieldName]) => fieldName);
   }
