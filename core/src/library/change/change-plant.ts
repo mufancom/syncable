@@ -109,13 +109,13 @@ export type ChangePlantProcessorNotifyOperation<TNotification = unknown> = (
 
 export interface ChangePlantProcessorExtra<
   TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams,
-  TChange extends IChange = TGenericParams['change']
+  TSpecificChange extends IChange = TGenericParams['change']
 > {
   context: TGenericParams['context'];
   container: SyncableContainer<TGenericParams['syncableObject']>;
-  type: TChange['type'];
-  refs: TChange['refs'];
-  options: TChange['options'];
+  type: TSpecificChange['type'];
+  refs: TSpecificChange['refs'];
+  options: TSpecificChange['options'];
   create: ChangePlantProcessorCreateOperation;
   remove: ChangePlantProcessorRemoveOperation;
   isBeingRemoved: ChangePlantProcessorIsBeingRemovedTest;
@@ -145,14 +145,11 @@ type ChangePlantSpecificResolver<
 
 export type ChangePlantProcessor<
   TGenericParams extends IChangePlantBlueprintGenericParams = GeneralChangePlantBlueprintGenericParams,
-  TType extends string | undefined = undefined,
-  TChange extends IChange = TType extends string
-    ? Extract<TGenericParams['change'], {type: TType}>
-    : TGenericParams['change']
+  TSpecificChange extends TGenericParams['change'] = TGenericParams['change']
 > = (
-  syncables: ChangeToSyncableOrCreationRefDict<TChange>,
-  objects: ChangeToSyncableObjectRefDict<TChange>,
-  extra: ChangePlantProcessorExtra<TGenericParams, TChange>,
+  syncables: ChangeToSyncableOrCreationRefDict<TSpecificChange>,
+  objects: ChangeToSyncableObjectRefDict<TSpecificChange>,
+  extra: ChangePlantProcessorExtra<TGenericParams, TSpecificChange>,
 ) => void;
 
 type ChangePlantSpecificProcessor<
@@ -165,7 +162,7 @@ type ChangePlantSpecificProcessor<
     change: TGenericParams['change'];
     notification: TGenericParams['notification'];
   },
-  TType
+  Extract<TGenericParams['change'], {type: TType}>
 >;
 
 export interface ChangePlantProcessorOptions<
@@ -379,14 +376,14 @@ export class ChangePlant {
       processor = processor.processor;
     }
 
-    let changeAborted = false;
+    let aborted = false;
 
     let abort: ChangePlantProcessorAbortOperation = () => {
-      changeAborted = true;
+      aborted = true;
     };
 
-    let change: ChangePlantProcessorChangeOperation = appendChange => {
-      changes.push(appendChange);
+    let change: ChangePlantProcessorChangeOperation = subsequentChange => {
+      changes.push(subsequentChange);
     };
 
     processor(clonedSyncableOrCreationRefDict, syncableObjectDict, {
@@ -405,7 +402,7 @@ export class ChangePlant {
       createdAt: now,
     });
 
-    if (changeAborted) {
+    if (aborted) {
       return {
         id,
         updates: [],

@@ -64,9 +64,9 @@ export interface ViewQueryInfo {
   query: IViewQuery;
 }
 
-export interface ApplyChangeResult
+export interface ServerApplyChangeResult
   extends OmitValueOfKey<ChangePlantProcessingResultWithClock, 'changes'> {
-  nested?: Promise<ApplyChangeResult>[];
+  subsequent?: Promise<ServerApplyChangeResult>[];
 }
 
 export class Server<TGenericParams extends IServerGenericParams> {
@@ -298,7 +298,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     group: string,
     change: TGenericParams['change'],
     context = this.context,
-  ): Promise<ApplyChangeResult> {
+  ): Promise<ServerApplyChangeResult> {
     let packet: ChangePacket = {
       id: generateUniqueId<ChangePacketId>(),
       createdAt: Date.now() as NumericTimestamp,
@@ -313,13 +313,12 @@ export class Server<TGenericParams extends IServerGenericParams> {
     group: string,
     packet: ChangePacket,
     context: TGenericParams['context'],
-  ): Promise<ApplyChangeResult> {
+  ): Promise<ServerApplyChangeResult> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
 
-    let result!: ApplyChangeResult;
-    let appendChanges!: GeneralChange[];
+    let result!: ChangePlantProcessingResultWithClock;
 
     await serverAdapter.queueChange(group, async clock => {
       let refs = getNonCreationRefsFromRefDict(packet.refs);
@@ -344,15 +343,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
         container.addSyncable(syncable);
       }
 
-      let {changes, ...restResult} = changePlant.process(
-        packet,
-        context,
-        container,
-        clock,
-      );
-
-      appendChanges = changes;
-      result = restResult;
+      result = changePlant.process(packet, context, container, clock);
 
       let {
         id,
@@ -360,7 +351,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
         creations: createdSyncables,
         removals: removedSyncableRefs,
         notifications,
-      } = restResult;
+      } = result;
 
       let updatedSyncables = updateItems.map(item => item.snapshot);
 
@@ -385,11 +376,13 @@ export class Server<TGenericParams extends IServerGenericParams> {
       await serverAdapter.handleNotifications(group, notifications, id);
     });
 
+    let {changes: subsequentChanges, ...rest} = result;
+
     return {
-      ...result,
-      nested: appendChanges.length
-        ? appendChanges.map(change => this.applyChange(group, change))
+      subsequent: subsequentChanges.length
+        ? subsequentChanges.map(change => this.applyChange(group, change))
         : undefined,
+      ...rest,
     };
   }
 
