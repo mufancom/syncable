@@ -3,7 +3,6 @@ import {
   ChangePacketId,
   ClientRPCDefinition,
   ConnectionRPCDefinition,
-  IContext,
   ISyncable,
   ISyncableAdapter,
   IViewQuery,
@@ -123,7 +122,7 @@ export class Connection<
 
             switch (options.type) {
               case 'request':
-                await this.request(options.refs, context, syncableAdapter);
+                await this.request(options.refs);
                 break;
               case 'initialize':
                 await this.query(options.queryUpdate, true);
@@ -517,11 +516,7 @@ export class Connection<
     }
   }
 
-  private async request(
-    refs: SyncableRef[],
-    context: IContext,
-    syncableAdapter: ISyncableAdapter,
-  ): Promise<void> {
+  private async request(refs: SyncableRef[]): Promise<void> {
     let loadedKeySet = this.loadedKeySet;
 
     let syncables = await this.server.loadSyncablesByRefs(
@@ -534,8 +529,8 @@ export class Connection<
     );
 
     syncables = filterReadableSyncables(
-      context,
-      syncableAdapter,
+      this.context,
+      this.syncableAdapter,
       syncables,
       true,
     );
