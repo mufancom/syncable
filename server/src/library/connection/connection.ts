@@ -528,6 +528,13 @@ export class Connection<
       },
     );
 
+    syncables = filterReadableSyncables(
+      this.context,
+      this.syncableAdapter,
+      syncables,
+      true,
+    );
+
     for (let syncable of syncables) {
       loadedKeySet.add(getSyncableKey(syncable));
     }
