@@ -1,8 +1,9 @@
-import * as DeepDiff from 'deep-diff';
+import {Delta} from 'jsondiffpatch';
 import _ from 'lodash';
 import {Dict, KeyOfValueWithType} from 'tslang';
 
 import {IContext} from '../context';
+import {diff} from '../diff-patcher';
 import {
   AccessRight,
   ISyncable,
@@ -60,7 +61,7 @@ type ChangeToSyncableOrCreationRefDict<
 > = RefDictToSyncableOrCreationRefDict<T['refs']>;
 
 export interface ChangePlantProcessingResultUpdateItem {
-  diffs: DeepDiff.Diff<ISyncable>[];
+  delta: Delta;
   snapshot: ISyncable;
 }
 
@@ -428,11 +429,9 @@ export class ChangePlant {
 
       updatedSyncableClone._updatedAt = now;
 
-      let diffs = DeepDiff.diff(latestSyncable, updatedSyncableClone) || [];
+      let delta = diff(latestSyncable, updatedSyncableClone) || {};
 
-      let changedFieldNameSet = new Set(
-        diffs.map(diff => diff.path && diff.path[0]),
-      );
+      let changedFieldNameSet = new Set(Object.keys(delta));
 
       changedFieldNameSet.delete('_clock');
       changedFieldNameSet.delete('_updatedAt');
@@ -470,7 +469,7 @@ export class ChangePlant {
         );
       }
 
-      updates.push({diffs, snapshot: updatedSyncableClone});
+      updates.push({delta, snapshot: updatedSyncableClone});
     }
 
     return {

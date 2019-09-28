@@ -346,7 +346,7 @@ export class Connection<
       }
     }
 
-    for (let {snapshot, diffs} of updateItems) {
+    for (let {snapshot, delta} of updateItems) {
       let object = syncableAdapter.instantiate(snapshot);
       let key = object.key;
 
@@ -360,14 +360,18 @@ export class Connection<
             object.getSanitizedFieldNames(context),
           );
 
-          diffs = diffs.filter(
-            diff => !diff.path || !sanitizedFieldNameSet.has(diff.path[0]),
-          );
+          // Shallow clone, as we only delete first-level properties.
+          let sanitizedDelta = _.clone(delta);
 
-          if (diffs.length) {
-            updates.push({ref, diffs});
+          for (let fieldName of sanitizedFieldNameSet) {
+            delete sanitizedDelta[fieldName];
           }
 
+          if (Object.keys(sanitizedDelta).length) {
+            updates.push({ref, delta: sanitizedDelta});
+          }
+
+          // Is it okay to move this line into the if statement above?
           dependencyRelevantSyncables.push(snapshot);
         } else {
           loadedKeySet.delete(key);

@@ -1,11 +1,11 @@
-import {Diff} from 'deep-diff';
+import {Delta} from 'jsondiffpatch';
 
 import {ChangePacketId} from '../change';
 import {ISyncable, SyncableRef} from '../syncable';
 
 export interface SyncDataUpdateEntry {
   ref: SyncableRef;
-  diffs: Diff<ISyncable>[];
+  delta: Delta;
 }
 
 export interface SyncData {

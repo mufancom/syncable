@@ -5,3 +5,4 @@ export * from './rpc';
 export * from './syncable';
 export * from './types';
 export * from './utils';
+export * from './diff-patcher';

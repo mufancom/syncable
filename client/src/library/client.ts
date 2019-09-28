@@ -28,8 +28,9 @@ import {
   generateUniqueId,
   getSyncableKey,
   getSyncableRef,
+  patch,
 } from '@syncable/core';
-import DeepDiff, {Diff} from 'deep-diff';
+import {Delta} from 'jsondiffpatch';
 import _ from 'lodash';
 import {action, observable, runInAction, when} from 'mobx';
 import {Subject} from 'rxjs';
@@ -330,8 +331,8 @@ export class Client<TGenericParams extends IClientGenericParams>
       this.onUpdateCreate(syncable, clock);
     }
 
-    for (let {ref, diffs} of updates) {
-      this.onUpdateChange(ref, diffs, clock);
+    for (let {ref, delta} of updates) {
+      this.onUpdateChange(ref, delta, clock);
     }
 
     for (let ref of removals) {
@@ -383,14 +384,12 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   private onUpdateChange(
     ref: SyncableRef,
-    diffs: Diff<ISyncable>[],
+    delta: Delta,
     clock: number | undefined,
   ): void {
     let snapshot = this.syncableSnapshotMap.get(getSyncableKey(ref))!;
 
-    for (let diff of diffs) {
-      DeepDiff.applyChange(snapshot, undefined!, diff);
-    }
+    patch(snapshot, delta);
 
     this.container.addSyncable(snapshot, clock);
   }
