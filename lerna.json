@@ -1,5 +1,5 @@
 {
-  "version": "3.0.0-wip.28",
+  "version": "3.0.0-wip.29",
   "npmClient": "yarn",
   "command": {
     "publish": {
