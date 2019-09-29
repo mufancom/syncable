@@ -207,7 +207,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     while (true) {
       let refs = _.uniqBy(
         _.flatMap(pendingResolvingSyncables, syncable => {
-          let object = syncableAdapter.instantiate(syncable);
+          let object = syncableAdapter.instantiateBySyncable(syncable);
 
           return [
             ...object.resolveRequisiteDependencyRefs(changeType),

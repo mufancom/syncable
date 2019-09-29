@@ -9,7 +9,7 @@ export function filterReadableSyncables(
 ): ISyncable[] {
   return _.compact(
     syncables.map(syncable => {
-      let object = adapter.instantiate(syncable);
+      let object = adapter.instantiateBySyncable(syncable);
 
       if (!object.testAccessRights(['read'], context)) {
         return undefined;

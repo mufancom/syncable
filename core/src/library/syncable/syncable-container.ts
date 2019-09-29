@@ -2,7 +2,7 @@ import _ from 'lodash';
 import {ObservableMap, action, observable} from 'mobx';
 import {Dict, KeyOfValueWithType} from 'tslang';
 
-import {replaceSyncable} from '../@utils';
+import {replaceObject} from '../@utils';
 
 import {ISyncable, SyncableId, SyncableRef} from './syncable';
 import {ISyncableAdapter} from './syncable-adapter';
@@ -170,17 +170,15 @@ export class SyncableContainer<
         return object;
       }
     } else {
-      syncableObjectMap = observable.map();
+      syncableObjectMap = observable.map([], {deep: false});
       typeToIdToSyncableObjectMapMap.set(type, syncableObjectMap);
     }
 
-    let syncable = this.getSyncable(ref as TSyncableObject['ref']);
+    object = this.adapter.instantiateByRef(ref, this);
 
-    if (!syncable) {
+    if (!object) {
       return undefined;
     }
-
-    object = this.adapter.instantiate(syncable, this);
 
     syncableObjectMap.set(id, object);
 
@@ -210,22 +208,22 @@ export class SyncableContainer<
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
     let syncableMap = typeToIdToSyncableMapMap.get(type);
 
-    if (syncableMap) {
-      let syncable = syncableMap.get(id);
-
-      if (syncable) {
-        if (clock === undefined || syncable._clock < clock) {
-          replaceSyncable(syncable, snapshot);
-        }
-
-        return;
-      }
-    } else {
-      syncableMap = observable.map();
+    if (!syncableMap) {
+      syncableMap = observable.map([], {deep: false});
       typeToIdToSyncableMapMap.set(type, syncableMap);
     }
 
-    syncableMap.set(id, observable(_.cloneDeep(snapshot)));
+    let syncable = syncableMap.get(id);
+
+    if (syncable) {
+      if (clock === undefined || clock > syncable._clock) {
+        syncable = replaceObject(syncable, snapshot);
+      }
+    } else {
+      syncable = snapshot;
+    }
+
+    syncableMap.set(id, syncable);
   }
 
   @action
@@ -241,9 +239,17 @@ export class SyncableContainer<
 
     let syncable = syncableMap.get(id);
 
-    if (syncable && (clock === undefined || syncable._clock < clock)) {
-      replaceSyncable(syncable, snapshot);
+    if (!syncable) {
+      return;
     }
+
+    if (!(clock === undefined || clock > syncable._clock)) {
+      return;
+    }
+
+    syncable = replaceObject(syncable, snapshot);
+
+    syncableMap.set(id, syncable);
   }
 
   @action

@@ -1,6 +1,6 @@
-import {ObjectReplacer, ReplaceableType} from 'replace-object';
+import produce from 'immer';
 
-import {ISyncable} from './syncable';
+import {diff, patch} from './diff-patcher';
 
 const _hasOwnProperty = Object.prototype.hasOwnProperty;
 
@@ -11,23 +11,14 @@ export function hasOwnProperty(
   return _hasOwnProperty.call(object, name);
 }
 
-class SyncableReplacer extends ObjectReplacer {
-  protected isSameReplaceableType(x: any, y: any): ReplaceableType | false {
-    let type = super.isSameReplaceableType(x, y);
+export function replaceObject<T extends object>(target: T, replacement: T): T {
+  let delta = diff(target, replacement);
 
-    if (type !== 'object' || x.id === y.id) {
-      return type;
-    }
-
-    return false;
+  if (!delta) {
+    return target;
   }
-}
 
-const syncableReplacer = new SyncableReplacer();
-
-export function replaceSyncable(
-  syncable: ISyncable,
-  snapshot: ISyncable,
-): void {
-  syncableReplacer.replace(syncable, snapshot);
+  return produce(target, source => {
+    patch(source, delta!);
+  });
 }
