@@ -16,6 +16,15 @@ export interface SyncableRef<T extends ISyncableObject = ISyncableObject> {
   type: T['syncable']['_type'];
 }
 
+export type SyncableRefType<
+  T extends ISyncableObject = ISyncableObject
+> = T extends ISyncableObject
+  ? {
+      id: T['syncable']['_id'];
+      type: T['syncable']['_type'];
+    }
+  : never;
+
 export interface ISyncable<TType extends string = string> {
   _type: TType;
   _id: SyncableId<TType>;
@@ -94,7 +103,10 @@ export function createSyncable<T extends ISyncableObject>(
 
 export function getSyncableRef<T extends ISyncableObject>(
   source: string | T['syncable'] | SyncableCreationRef<T>,
-): SyncableRef<T> {
+): SyncableRef<T>;
+export function getSyncableRef(
+  source: string | ISyncable | SyncableCreationRef,
+): SyncableRef {
   let type: string;
   let id: SyncableId;
 

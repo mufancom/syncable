@@ -9,14 +9,24 @@ export interface SyncableAdapterGenericParams {
 }
 
 export const syncableAdapter: ISyncableAdapter<SyncableAdapterGenericParams> = {
-  instantiate(syncable, container) {
+  instantiateByRef(ref, container) {
+    switch (ref.type) {
+      case 'user':
+        return new User(ref, container);
+      case 'task':
+        return new Task(ref, container);
+      case 'kanban':
+        return new Kanban(ref, container);
+    }
+  },
+  instantiateBySyncable(syncable) {
     switch (syncable._type) {
       case 'user':
-        return new User(syncable, container);
+        return new User(syncable);
       case 'task':
-        return new Task(syncable, container);
+        return new Task(syncable);
       case 'kanban':
-        return new Kanban(syncable, container);
+        return new Kanban(syncable);
     }
   },
   getViewQueryFilter() {

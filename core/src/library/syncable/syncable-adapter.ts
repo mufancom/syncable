@@ -1,6 +1,7 @@
 import {ResolvedViewQuery, ViewQueryFilter} from '../connection-client';
 import {IContext} from '../context';
 
+import {SyncableRefType} from './syncable';
 import {SyncableContainer} from './syncable-container';
 import {ISyncableObject} from './syncable-object';
 
@@ -12,9 +13,13 @@ export interface ISyncableAdapterGenericParams {
 export interface ISyncableAdapter<
   TGenericParams extends ISyncableAdapterGenericParams = ISyncableAdapterGenericParams
 > {
-  instantiate(
+  instantiateByRef(
+    ref: SyncableRefType<TGenericParams['syncableObject']>,
+    container: SyncableContainer,
+  ): TGenericParams['syncableObject'] | undefined;
+
+  instantiateBySyncable(
     syncable: TGenericParams['syncableObject']['syncable'],
-    container?: SyncableContainer,
   ): TGenericParams['syncableObject'];
 
   getViewQueryFilter(

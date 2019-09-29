@@ -347,7 +347,7 @@ export class Connection<
     }
 
     for (let {snapshot, delta} of updateItems) {
-      let object = syncableAdapter.instantiate(snapshot);
+      let object = syncableAdapter.instantiateBySyncable(snapshot);
       let key = object.key;
 
       let readable = object.testAccessRights(['read'], context);

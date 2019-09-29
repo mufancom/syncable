@@ -39,7 +39,29 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     AccessControlRuleEntry
   >;
 
-  constructor(readonly syncable: T, private _container?: SyncableContainer) {}
+  private _syncable: ISyncable | undefined;
+  private _ref: SyncableRef;
+
+  constructor(syncable: T);
+  constructor(
+    refOrSyncable: SyncableRef<SyncableObject<T>> | T,
+    _container: SyncableContainer,
+  );
+  constructor(
+    refOrSyncable: ISyncable | SyncableRef,
+    private _container?: SyncableContainer,
+  ) {
+    if ('_type' in refOrSyncable) {
+      this._syncable = refOrSyncable;
+      this._ref = getSyncableRef(refOrSyncable);
+    } else {
+      this._ref = refOrSyncable;
+    }
+  }
+
+  get syncable(): T {
+    return (this._syncable || this._container!.getSyncable(this._ref)) as T;
+  }
 
   get id(): T['_id'] {
     return this.syncable._id;

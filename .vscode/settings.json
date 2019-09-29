@@ -8,8 +8,5 @@
   "files.eol": "\n",
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "cSpell.words": [
-    "jsondiffpatch"
-  ]
+  "typescript.tsdk": "node_modules/typescript/lib"
 }
