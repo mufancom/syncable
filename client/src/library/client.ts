@@ -201,6 +201,8 @@ export class Client<TGenericParams extends IClientGenericParams>
   applyChange(
     change: TGenericParams['change'] | ChangePacket,
   ): ClientApplyChangeResult {
+    change = _.cloneDeep(change);
+
     let id: ChangePacketId;
     let packet: ChangePacket;
 
@@ -215,8 +217,6 @@ export class Client<TGenericParams extends IClientGenericParams>
         ...(change as GeneralChange),
       };
     }
-
-    change = _.cloneDeep(change);
 
     let info = this.applyChangePacket(packet);
 
