@@ -95,6 +95,8 @@ export class Client<TGenericParams extends IClientGenericParams>
     this.container = new SyncableContainer(syncableAdapter);
 
     this.changePlant = new ChangePlant(blueprint as ChangePlantBlueprint);
+
+    clientAdapter.connect$.subscribe(this.onConnect);
   }
 
   get syncing(): boolean {
@@ -468,6 +470,17 @@ export class Client<TGenericParams extends IClientGenericParams>
       viewQueryInfoMap.delete(name);
     }
   }
+
+  private onConnect = async (): Promise<void> => {
+    await (this as RPCPeer<ConnectionRPCDefinition>).call(
+      'initialize',
+      Array.from(this.nameToViewQueryInfoMap.entries()).reduce<
+        ViewQueryUpdateObject
+      >((updates, [name, {query}]) => {
+        return Object.assign(updates, {[name]: query});
+      }, {}),
+    );
+  };
 
   private shiftPendingChangeInfo(
     id: ChangePacketId,
