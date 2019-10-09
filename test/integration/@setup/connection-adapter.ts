@@ -33,7 +33,6 @@ export class ConnectionAdapter
       delayWhen(() => from(randomNap())),
       share(),
     );
-    this.connect$.next();
 
     this.context = new Context('user', 'server', userRef);
   }
