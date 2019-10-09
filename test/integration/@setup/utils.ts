@@ -70,6 +70,8 @@ export function createClientConnectionPair(
     syncableAdapter,
   );
 
+  clientAdapter.connect$.next();
+
   return [
     client,
     connection,
