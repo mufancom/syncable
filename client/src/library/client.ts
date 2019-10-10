@@ -474,11 +474,7 @@ export class Client<TGenericParams extends IClientGenericParams>
   private onConnect = async (): Promise<void> => {
     await (this as RPCPeer<ConnectionRPCDefinition>).call(
       'initialize',
-      Array.from(this.nameToViewQueryInfoMap.entries()).reduce<
-        ViewQueryUpdateObject
-      >((updates, [name, {query}]) => {
-        return Object.assign(updates, {[name]: query});
-      }, {}),
+      _.fromPairs(Array.from(this.nameToViewQueryInfoMap)),
     );
   };
 
