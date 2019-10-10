@@ -4,7 +4,7 @@ import {ChangePacket} from '../change';
 import {SyncableRef} from '../syncable';
 
 import {SyncData, SyncUpdateSource} from './sync';
-import {ViewQueryUpdateObject} from './view-query';
+import {IViewQuery, ViewQueryUpdateObject} from './view-query';
 
 ////////////////
 // Connection //
@@ -18,7 +18,7 @@ export type ConnectionRPCDefinition =
 
 export interface ConnectionInitializeRPCDefinition {
   name: 'initialize';
-  args: [Dict<unknown>];
+  args: [Dict<IViewQuery>];
   return: void;
 }
 
