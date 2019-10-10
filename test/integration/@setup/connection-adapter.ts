@@ -11,6 +11,7 @@ import {ViewQueryDict} from './view-query';
 
 export class ConnectionAdapter
   implements IConnectionAdapter<ServerGenericParams> {
+  connect$ = new Subject<void>();
   incoming$: Observable<RPCData>;
 
   readonly viewQueryDict: Partial<ViewQueryDict> = {

@@ -8,6 +8,7 @@ import {ClientGenericParams} from './client';
 import {Context} from './context';
 
 export class ClientAdapter implements IClientAdapter<ClientGenericParams> {
+  connect$ = new Subject<void>();
   incoming$: Observable<RPCData>;
 
   readonly context: Context;

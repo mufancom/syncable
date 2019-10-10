@@ -498,8 +498,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
       await this.serverAdapter.subscribe(group);
     }
-
-    await connection.initialize();
   }
 
   private async removeConnection(connection: Connection): Promise<void> {

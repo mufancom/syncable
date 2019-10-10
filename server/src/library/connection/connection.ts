@@ -177,13 +177,17 @@ export class Connection<
     });
   }
 
-  async initialize(): Promise<void> {
+  @RPCMethod()
+  async initialize(viewQueryDict: Dict<IViewQuery>): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       this.loadingScheduler.next({
         type: 'initialize',
-        queryUpdate: (this.connectionAdapter.viewQueryDict as unknown) as Dict<
-          IViewQuery
-        >,
+        queryUpdate: {
+          ...((this.connectionAdapter.viewQueryDict as unknown) as Dict<
+            IViewQuery
+          >),
+          ...viewQueryDict,
+        },
         resolve,
         reject,
       });

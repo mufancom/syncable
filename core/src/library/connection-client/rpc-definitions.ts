@@ -1,17 +1,26 @@
+import {Dict} from 'tslang';
+
 import {ChangePacket} from '../change';
 import {SyncableRef} from '../syncable';
 
 import {SyncData, SyncUpdateSource} from './sync';
-import {ViewQueryUpdateObject} from './view-query';
+import {IViewQuery, ViewQueryUpdateObject} from './view-query';
 
 ////////////////
 // Connection //
 ////////////////
 
 export type ConnectionRPCDefinition =
+  | ConnectionInitializeRPCDefinition
   | ConnectionChangeRPCDefinition
   | ConnectionRequestRPCDefinition
   | ConnectionUpdateViewQueryRPCDefinition;
+
+export interface ConnectionInitializeRPCDefinition {
+  name: 'initialize';
+  args: [Dict<IViewQuery>];
+  return: void;
+}
 
 export interface ConnectionChangeRPCDefinition {
   name: 'apply-change';

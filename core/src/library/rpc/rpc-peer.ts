@@ -21,6 +21,7 @@ export type RPCPeerType<TLocalDefinition extends IRPCDefinition> = {
 
 export interface IRPCAdapter {
   incoming$: Observable<RPCData>;
+  connect$: Observable<void>;
   send(outgoing: RPCData): Promise<void>;
 }
 
