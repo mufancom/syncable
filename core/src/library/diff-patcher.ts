@@ -2,8 +2,8 @@ import {Delta, DiffPatcher} from 'jsondiffpatch';
 import _ from 'lodash';
 
 const diffPatcher = new DiffPatcher({
-  objectHash(object: any) {
-    return object.id || object._id || object.key;
+  objectHash(object: any, index: number) {
+    return object.id || object._id || object.key || `$$index:${index}`;
   },
   cloneDiffValues: true,
 });
