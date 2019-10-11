@@ -2,8 +2,6 @@ import _ from 'lodash';
 import {ObservableMap, action, observable} from 'mobx';
 import {Dict, KeyOfValueWithType} from 'tslang';
 
-import {replaceObject} from '../@utils';
-
 import {ISyncable, SyncableId, SyncableRef} from './syncable';
 import {ISyncableAdapter} from './syncable-adapter';
 import {ISyncableObject} from './syncable-object';
@@ -203,6 +201,8 @@ export class SyncableContainer<
    */
   @action
   addSyncable(snapshot: ISyncable, clock?: number): void {
+    snapshot = _.cloneDeep(snapshot);
+
     let {_id: id, _type: type} = snapshot;
 
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
@@ -217,17 +217,17 @@ export class SyncableContainer<
 
     if (syncable) {
       if (clock === undefined || clock > syncable._clock) {
-        syncable = replaceObject(syncable, snapshot);
+        syncableMap.set(id, snapshot);
       }
     } else {
-      syncable = snapshot;
+      syncableMap.set(id, snapshot);
     }
-
-    syncableMap.set(id, syncable);
   }
 
   @action
   updateMatchingSyncable(snapshot: ISyncable, clock?: number): void {
+    snapshot = _.cloneDeep(snapshot);
+
     let {_id: id, _type: type} = snapshot;
 
     let typeToIdToSyncableMapMap = this.typeToIdToSyncableMapMap;
@@ -239,17 +239,11 @@ export class SyncableContainer<
 
     let syncable = syncableMap.get(id);
 
-    if (!syncable) {
-      return;
+    if (syncable) {
+      if (clock === undefined || clock > syncable._clock) {
+        syncableMap.set(id, snapshot);
+      }
     }
-
-    if (!(clock === undefined || clock > syncable._clock)) {
-      return;
-    }
-
-    syncable = replaceObject(syncable, snapshot);
-
-    syncableMap.set(id, syncable);
   }
 
   @action
