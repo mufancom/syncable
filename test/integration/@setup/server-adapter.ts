@@ -1,9 +1,9 @@
 import {
+  ChangePacketId,
   SyncableRef,
   ViewQueryDictToResolvedViewQueryDict,
   ViewQueryFilter,
   getSyncableKey,
-  ChangePacketId,
 } from '@syncable/core';
 import {
   BroadcastChangeResult,
