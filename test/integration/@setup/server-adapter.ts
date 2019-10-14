@@ -3,6 +3,7 @@ import {
   ViewQueryDictToResolvedViewQueryDict,
   ViewQueryFilter,
   getSyncableKey,
+  ChangePacketId,
 } from '@syncable/core';
 import {
   BroadcastChangeResult,
@@ -23,6 +24,8 @@ import {Syncable, SyncableObject} from './syncables';
 import {ViewQueryDict} from './view-query';
 
 export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
+  private changePacketChangeIdSet = new Set<ChangePacketId>();
+
   private clock = 0;
 
   private subscribedGroupSet = new Set<string>();
@@ -61,10 +64,17 @@ export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
   }
 
   async queueChange(
+    id: ChangePacketId,
     group: string,
     processor: QueuedChangeProcessor,
   ): Promise<void> {
     await randomNap();
+
+    if (this.changePacketChangeIdSet.has(id)) {
+      return;
+    } else {
+      this.changePacketChangeIdSet.add(id);
+    }
 
     await v.lock(group, async () => {
       await processor(++this.clock);
