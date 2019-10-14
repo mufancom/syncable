@@ -34,7 +34,11 @@ export interface IServerAdapter<
 
   broadcast(data: BroadcastChangeResult): Promise<void>;
 
-  queueChange(group: string, processor: QueuedChangeProcessor): Promise<void>;
+  queueChange(
+    group: string,
+    changePacketId: ChangePacketId,
+    processor: QueuedChangeProcessor,
+  ): Promise<void>;
 
   loadSyncablesByQuery(
     group: string,
