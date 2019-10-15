@@ -231,6 +231,10 @@ export class Client<TGenericParams extends IClientGenericParams>
       packet,
     );
 
+    promise.catch(() => {
+      this.sync({syncables: [], removals: [], updates: []}, {id, clock: 0});
+    });
+
     return {id, promise};
   }
 

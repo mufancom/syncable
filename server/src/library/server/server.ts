@@ -13,6 +13,7 @@ import {
   ISyncableObject,
   IViewQuery,
   NumericTimestamp,
+  RPCError,
   RefDictToSyncableObjectDict,
   ResolvedViewQuery,
   SyncableContainer,
@@ -318,9 +319,9 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
 
-    let result!: ChangePlantProcessingResultWithClock;
+    let result: ChangePlantProcessingResultWithClock | undefined;
 
-    await serverAdapter.queueChange(group, async clock => {
+    await serverAdapter.queueChange(group, packet.id, async clock => {
       let refs = getNonCreationRefsFromRefDict(packet.refs);
 
       let syncables = await this.loadSyncablesByRefs(group, context, refs, {
@@ -375,6 +376,10 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
       await serverAdapter.handleNotifications(group, notifications, id);
     });
+
+    if (!result) {
+      throw new RPCError('CHANGE_NOT_APPLIED');
+    }
 
     let {changes: subsequentChanges, ...rest} = result;
 
