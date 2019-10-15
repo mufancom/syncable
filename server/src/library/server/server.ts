@@ -378,7 +378,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
     });
 
     if (!result) {
-      throw new RPCError('DUPLICATE_CHANGE_PACKET');
+      throw new RPCError('CHANGE_NOT_APPLIED');
     }
 
     let {changes: subsequentChanges, ...rest} = result;

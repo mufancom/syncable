@@ -24,7 +24,7 @@ import {Syncable, SyncableObject} from './syncables';
 import {ViewQueryDict} from './view-query';
 
 export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
-  private changePacketChangeIdSet = new Set<ChangePacketId>();
+  private changePacketIdSet = new Set<ChangePacketId>();
 
   private clock = 0;
 
@@ -70,11 +70,11 @@ export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
   ): Promise<void> {
     await randomNap();
 
-    if (this.changePacketChangeIdSet.has(id)) {
+    if (this.changePacketIdSet.has(id)) {
       return;
-    } else {
-      this.changePacketChangeIdSet.add(id);
     }
+
+    this.changePacketIdSet.add(id);
 
     await v.lock(group, async () => {
       await processor(++this.clock);
