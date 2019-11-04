@@ -385,7 +385,9 @@ export class Server<TGenericParams extends IServerGenericParams> {
 
     return {
       subsequent: subsequentChanges.length
-        ? subsequentChanges.map(change => this.applyChange(group, change))
+        ? subsequentChanges.map(change =>
+            this.applyChange(group, change, context),
+          )
         : undefined,
       ...rest,
     };
