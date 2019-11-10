@@ -46,6 +46,7 @@ interface ViewQueryInfo {
 interface PendingChangeInfo {
   packet: ChangePacket;
   refs: SyncableRef[];
+  confirmed: boolean;
 }
 
 export interface ClientApplyChangeResult {
@@ -134,7 +135,7 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   async requestObjects<TRef extends TGenericParams['syncableObject']['ref']>(
     refs: TRef[],
-  ): Promise<(Extract<TGenericParams['syncableObject'], {ref: TRef}>)[]> {
+  ): Promise<Extract<TGenericParams['syncableObject'], {ref: TRef}>[]> {
     let container = this.container;
 
     let missingSyncableRefs = refs.filter(
@@ -232,7 +233,18 @@ export class Client<TGenericParams extends IClientGenericParams>
     );
 
     promise.catch(() => {
-      this.sync({syncables: [], removals: [], updates: []}, {id, clock: 0});
+      this.sync(
+        {
+          syncables: [],
+          removals: [],
+          updates: [],
+        },
+        {
+          id,
+          clock: 0,
+          completed: true,
+        },
+      );
     });
 
     return {id, promise};
@@ -307,6 +319,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     let container = this.container;
 
     let pendingChangeInfos = this.pendingChangeInfos;
+
     let relevantRefs = _.flatMap(pendingChangeInfos, info => info.refs);
 
     let clock: number | undefined;
@@ -314,7 +327,7 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     if (source) {
       clock = source.clock;
-      matchedPendingChangeInfo = this.shiftPendingChangeInfo(source.id);
+      matchedPendingChangeInfo = this.shiftPendingChangeInfo(source);
     }
 
     // Restore relevant syncables
@@ -364,8 +377,14 @@ export class Client<TGenericParams extends IClientGenericParams>
       // Apply pending change.
 
       for (let i = 0; i < pendingChangeInfos.length; i++) {
+        let pendingChangeInfo = pendingChangeInfos[i];
+
+        if (pendingChangeInfo.confirmed) {
+          continue;
+        }
+
         pendingChangeInfos[i] = this.applyChangePacket(
-          pendingChangeInfos[i].packet,
+          pendingChangeInfo.packet,
         );
       }
     }
@@ -488,26 +507,31 @@ export class Client<TGenericParams extends IClientGenericParams>
   };
 
   private shiftPendingChangeInfo(
-    id: ChangePacketId,
+    source: SyncUpdateSource,
   ): PendingChangeInfo | undefined {
     let infos = this.pendingChangeInfos;
 
-    let index = infos.findIndex(info => info.packet.id === id);
+    let index = infos.findIndex(info => info.packet.id === source.id);
 
     if (index < 0) {
       return undefined;
     }
 
-    if (index === 0) {
-      return infos.shift()!;
-    }
+    let info = infos[index];
 
-    throw new Error(
-      `Change packet ID "${id}" does not match the first pending packet`,
-    );
+    if (source.completed) {
+      infos.splice(0, index + 1);
+      return info;
+    } else {
+      info.confirmed = true;
+      return undefined;
+    }
   }
 
-  private applyChangePacket(packet: ChangePacket): PendingChangeInfo {
+  private applyChangePacket(
+    packet: ChangePacket,
+    confirmed = false,
+  ): PendingChangeInfo {
     let container = this.container;
 
     let {
@@ -539,6 +563,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     return {
       packet,
       refs: relevantRefs,
+      confirmed,
     };
   }
 }

@@ -17,4 +17,5 @@ export interface SyncData {
 export interface SyncUpdateSource {
   id: ChangePacketId;
   clock: number;
+  completed: boolean;
 }

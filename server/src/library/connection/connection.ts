@@ -432,16 +432,25 @@ export class Connection<
     } else {
       this.pendingChangePacketIdSet.delete(id);
 
-      let source: SyncUpdateSource = {
+      let source = {
         id,
         clock,
       };
 
       if (relevantViewQueryUpdate) {
-        await (this as RPCPeer<ClientRPCDefinition>).call('sync', data);
-        await this.query(relevantViewQueryUpdate, false, source);
+        await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, {
+          ...source,
+          completed: false,
+        });
+        await this.query(relevantViewQueryUpdate, false, {
+          ...source,
+          completed: true,
+        });
       } else {
-        await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
+        await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, {
+          ...source,
+          completed: true,
+        });
       }
     }
   }
