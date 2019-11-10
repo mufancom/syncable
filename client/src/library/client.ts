@@ -424,9 +424,9 @@ export class Client<TGenericParams extends IClientGenericParams>
 
     let viewQueryInfoMap = this.nameToViewQueryInfoMap;
 
-    let queryEntries = Object.entries(update as Dict<
-      GeneralViewQuery | false
-    >).filter(([name, query]) => {
+    let queryEntries = Object.entries(
+      update as Dict<GeneralViewQuery | false>,
+    ).filter(([name, query]) => {
       let info = viewQueryInfoMap.get(name);
 
       if (info && _.isEqual(info.query, query)) {

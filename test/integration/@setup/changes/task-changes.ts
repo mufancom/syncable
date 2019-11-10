@@ -22,9 +22,7 @@ export interface ChangePlantTaskBlueprintGenericParams {
   notification: never;
 }
 
-export const taskBlueprint: ChangePlantBlueprint<
-  ChangePlantTaskBlueprintGenericParams
-> = {
+export const taskBlueprint: ChangePlantBlueprint<ChangePlantTaskBlueprintGenericParams> = {
   'task:update-task-brief'({task}, {}, {options: {brief}}) {
     task.brief = brief;
   },
