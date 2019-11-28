@@ -264,7 +264,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       let {fields: aceFieldNames} = entry;
 
       if (aceFieldNames === '*') {
-        aceFieldNames = Object.keys(this.syncable);
+        aceFieldNames = fieldNames ?? Object.keys(this.syncable);
       }
 
       let testingFieldNames = fieldNames
