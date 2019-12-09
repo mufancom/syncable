@@ -72,6 +72,9 @@ export class Client<TGenericParams extends IClientGenericParams>
   private _syncing = false;
 
   @observable
+  private _pendingQueryingNumber = 0;
+
+  @observable
   private pendingChangeInfos: PendingChangeInfo[] = [];
 
   private syncableSnapshotMap = new Map<string, ISyncable>();
@@ -102,6 +105,10 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   get syncing(): boolean {
     return this._syncing;
+  }
+
+  get querying(): boolean {
+    return this._pendingQueryingNumber !== 0;
   }
 
   getObjects(): TGenericParams['syncableObject'][];
@@ -196,8 +203,14 @@ export class Client<TGenericParams extends IClientGenericParams>
     update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
   ): Promise<void>;
   async query(update: ViewQueryUpdateObject): Promise<void> {
-    await this.ready;
-    await this._query(update);
+    this.startQuery();
+
+    try {
+      await this.ready;
+      await this._query(update);
+    } finally {
+      this.endQuery();
+    }
   }
 
   @action
@@ -565,5 +578,15 @@ export class Client<TGenericParams extends IClientGenericParams>
       refs: relevantRefs,
       confirmed,
     };
+  }
+
+  @action
+  private startQuery(): void {
+    this._pendingQueryingNumber++;
+  }
+
+  @action
+  private endQuery(): void {
+    this._pendingQueryingNumber--;
   }
 }
