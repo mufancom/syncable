@@ -39,9 +39,9 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     AccessControlRuleEntry
   >;
 
-  private _syncable: T | undefined;
+  private _syncable: ISyncable | undefined;
   private _ref: SyncableRef;
-  private _lastReferencedSyncable: T | undefined;
+  private _lastReferencedSyncable: ISyncable | undefined;
 
   constructor(syncable: T);
   constructor(
@@ -49,7 +49,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     _container: SyncableContainer,
   );
   constructor(
-    refOrSyncable: T | SyncableRef,
+    refOrSyncable: ISyncable | SyncableRef,
     private _container?: SyncableContainer,
   ) {
     if ('_type' in refOrSyncable) {
@@ -63,13 +63,15 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   @computed
   get syncable(): T {
     if (this._syncable) {
-      return this._syncable;
+      return this._syncable as T;
     } else {
       let syncable = this._container!.getSyncable(this._ref) as T | undefined;
 
       if (!syncable) {
         console.warn(
-          'Syncable has been deleted, Avoid continuing to use this syncable object.',
+          `Syncable (${JSON.stringify(
+            this._ref,
+          )}) no longer exists, you might have tried to access a syncable no longer available`,
           this,
         );
 
