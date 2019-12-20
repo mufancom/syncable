@@ -259,13 +259,13 @@ export class SyncableContainer<
       return;
     }
 
-    syncableMap!.delete(id);
-
     let syncableObjectMap = typeToIdToSyncableObjectMapMap.get(type);
 
     if (syncableObjectMap) {
       syncableObjectMap.delete(id);
     }
+
+    syncableMap!.delete(id);
   }
 
   @action

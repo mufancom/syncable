@@ -41,6 +41,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
   private _syncable: ISyncable | undefined;
   private _ref: SyncableRef;
+  private _lastReferencedSyncable: ISyncable | undefined;
 
   constructor(syncable: T);
   constructor(
@@ -59,8 +60,28 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     }
   }
 
+  @computed
   get syncable(): T {
-    return (this._syncable || this._container!.getSyncable(this._ref)) as T;
+    if (this._syncable) {
+      return this._syncable as T;
+    } else {
+      let syncable = this._container!.getSyncable(this._ref) as T | undefined;
+
+      if (!syncable) {
+        console.warn(
+          `Syncable (${JSON.stringify(
+            this._ref,
+          )}) no longer exists, you might have tried to access a syncable no longer available`,
+          this,
+        );
+
+        return this._lastReferencedSyncable as T;
+      }
+
+      this._lastReferencedSyncable = syncable;
+
+      return syncable;
+    }
   }
 
   get id(): T['_id'] {
