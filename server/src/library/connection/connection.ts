@@ -83,6 +83,7 @@ export class Connection<
   private nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
 
   private loadedKeySet = new Set<string>();
+  private sanitizedFieldNamesMap = new Map<string, string[]>();
 
   private pendingChangePacketIdSet = new Set<ChangePacketId>();
 
@@ -320,6 +321,7 @@ export class Connection<
     }
 
     let loadedKeySet = this.loadedKeySet;
+    let sanitizedFieldNamesMap = this.sanitizedFieldNamesMap;
 
     let viewQueryFilter = this.viewQueryFilter;
 
@@ -360,32 +362,63 @@ export class Connection<
         let ref = getSyncableRef(snapshot);
 
         if (readable) {
-          let sanitizedFieldNameSet = new Set(
-            object.getSanitizedFieldNames(context),
-          );
+          let sanitizedFieldNames = object.getSanitizedFieldNames(context);
+          let previouslySanitizedFieldNames =
+            sanitizedFieldNamesMap.get(key) ?? [];
 
           // Shallow clone, as we only delete first-level properties.
-          let sanitizedDelta = _.clone(delta);
+          let updatedDelta = _.clone(delta);
 
-          for (let fieldName of sanitizedFieldNameSet) {
-            delete sanitizedDelta[fieldName];
+          for (let fieldName of _.difference(
+            previouslySanitizedFieldNames,
+            sanitizedFieldNames,
+          )) {
+            // Add field
+            updatedDelta[fieldName] = [(snapshot as any)[fieldName]];
           }
 
-          if (Object.keys(sanitizedDelta).length) {
-            updates.push({ref, delta: sanitizedDelta});
+          for (let fieldName of _.intersection(
+            previouslySanitizedFieldNames,
+            sanitizedFieldNames,
+          )) {
+            // Do not change
+            delete updatedDelta[fieldName];
+          }
+
+          for (let fieldName of _.difference(
+            sanitizedFieldNames,
+            previouslySanitizedFieldNames,
+          )) {
+            // Delete field
+            updatedDelta[fieldName] = [0, 0, 0];
+          }
+
+          if (Object.keys(updatedDelta).length) {
+            updates.push({
+              ref,
+              delta: updatedDelta,
+            });
+          }
+
+          if (sanitizedFieldNames.length) {
+            sanitizedFieldNamesMap.set(key, sanitizedFieldNames);
+          } else {
+            sanitizedFieldNamesMap.delete(key);
           }
 
           // Is it okay to move this line into the if statement above?
           dependencyRelevantSyncables.push(snapshot);
         } else {
           loadedKeySet.delete(key);
+          sanitizedFieldNamesMap.delete(key);
           removals.push(ref);
         }
       } else {
         if (readable && viewQueryFilter(snapshot)) {
-          loadedKeySet.add(key);
-
           let sanitizedFieldNames = object.getSanitizedFieldNames(context);
+
+          loadedKeySet.add(key);
+          sanitizedFieldNamesMap.set(key, sanitizedFieldNames);
 
           let sanitizedSnapshot = _.omit(
             snapshot,

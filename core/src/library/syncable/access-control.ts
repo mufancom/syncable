@@ -1,5 +1,7 @@
 import {Flatten, Nominal} from 'tslang';
 
+import {ISyncable} from './syncable';
+
 export type AccessRight = 'read' | 'write' | 'full';
 
 export const ACCESS_RIGHTS: AccessRight[] = ['read', 'write', 'full'];
@@ -32,17 +34,21 @@ export interface FieldAccessControlEntry<TOptions extends object = object>
   fields: string[] | '*';
 }
 
-export const SYNCABLE_ESSENTIAL_FIELD_NAMES = ['_type', '_id'];
+export const SYNCABLE_ESSENTIAL_FIELD_NAMES: (keyof ISyncable)[] = [
+  '_type',
+  '_id',
+  '_clock',
+  '_createdAt',
+  '_updatedAt',
+  '_acl',
+];
 
 export function getAccessControlEntryPriority({
   explicit,
   type,
-  fields,
 }: Flatten<AccessControlEntry>): number {
   return (
     // tslint:disable-next-line:no-bitwise
-    (fields ? 0b0100 : 0) |
-    (explicit ? 0b0010 : 0) |
-    (type === 'deny' ? 0b0001 : 0)
+    (explicit ? 0b0010 : 0) | (type === 'deny' ? 0b0001 : 0)
   );
 }
