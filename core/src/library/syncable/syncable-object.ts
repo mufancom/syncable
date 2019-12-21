@@ -8,8 +8,6 @@ import {
   AccessControlEntry,
   AccessControlEntryRuleName,
   AccessRight,
-  FieldAccessControlEntry,
-  ObjectAccessControlEntry,
   SYNCABLE_ESSENTIAL_FIELD_NAMES,
   getAccessControlEntryPriority,
 } from './access-control';
@@ -30,6 +28,19 @@ export type AccessControlRuleTester = (
 export interface AccessControlRuleEntry {
   test: AccessControlRuleTester;
 }
+
+type AccessDescriptor =
+  | {
+      allow: string[] | '*';
+    }
+  | {
+      /** All other fields are accessible except for those denied. */
+      deny: string[];
+    };
+
+type AccessRightToAccessDescriptorDict = {
+  [TRight in AccessRight]: AccessDescriptor;
+};
 
 abstract class SyncableObject<T extends ISyncable = ISyncable> {
   /** @internal */
@@ -147,13 +158,13 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       ...SYNCABLE_ESSENTIAL_FIELD_NAMES,
     ]);
 
-    return Array.from(this.getFieldNameToAccessRightsMap(context))
-      .filter(
-        ([fieldName, accessRights]) =>
-          !accessRights.includes('read') &&
-          !whitelistedFieldNameSet.has(fieldName),
-      )
-      .map(([fieldName]) => fieldName);
+    let {read: descriptor} = this.getAccessRightToAccessDescriptorDict(context);
+
+    return Object.keys(this.syncable).filter(
+      fieldName =>
+        !whitelistedFieldNameSet.has(fieldName) &&
+        !testAccessDescriptor(descriptor, [fieldName]),
+    );
   }
 
   /**
@@ -177,14 +188,20 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return [];
   }
 
+  /**
+   * Get ACL with descending priorities
+   */
   getACL(): AccessControlEntry[] {
     let {_acl = []} = this.syncable;
 
     let defaultACL = this.getDefaultACL();
 
     return _.sortBy(
-      _.uniqBy([..._acl, ...defaultACL], entry => entry.name),
-      entry => getAccessControlEntryPriority(entry),
+      // The original default ACL and ACL are written with ascending priorities
+      // (the later one overrides the former one), so we do a reverse here
+      // before the stable sort.
+      _.uniqBy([...defaultACL, ..._acl], entry => entry.name).reverse(),
+      entry => -getAccessControlEntryPriority(entry),
     );
   }
 
@@ -193,12 +210,17 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       return this.getObjectAccessRights(context);
     }
 
-    let fieldNameToAccessRightsMap = this.getFieldNameToAccessRightsMap(
+    let accessRightToAccessDescriptorDict = this.getAccessRightToAccessDescriptorDict(
       context,
       fieldNames,
     );
 
-    return _.intersection(...fieldNameToAccessRightsMap.values());
+    return ACCESS_RIGHTS.filter(right =>
+      testAccessDescriptor(
+        accessRightToAccessDescriptorDict[right],
+        fieldNames,
+      ),
+    );
   }
 
   testAccessRights(
@@ -237,7 +259,9 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 
   private getObjectAccessRights(context: IContext): AccessRight[] {
-    let objectACL = this.getObjectACL();
+    let objectACL = this.getACL()
+      .filter(ace => !('fields' in ace))
+      .reverse();
 
     if (!objectACL.length) {
       return [...ACCESS_RIGHTS];
@@ -248,81 +272,174 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     for (let entry of objectACL) {
       let {type, rights} = entry;
 
-      if (
-        (type === 'allow' &&
-          !_.difference(rights, grantedAccessRights).length) ||
-        (type === 'deny' &&
-          !_.intersection(grantedAccessRights, rights).length) ||
-        // The test above is to avoid unnecessary `testAccessControlEntry` calls
-        !this.testAccessControlEntry(entry, context)
-      ) {
-        continue;
-      }
-
-      grantedAccessRights = overrideAccessRights(grantedAccessRights, entry);
-    }
-
-    return grantedAccessRights;
-  }
-
-  private getFieldNameToAccessRightsMap(
-    context: IContext,
-    fieldNames?: string[],
-  ): Map<string, AccessRight[]> {
-    let objectAccessRights = this.getObjectAccessRights(context);
-
-    let fieldNameToAccessRightsMap = new Map(
-      fieldNames &&
-        fieldNames.map((fieldName): [string, AccessRight[]] => [
-          fieldName,
-          objectAccessRights,
-        ]),
-    );
-
-    let fieldsACL = this.getFieldsACL();
-
-    for (let entry of fieldsACL) {
-      let {fields: aceFieldNames} = entry;
-
-      if (aceFieldNames === '*') {
-        aceFieldNames = fieldNames ?? Object.keys(this.syncable);
-      }
-
-      let testingFieldNames = fieldNames
-        ? _.intersection(fieldNames, aceFieldNames)
-        : aceFieldNames;
-
-      if (!testingFieldNames.length) {
-        continue;
+      // Test whether the entry can mutate the granted rights to avoid
+      // unnecessary `testAccessControlEntry` calls
+      if (type === 'allow') {
+        if (_.difference(rights, grantedAccessRights).length === 0) {
+          continue;
+        }
+      } else {
+        if (_.intersection(grantedAccessRights, rights).length === 0) {
+          continue;
+        }
       }
 
       if (!this.testAccessControlEntry(entry, context)) {
         continue;
       }
 
-      for (let fieldName of testingFieldNames) {
-        let grantedAccessRights = fieldNameToAccessRightsMap.get(fieldName);
-
-        grantedAccessRights = overrideAccessRights(
-          grantedAccessRights || objectAccessRights,
-          entry,
-        );
-
-        fieldNameToAccessRightsMap.set(fieldName, grantedAccessRights);
+      if (type === 'allow') {
+        grantedAccessRights = _.union(grantedAccessRights, rights);
+      } else {
+        grantedAccessRights = _.difference(grantedAccessRights, rights);
       }
     }
 
-    return fieldNameToAccessRightsMap;
+    return grantedAccessRights;
   }
 
-  private getObjectACL(): ObjectAccessControlEntry[] {
-    return this.getACL().filter(ace => !('fields' in ace));
-  }
+  private getAccessRightToAccessDescriptorDict(
+    context: IContext,
+    fieldNames?: string[],
+  ): AccessRightToAccessDescriptorDict {
+    let objectAccessRights = this.getObjectAccessRights(context);
 
-  private getFieldsACL(): FieldAccessControlEntry[] {
-    return this.getACL().filter(
-      (ace): ace is FieldAccessControlEntry => 'fields' in ace,
-    );
+    let accessRightToAccessDescriptorDict: AccessRightToAccessDescriptorDict = {
+      read: objectAccessRights.includes('read') ? {allow: '*'} : {allow: []},
+      write: objectAccessRights.includes('write') ? {allow: '*'} : {allow: []},
+      full: objectAccessRights.includes('full') ? {allow: '*'} : {allow: []},
+    };
+
+    let acl = this.getACL().reverse();
+
+    for (let entry of acl) {
+      let aceFieldNames: string[] | '*';
+
+      if ('fields' in entry && entry.fields) {
+        aceFieldNames = fieldNames
+          ? _.intersection(entry.fields, fieldNames)
+          : entry.fields;
+
+        if (!aceFieldNames.length) {
+          continue;
+        }
+      } else {
+        aceFieldNames = '*';
+      }
+
+      let overrides: Partial<AccessRightToAccessDescriptorDict> = {};
+
+      let {type, rights} = entry;
+
+      for (let right of rights) {
+        let descriptor = accessRightToAccessDescriptorDict[right];
+
+        if (type === 'allow') {
+          // Allow
+
+          if ('allow' in descriptor) {
+            // Previously allow
+
+            if (descriptor.allow === '*') {
+              // Do nothing
+            } else {
+              if (aceFieldNames === '*') {
+                overrides[right] = {
+                  allow: '*',
+                };
+              } else {
+                let updatedAllow = _.union(descriptor.allow, aceFieldNames);
+
+                if (updatedAllow.length > descriptor.allow.length) {
+                  overrides[right] = {
+                    allow: updatedAllow,
+                  };
+                }
+              }
+            }
+          } else {
+            // Previously deny
+
+            if (aceFieldNames === '*') {
+              overrides[right] = {
+                allow: '*',
+              };
+            } else {
+              let updatedDeny = _.difference(descriptor.deny, aceFieldNames);
+
+              if (!updatedDeny.length) {
+                overrides[right] = {
+                  allow: '*',
+                };
+              } else if (updatedDeny.length < descriptor.deny.length) {
+                overrides[right] = {
+                  deny: updatedDeny,
+                };
+              }
+            }
+          }
+        } else {
+          // Deny
+
+          if ('allow' in descriptor) {
+            // Previously allow
+
+            if (descriptor.allow === '*') {
+              if (aceFieldNames === '*') {
+                overrides[right] = {
+                  allow: [],
+                };
+              } else {
+                overrides[right] = {
+                  deny: aceFieldNames,
+                };
+              }
+            } else {
+              if (aceFieldNames === '*') {
+                overrides[right] = {
+                  allow: [],
+                };
+              } else {
+                let updatedAllow = _.difference(
+                  descriptor.allow,
+                  aceFieldNames,
+                );
+
+                if (updatedAllow.length < descriptor.allow.length) {
+                  overrides[right] = {
+                    allow: updatedAllow,
+                  };
+                }
+              }
+            }
+          } else {
+            // Previously deny
+
+            if (aceFieldNames === '*') {
+              // Do nothing
+            } else {
+              let updatedDeny = _.union(descriptor.deny, aceFieldNames);
+
+              if (updatedDeny.length > descriptor.deny.length) {
+                overrides[right] = {
+                  deny: updatedDeny,
+                };
+              }
+            }
+          }
+        }
+      }
+
+      if (Object.keys(overrides).length === 0) {
+        continue;
+      }
+
+      if (this.testAccessControlEntry(entry, context)) {
+        Object.assign(accessRightToAccessDescriptorDict, overrides);
+      }
+    }
+
+    return accessRightToAccessDescriptorDict;
   }
 
   private testAccessControlEntry(
@@ -341,23 +458,21 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   }
 }
 
-interface AccessRightOverride {
-  type: 'deny' | 'allow';
-  rights: AccessRight[];
-}
-
-function overrideAccessRights(
-  grantedAccessRights: AccessRight[],
-  {rights, type}: AccessRightOverride,
-): AccessRight[] {
-  if (type === 'allow') {
-    return _.union(grantedAccessRights, rights);
-  } else {
-    return _.difference(grantedAccessRights, rights);
-  }
-}
-
 export interface ISyncableObject<T extends ISyncable = ISyncable>
   extends SyncableObject<T> {}
 
 export const AbstractSyncableObject = SyncableObject;
+
+function testAccessDescriptor(
+  descriptor: AccessDescriptor,
+  fieldNames: string[],
+): boolean {
+  if ('allow' in descriptor) {
+    return (
+      descriptor.allow === '*' ||
+      _.difference(fieldNames, descriptor.allow).length === 0
+    );
+  } else {
+    return _.intersection(descriptor.deny, fieldNames).length === 0;
+  }
+}
