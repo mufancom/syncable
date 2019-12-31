@@ -16,3 +16,21 @@ export function getNonCreationRefsFromRefDict(
     Array.isArray(ref) ? ref : ref && 'id' in ref ? [ref] : [],
   );
 }
+
+export function deepFreeze<TObject extends NonNullable<any>>(
+  object: TObject,
+): TObject {
+  let propNames = Object.getOwnPropertyNames(object);
+
+  for (let propName of propNames) {
+    let prop = object[propName];
+
+    if (typeof prop !== 'object' || prop === null) {
+      continue;
+    }
+
+    deepFreeze(prop);
+  }
+
+  return Object.freeze(object);
+}
