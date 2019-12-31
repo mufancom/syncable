@@ -552,7 +552,9 @@ export class Client<TGenericParams extends IClientGenericParams>
   ): PendingChangeInfo {
     let container = this.container;
 
-    deepFreeze(packet.options);
+    if (packet.options) {
+      deepFreeze(packet.options);
+    }
 
     let {
       updates,

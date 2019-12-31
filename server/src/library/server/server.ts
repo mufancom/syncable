@@ -320,7 +320,9 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
 
-    deepFreeze(packet.options);
+    if (packet.options) {
+      deepFreeze(packet.options);
+    }
 
     let result: ChangePlantProcessingResultWithClock | undefined;
 
