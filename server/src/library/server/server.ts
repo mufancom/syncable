@@ -20,6 +20,7 @@ import {
   SyncableRef,
   ViewQueryFilter,
   ViewQueryUpdateObject,
+  deepFreeze,
   generateUniqueId,
   getNonCreationRefsFromRefDict,
   getSyncableKey,
@@ -318,6 +319,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
+
+    packet = deepFreeze(packet);
 
     let result: ChangePlantProcessingResultWithClock | undefined;
 
