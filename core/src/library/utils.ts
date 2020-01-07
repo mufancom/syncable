@@ -17,13 +17,11 @@ export function getNonCreationRefsFromRefDict(
   );
 }
 
-export function deepFreeze<TObject extends NonNullable<any>>(
-  object: TObject,
-): TObject {
-  let propNames = Object.getOwnPropertyNames(object);
+export function deepFreeze<TObject extends object>(object: TObject): TObject {
+  let names = Object.getOwnPropertyNames(object);
 
-  for (let propName of propNames) {
-    let prop = object[propName];
+  for (let name of names) {
+    let prop = (object as any)[name];
 
     if (typeof prop !== 'object' || prop === null) {
       continue;
@@ -32,5 +30,7 @@ export function deepFreeze<TObject extends NonNullable<any>>(
     deepFreeze(prop);
   }
 
-  return Object.freeze(object);
+  Object.freeze(object);
+
+  return object;
 }

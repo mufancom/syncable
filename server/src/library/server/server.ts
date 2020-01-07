@@ -320,10 +320,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
 
-    if (packet.options) {
-      deepFreeze(packet.options);
-    }
-
     let result: ChangePlantProcessingResultWithClock | undefined;
 
     await serverAdapter.queueChange(group, packet.id, async clock => {
@@ -349,7 +345,16 @@ export class Server<TGenericParams extends IServerGenericParams> {
         container.addSyncable(syncable);
       }
 
-      result = changePlant.process(packet, context, container, clock);
+      let options = packet.options
+        ? deepFreeze(_.cloneDeep(packet.options))
+        : undefined;
+
+      result = changePlant.process(
+        {...packet, options},
+        context,
+        container,
+        clock,
+      );
 
       let {
         id,
