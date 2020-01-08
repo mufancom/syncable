@@ -316,6 +316,10 @@ export class Server<TGenericParams extends IServerGenericParams> {
     packet: ChangePacket,
     context: TGenericParams['context'],
   ): Promise<ServerApplyChangeResult> {
+    packet = _.cloneDeep(packet);
+
+    deepFreeze(packet.options);
+
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
@@ -345,16 +349,7 @@ export class Server<TGenericParams extends IServerGenericParams> {
         container.addSyncable(syncable);
       }
 
-      let options = packet.options
-        ? deepFreeze(_.cloneDeep(packet.options))
-        : undefined;
-
-      result = changePlant.process(
-        {...packet, options},
-        context,
-        container,
-        clock,
-      );
+      result = changePlant.process(packet, context, container, clock);
 
       let {
         id,

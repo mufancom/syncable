@@ -17,20 +17,18 @@ export function getNonCreationRefsFromRefDict(
   );
 }
 
-export function deepFreeze<TObject extends object>(object: TObject): TObject {
-  let names = Object.getOwnPropertyNames(object);
-
-  for (let name of names) {
-    let prop = (object as any)[name];
-
-    if (typeof prop !== 'object' || prop === null) {
-      continue;
-    }
-
-    deepFreeze(prop);
+export function deepFreeze<T extends unknown>(value: T): void {
+  if (!_.isObjectLike(value)) {
+    return;
   }
 
-  Object.freeze(object);
+  let propertyNames = Object.getOwnPropertyNames(value);
 
-  return object;
+  for (let propertyName of propertyNames) {
+    let propertyValue = (value as any)[propertyName];
+
+    deepFreeze(propertyValue);
+  }
+
+  Object.freeze(value);
 }

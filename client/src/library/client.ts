@@ -552,16 +552,16 @@ export class Client<TGenericParams extends IClientGenericParams>
   ): PendingChangeInfo {
     let container = this.container;
 
-    let options = packet.options
-      ? deepFreeze(_.cloneDeep(packet.options))
-      : undefined;
+    packet = _.cloneDeep(packet);
+
+    deepFreeze(packet.options);
 
     let {
       updates,
       creations,
       removals,
       notifications,
-    } = this.changePlant.process({...packet, options}, this.context, container);
+    } = this.changePlant.process(packet, this.context, container);
 
     let relevantRefs: SyncableRef[] = [];
 
