@@ -25,6 +25,7 @@ import {
   SyncableRef,
   ViewQueryFilter,
   ViewQueryUpdateObject,
+  deepFreeze,
   generateUniqueId,
   getSyncableKey,
   getSyncableRef,
@@ -550,6 +551,10 @@ export class Client<TGenericParams extends IClientGenericParams>
     confirmed = false,
   ): PendingChangeInfo {
     let container = this.container;
+
+    packet = _.cloneDeep(packet);
+
+    deepFreeze(packet.options);
 
     let {
       updates,
