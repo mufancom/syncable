@@ -7,5 +7,6 @@
     "experimentalDecorators": true,
 
     "outDir": "../../bld/library"
-  }
+  },
+  "references": [{"path": "../../../core/src/library"}]
 }

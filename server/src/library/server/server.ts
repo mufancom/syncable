@@ -20,7 +20,6 @@ import {
   SyncableRef,
   ViewQueryFilter,
   ViewQueryUpdateObject,
-  deepFreeze,
   generateUniqueId,
   getNonCreationRefsFromRefDict,
   getSyncableKey,
@@ -316,10 +315,6 @@ export class Server<TGenericParams extends IServerGenericParams> {
     packet: ChangePacket,
     context: TGenericParams['context'],
   ): Promise<ServerApplyChangeResult> {
-    packet = _.cloneDeep(packet);
-
-    deepFreeze(packet.options);
-
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
