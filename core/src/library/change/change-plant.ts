@@ -266,6 +266,8 @@ export class ChangePlant {
     container: SyncableContainer,
     clock?: number,
   ): ChangePlantProcessingResult | ChangePlantProcessingResultWithClock {
+    options = _.cloneDeep(options);
+
     let now =
       context.environment === 'client'
         ? createdAt
