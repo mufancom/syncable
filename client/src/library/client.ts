@@ -38,6 +38,8 @@ import {Dict} from 'tslang';
 
 import {IClientAdapter} from './client-adapter';
 
+const APPLYING_CHANGE_DEFAULT_SERVER_ONLY = false;
+
 interface ViewQueryInfo {
   filter: ViewQueryFilter;
   query: IViewQuery;
@@ -220,6 +222,7 @@ export class Client<TGenericParams extends IClientGenericParams>
   @action
   applyChange(
     change: TGenericParams['change'] | ChangePacket,
+    serverOnly = APPLYING_CHANGE_DEFAULT_SERVER_ONLY,
   ): ClientApplyChangeResult {
     change = _.cloneDeep(change);
 
@@ -238,11 +241,13 @@ export class Client<TGenericParams extends IClientGenericParams>
       };
     }
 
-    let info = this.applyChangePacket(packet);
+    if (!serverOnly) {
+      let info = this.applyChangePacket(packet);
 
-    this.pendingChangeInfos.push(info);
+      this.pendingChangeInfos.push(info);
 
-    this._syncing = true;
+      this._syncing = true;
+    }
 
     let promise = (this as RPCPeer<ConnectionRPCDefinition>).call(
       'apply-change',
@@ -267,8 +272,11 @@ export class Client<TGenericParams extends IClientGenericParams>
     return {id, promise};
   }
 
-  async applyChangeAndConfirm(change: TGenericParams['change']): Promise<void> {
-    let {id, promise} = this.applyChange(change);
+  async applyChangeAndConfirm(
+    change: TGenericParams['change'],
+    serverOnly?: boolean,
+  ): Promise<void> {
+    let {id, promise} = this.applyChange(change, serverOnly);
 
     await promise;
 
