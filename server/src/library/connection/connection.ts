@@ -498,6 +498,7 @@ export class Connection<
     let container = this.container;
     let server = this.server;
     let loadedKeySet = this.loadedKeySet;
+    let sanitizedFieldNamesMap = this.sanitizedFieldNamesMap;
 
     let contextRef = context.ref;
 
@@ -534,6 +535,12 @@ export class Connection<
       this.syncableAdapter,
       syncables,
       true,
+      (syncable, sanitizedFieldNames) => {
+        sanitizedFieldNamesMap.set(
+          getSyncableKey(syncable),
+          sanitizedFieldNames,
+        );
+      },
     );
 
     for (let [name, value] of nameToViewQueryMapToAdd) {
@@ -568,6 +575,7 @@ export class Connection<
 
   private async request(refs: SyncableRef[]): Promise<void> {
     let loadedKeySet = this.loadedKeySet;
+    let sanitizedFieldNamesMap = this.sanitizedFieldNamesMap;
 
     let syncables = await this.server.loadSyncablesByRefs(
       this.group,
@@ -583,6 +591,12 @@ export class Connection<
       this.syncableAdapter,
       syncables,
       true,
+      (syncable, sanitizedFieldNames) => {
+        sanitizedFieldNamesMap.set(
+          getSyncableKey(syncable),
+          sanitizedFieldNames,
+        );
+      },
     );
 
     for (let syncable of syncables) {
