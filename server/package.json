@@ -26,7 +26,8 @@
   "types": "bld/library/index.d.ts",
   "files": [
     "src/**/*.ts",
-    "bld"
+    "bld",
+    "!*.tsbuildinfo"
   ],
   "peerDependencies": {
     "@syncable/core": "^3.0.0-wip.0"
