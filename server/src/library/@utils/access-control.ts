@@ -23,6 +23,8 @@ export function filterReadableSyncables(
           onSanitize(syncable, sanitizedFieldNames);
         }
 
+        syncable._sanitizedFieldNames = sanitizedFieldNames;
+
         return _.omit(syncable, sanitizedFieldNames) as ISyncable;
       }
 

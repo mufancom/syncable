@@ -393,6 +393,8 @@ export class Connection<
             updatedDelta[fieldName] = [0, 0, 0];
           }
 
+          updatedDelta['_sanitizedFieldNames'] = [sanitizedFieldNames];
+
           if (Object.keys(updatedDelta).length) {
             updates.push({
               ref,
@@ -424,6 +426,8 @@ export class Connection<
             snapshot,
             sanitizedFieldNames,
           ) as ISyncable;
+
+          sanitizedSnapshot._sanitizedFieldNames = sanitizedFieldNames;
 
           syncables.push(sanitizedSnapshot);
           dependencyRelevantSyncables.push(snapshot);

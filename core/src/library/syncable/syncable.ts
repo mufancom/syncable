@@ -32,6 +32,7 @@ export interface ISyncable<TType extends string = string> {
   _createdAt: number;
   _updatedAt: number;
   _acl?: AccessControlEntry[];
+  _sanitizedFieldNames?: string[];
 }
 
 ///////////////

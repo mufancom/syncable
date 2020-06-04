@@ -41,6 +41,7 @@ export const SYNCABLE_ESSENTIAL_FIELD_NAMES: (keyof ISyncable)[] = [
   '_createdAt',
   '_updatedAt',
   '_acl',
+  '_sanitizedFieldNames',
 ];
 
 export function getAccessControlEntryPriority({
