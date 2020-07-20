@@ -32,6 +32,11 @@ import {Connection} from '../connection';
 
 import {BroadcastChangeResult, IServerAdapter} from './server-adapter';
 
+export interface LoadOptions {
+  context?: IContext;
+  loadRequisiteDependencyOnly?: boolean;
+}
+
 export interface LoadSyncablesByRefsOptions {
   loadedKeySet?: Set<string>;
   changeType?: string;
@@ -248,12 +253,16 @@ export class Server<TGenericParams extends IServerGenericParams> {
   async load<TRefDict extends object>(
     group: string,
     refDict: TRefDict,
+    {
+      context = this.context,
+      loadRequisiteDependencyOnly = true,
+    }: LoadOptions = {},
   ): Promise<RefDictToSyncableObjectDict<TRefDict>> {
     let container = new SyncableContainer(this.syncableAdapter);
     let refs = getNonCreationRefsFromRefDict(refDict as Dict<SyncableRef>);
 
-    let syncables = await this.loadSyncablesByRefs(group, this.context, refs, {
-      loadRequisiteDependencyOnly: true,
+    let syncables = await this.loadSyncablesByRefs(group, context, refs, {
+      loadRequisiteDependencyOnly,
     });
 
     for (let syncable of syncables) {
