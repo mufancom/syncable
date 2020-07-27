@@ -441,7 +441,9 @@ export class Connection<
       },
     );
 
-    let filteredDependentSyncables = filterReadableSyncables(
+    // loadDependentSyncables has already filtered object without read access,
+    // but we need to sanitize fields as well.
+    let sanitizedDependentSyncables = filterReadableSyncables(
       context,
       this.syncableAdapter,
       dependentSyncables,
@@ -454,11 +456,11 @@ export class Connection<
       },
     );
 
-    for (let syncable of filteredDependentSyncables) {
+    for (let syncable of sanitizedDependentSyncables) {
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
-    syncables.push(...filteredDependentSyncables);
+    syncables.push(...sanitizedDependentSyncables);
 
     let data: SyncData = {
       syncables,
