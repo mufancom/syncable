@@ -441,11 +441,24 @@ export class Connection<
       },
     );
 
-    for (let syncable of dependentSyncables) {
+    let filteredDependentSyncables = filterReadableSyncables(
+      context,
+      this.syncableAdapter,
+      dependentSyncables,
+      true,
+      (syncable, sanitizedFieldNames) => {
+        sanitizedFieldNamesMap.set(
+          getSyncableKey(syncable),
+          sanitizedFieldNames,
+        );
+      },
+    );
+
+    for (let syncable of filteredDependentSyncables) {
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
-    syncables.push(...dependentSyncables);
+    syncables.push(...filteredDependentSyncables);
 
     let data: SyncData = {
       syncables,
