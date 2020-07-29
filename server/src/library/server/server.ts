@@ -1,3 +1,5 @@
+import {EventEmitter} from 'events';
+
 import {
   ChangePacket,
   ChangePacketId,
@@ -5,6 +7,7 @@ import {
   ChangePlantBlueprint,
   ChangePlantProcessingResultWithClock,
   GeneralChange,
+  GeneralSyncableRef,
   IChangePlantBlueprintGenericParams,
   IContext,
   IRPCDefinition,
@@ -75,7 +78,9 @@ export interface ServerApplyChangeResult
   subsequent?: Promise<ServerApplyChangeResult>[];
 }
 
-export class Server<TGenericParams extends IServerGenericParams> {
+export class Server<
+  TGenericParams extends IServerGenericParams
+> extends EventEmitter {
   private groupToConnectionSetMap = new Map<string, Set<Connection>>();
 
   private changePlant: ChangePlant;
@@ -95,6 +100,8 @@ export class Server<TGenericParams extends IServerGenericParams> {
     private syncableAdapter: ISyncableAdapter,
     blueprint: ChangePlantBlueprint,
   ) {
+    super();
+
     if (context.type !== 'server' || context.environment !== 'server') {
       throw new Error('Invalid context');
     }
@@ -113,6 +120,13 @@ export class Server<TGenericParams extends IServerGenericParams> {
     resolvedViewQueryDict: object,
     loadedKeySet: Set<string>,
   ): Promise<ISyncable[]> {
+    this.emitEvent({
+      type: 'load-syncables-by-query',
+      group,
+      context,
+      resolvedViewQueryDict,
+    });
+
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
 
@@ -144,7 +158,14 @@ export class Server<TGenericParams extends IServerGenericParams> {
         requisiteOnly: false,
       },
     );
-
+    this.emitEvent({
+      type: 'loaded-syncables-by-query',
+      group,
+      context,
+      resolvedViewQueryDict,
+      directSyncablesCount: directSyncables.length,
+      dependentSyncablesCount: dependentSyncables.length,
+    });
     return [...directSyncables, ...dependentSyncables];
   }
 
@@ -159,6 +180,14 @@ export class Server<TGenericParams extends IServerGenericParams> {
       loadRequisiteDependencyOnly = false,
     }: LoadSyncablesByRefsOptions = {},
   ): Promise<ISyncable[]> {
+    this.emitEvent({
+      type: 'load-syncables-by-refs',
+      group,
+      context,
+      refs,
+      changeType,
+    });
+
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
 
@@ -186,6 +215,16 @@ export class Server<TGenericParams extends IServerGenericParams> {
         requisiteOnly: loadRequisiteDependencyOnly,
       },
     );
+
+    this.emitEvent({
+      type: 'loaded-syncables-by-refs',
+      group,
+      context,
+      refs,
+      changeType,
+      directSyncablesCount: directSyncables.length,
+      dependentSyncablesCount: dependentSyncables.length,
+    });
 
     return [...directSyncables, ...dependentSyncables];
   }
@@ -258,7 +297,14 @@ export class Server<TGenericParams extends IServerGenericParams> {
       loadRequisiteDependencyOnly = true,
     }: LoadOptions = {},
   ): Promise<RefDictToSyncableObjectDict<TRefDict>> {
+    this.emitEvent({
+      type: 'load',
+      group,
+      refDict: refDict as Dict<GeneralSyncableRef>,
+    });
+
     let container = new SyncableContainer(this.syncableAdapter);
+    // TODO (vilic): Replace with GeneralSyncableRef?
     let refs = getNonCreationRefsFromRefDict(refDict as Dict<SyncableRef>);
 
     let syncables = await this.loadSyncablesByRefs(group, context, refs, {
@@ -324,71 +370,97 @@ export class Server<TGenericParams extends IServerGenericParams> {
     packet: ChangePacket,
     context: TGenericParams['context'],
   ): Promise<ServerApplyChangeResult> {
+    this.emitEvent({
+      type: 'apply-change',
+      group,
+      packet,
+      context,
+    });
+
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
     let changePlant = this.changePlant;
 
     let result: ChangePlantProcessingResultWithClock | undefined;
 
-    await serverAdapter.queueChange(group, packet.id, async clock => {
-      let refs = getNonCreationRefsFromRefDict(packet.refs);
+    try {
+      await serverAdapter.queueChange(group, packet.id, async clock => {
+        let refs = getNonCreationRefsFromRefDict(packet.refs);
 
-      let syncables = await this.loadSyncablesByRefs(group, context, refs, {
-        changeType: packet.type,
-        loadRequisiteDependencyOnly: true,
+        let syncables = await this.loadSyncablesByRefs(group, context, refs, {
+          changeType: packet.type,
+          loadRequisiteDependencyOnly: true,
+        });
+
+        let relatedRefs = changePlant.resolve(packet, syncables);
+
+        let relatedSyncables = relatedRefs.length
+          ? await this.loadSyncablesByRefs(group, context, relatedRefs, {
+              changeType: packet.type,
+              loadRequisiteDependencyOnly: true,
+            })
+          : [];
+
+        let container = new SyncableContainer(syncableAdapter);
+
+        for (let syncable of [...syncables, ...relatedSyncables]) {
+          container.addSyncable(syncable);
+        }
+
+        result = changePlant.process(packet, context, container, clock);
+
+        let {
+          id,
+          updates: updateItems,
+          creations: createdSyncables,
+          removals: removedSyncableRefs,
+          notifications,
+        } = result;
+
+        let updatedSyncables = updateItems.map(item => item.snapshot);
+
+        await serverAdapter.saveSyncables(
+          group,
+          createdSyncables,
+          updatedSyncables,
+          removedSyncableRefs,
+        );
+
+        let broadcastResult: BroadcastChangeResult = {
+          group,
+          id,
+          clock,
+          creations: createdSyncables,
+          updates: updateItems,
+          removals: removedSyncableRefs,
+        };
+
+        await serverAdapter.broadcast(broadcastResult);
+
+        await serverAdapter.handleNotifications(group, notifications, id);
+      });
+    } catch (err) {
+      this.emitEvent({
+        type: 'apply-change-failed',
+        group,
+        packet,
+        context,
       });
 
-      let relatedRefs = changePlant.resolve(packet, syncables);
-
-      let relatedSyncables = relatedRefs.length
-        ? await this.loadSyncablesByRefs(group, context, relatedRefs, {
-            changeType: packet.type,
-            loadRequisiteDependencyOnly: true,
-          })
-        : [];
-
-      let container = new SyncableContainer(syncableAdapter);
-
-      for (let syncable of [...syncables, ...relatedSyncables]) {
-        container.addSyncable(syncable);
-      }
-
-      result = changePlant.process(packet, context, container, clock);
-
-      let {
-        id,
-        updates: updateItems,
-        creations: createdSyncables,
-        removals: removedSyncableRefs,
-        notifications,
-      } = result;
-
-      let updatedSyncables = updateItems.map(item => item.snapshot);
-
-      await serverAdapter.saveSyncables(
-        group,
-        createdSyncables,
-        updatedSyncables,
-        removedSyncableRefs,
-      );
-
-      let broadcastResult: BroadcastChangeResult = {
-        group,
-        id,
-        clock,
-        creations: createdSyncables,
-        updates: updateItems,
-        removals: removedSyncableRefs,
-      };
-
-      await serverAdapter.broadcast(broadcastResult);
-
-      await serverAdapter.handleNotifications(group, notifications, id);
-    });
+      throw err;
+    }
 
     if (!result) {
       throw new RPCError('CHANGE_NOT_APPLIED');
     }
+
+    this.emitEvent({
+      type: 'applied-change',
+      group,
+      packet,
+      context,
+      result,
+    });
 
     let {changes: subsequentChanges, ...rest} = result;
 
@@ -482,6 +554,10 @@ export class Server<TGenericParams extends IServerGenericParams> {
     };
   }
 
+  protected emitEvent(data: SyncableEvent): void {
+    this.emit('event', data);
+  }
+
   private onConnection = (connection: Connection): void => {
     this.addConnection(connection).catch(console.error);
   };
@@ -551,3 +627,75 @@ export class Server<TGenericParams extends IServerGenericParams> {
     }
   }
 }
+
+export interface LoadEvent {
+  type: 'load';
+  group: string;
+  refDict: Dict<GeneralSyncableRef>;
+}
+
+export interface LoadSyncablesByQueryEvent {
+  type: 'load-syncables-by-query';
+  group: string;
+  context: IContext;
+  resolvedViewQueryDict: object;
+}
+
+export interface LoadedSyncablesByQueryEvent {
+  type: 'loaded-syncables-by-query';
+  group: string;
+  context: IContext;
+  resolvedViewQueryDict: object;
+  directSyncablesCount: number;
+  dependentSyncablesCount: number;
+}
+
+export interface LoadSyncablesByRefsEvent {
+  type: 'load-syncables-by-refs';
+  group: string;
+  context: IContext;
+  refs: SyncableRef[];
+  changeType: string | undefined;
+}
+
+export interface LoadedSyncablesByRefsEvent {
+  type: 'loaded-syncables-by-refs';
+  group: string;
+  context: IContext;
+  refs: SyncableRef[];
+  changeType: string | undefined;
+  directSyncablesCount: number;
+  dependentSyncablesCount: number;
+}
+
+export interface ApplyChangeEvent {
+  type: 'apply-change';
+  group: string;
+  packet: ChangePacket;
+  context: IContext;
+}
+
+export interface AppliedChangeEvent {
+  type: 'applied-change';
+  group: string;
+  packet: ChangePacket;
+  context: IContext;
+  result: ChangePlantProcessingResultWithClock;
+}
+
+export interface ApplyChangeFailedEvent {
+  type: 'apply-change-failed';
+  group: string;
+  packet: ChangePacket;
+  context: IContext;
+}
+
+export type SyncableEvent =
+  | LoadEvent
+  | LoadSyncablesByQueryEvent
+  | LoadedSyncablesByQueryEvent
+  | LoadSyncablesByRefsEvent
+  | LoadedSyncablesByRefsEvent
+  | ApplyChangeEvent
+  | AppliedChangeEvent
+  | ApplyChangeFailedEvent;
