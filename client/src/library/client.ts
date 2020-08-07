@@ -32,7 +32,7 @@ import {
 } from '@syncable/core';
 import {Delta} from 'jsondiffpatch';
 import _ from 'lodash';
-import {action, observable, runInAction, when} from 'mobx';
+import {action, observable, runInAction, toJS, when} from 'mobx';
 import {Subject} from 'rxjs';
 import {Dict} from 'tslang';
 
@@ -454,7 +454,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     ).filter(([name, query]) => {
       let info = viewQueryInfoMap.get(name);
 
-      if (info && _.isEqual(info.query, query)) {
+      if (info && _.isEqual(toJS(info.query), query)) {
         delete (update as any)[name];
         return false;
       } else {
