@@ -210,6 +210,15 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       return this.getObjectAccessRights(context);
     }
 
+    let {_sanitizedFieldNames: sanitizedFieldNames} = this.syncable;
+
+    if (
+      sanitizedFieldNames &&
+      _.intersection(fieldNames, sanitizedFieldNames).length > 0
+    ) {
+      return [];
+    }
+
     let accessRightToAccessDescriptorDict = this.getAccessRightToAccessDescriptorDict(
       context,
       fieldNames,
