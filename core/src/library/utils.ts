@@ -17,6 +17,14 @@ export function getNonCreationRefsFromRefDict(
   );
 }
 
+export function getRefsFromRefDict(
+  refDict: Dict<SyncableRef | SyncableRef[]>,
+): SyncableRef[] {
+  return _.flatMap(Object.values(refDict), ref =>
+    Array.isArray(ref) ? ref : [ref],
+  );
+}
+
 export function deepFreeze<T extends unknown>(value: T): void {
   if (!_.isObjectLike(value)) {
     return;

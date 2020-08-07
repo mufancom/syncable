@@ -7,7 +7,6 @@ import {
   ChangePlantBlueprint,
   ChangePlantProcessingResultWithClock,
   GeneralChange,
-  GeneralSyncableRef,
   IChangePlantBlueprintGenericParams,
   IContext,
   IRPCDefinition,
@@ -25,6 +24,7 @@ import {
   ViewQueryUpdateObject,
   generateUniqueId,
   getNonCreationRefsFromRefDict,
+  getRefsFromRefDict,
   getSyncableKey,
 } from '@syncable/core';
 import _ from 'lodash';
@@ -120,8 +120,7 @@ export class Server<
     resolvedViewQueryDict: object,
     loadedKeySet: Set<string>,
   ): Promise<ISyncable[]> {
-    this.emitEvent({
-      type: 'load-syncables-by-query',
+    this.log('load-syncables-by-query', {
       group,
       context,
       resolvedViewQueryDict,
@@ -158,14 +157,15 @@ export class Server<
         requisiteOnly: false,
       },
     );
-    this.emitEvent({
-      type: 'loaded-syncables-by-query',
+
+    this.log('loaded-syncables-by-query', {
       group,
       context,
       resolvedViewQueryDict,
       directSyncablesCount: directSyncables.length,
       dependentSyncablesCount: dependentSyncables.length,
     });
+
     return [...directSyncables, ...dependentSyncables];
   }
 
@@ -180,8 +180,7 @@ export class Server<
       loadRequisiteDependencyOnly = false,
     }: LoadSyncablesByRefsOptions = {},
   ): Promise<ISyncable[]> {
-    this.emitEvent({
-      type: 'load-syncables-by-refs',
+    this.log('load-syncables-by-refs', {
       group,
       context,
       refs,
@@ -216,8 +215,7 @@ export class Server<
       },
     );
 
-    this.emitEvent({
-      type: 'loaded-syncables-by-refs',
+    this.log('loaded-syncables-by-refs', {
       group,
       context,
       refs,
@@ -297,15 +295,13 @@ export class Server<
       loadRequisiteDependencyOnly = true,
     }: LoadOptions = {},
   ): Promise<RefDictToSyncableObjectDict<TRefDict>> {
-    this.emitEvent({
-      type: 'load',
+    this.log('load', {
       group,
-      refDict: refDict as Dict<GeneralSyncableRef>,
+      refDict,
     });
 
     let container = new SyncableContainer(this.syncableAdapter);
-    // TODO (vilic): Replace with GeneralSyncableRef?
-    let refs = getNonCreationRefsFromRefDict(refDict as Dict<SyncableRef>);
+    let refs = getRefsFromRefDict(refDict as Dict<SyncableRef>);
 
     let syncables = await this.loadSyncablesByRefs(group, context, refs, {
       loadRequisiteDependencyOnly,
@@ -370,8 +366,7 @@ export class Server<
     packet: ChangePacket,
     context: TGenericParams['context'],
   ): Promise<ServerApplyChangeResult> {
-    this.emitEvent({
-      type: 'apply-change',
+    this.log('apply-change-packet', {
       group,
       packet,
       context,
@@ -439,23 +434,22 @@ export class Server<
 
         await serverAdapter.handleNotifications(group, notifications, id);
       });
-    } catch (err) {
-      this.emitEvent({
-        type: 'apply-change-failed',
+    } catch (error) {
+      this.log('apply-change-packet-failed', {
         group,
         packet,
         context,
+        error,
       });
 
-      throw err;
+      throw error;
     }
 
     if (!result) {
       throw new RPCError('CHANGE_NOT_APPLIED');
     }
 
-    this.emitEvent({
-      type: 'applied-change',
+    this.log('applied-change', {
       group,
       packet,
       context,
@@ -554,8 +548,11 @@ export class Server<
     };
   }
 
-  protected emitEvent(data: SyncableEvent): void {
-    this.emit('event', data);
+  protected log(event: string, data: object): void {
+    this.emit('log', {
+      event,
+      ...data,
+    });
   }
 
   private onConnection = (connection: Connection): void => {
@@ -627,75 +624,3 @@ export class Server<
     }
   }
 }
-
-export interface LoadEvent {
-  type: 'load';
-  group: string;
-  refDict: Dict<GeneralSyncableRef>;
-}
-
-export interface LoadSyncablesByQueryEvent {
-  type: 'load-syncables-by-query';
-  group: string;
-  context: IContext;
-  resolvedViewQueryDict: object;
-}
-
-export interface LoadedSyncablesByQueryEvent {
-  type: 'loaded-syncables-by-query';
-  group: string;
-  context: IContext;
-  resolvedViewQueryDict: object;
-  directSyncablesCount: number;
-  dependentSyncablesCount: number;
-}
-
-export interface LoadSyncablesByRefsEvent {
-  type: 'load-syncables-by-refs';
-  group: string;
-  context: IContext;
-  refs: SyncableRef[];
-  changeType: string | undefined;
-}
-
-export interface LoadedSyncablesByRefsEvent {
-  type: 'loaded-syncables-by-refs';
-  group: string;
-  context: IContext;
-  refs: SyncableRef[];
-  changeType: string | undefined;
-  directSyncablesCount: number;
-  dependentSyncablesCount: number;
-}
-
-export interface ApplyChangeEvent {
-  type: 'apply-change';
-  group: string;
-  packet: ChangePacket;
-  context: IContext;
-}
-
-export interface AppliedChangeEvent {
-  type: 'applied-change';
-  group: string;
-  packet: ChangePacket;
-  context: IContext;
-  result: ChangePlantProcessingResultWithClock;
-}
-
-export interface ApplyChangeFailedEvent {
-  type: 'apply-change-failed';
-  group: string;
-  packet: ChangePacket;
-  context: IContext;
-}
-
-export type SyncableEvent =
-  | LoadEvent
-  | LoadSyncablesByQueryEvent
-  | LoadedSyncablesByQueryEvent
-  | LoadSyncablesByRefsEvent
-  | LoadedSyncablesByRefsEvent
-  | ApplyChangeEvent
-  | AppliedChangeEvent
-  | ApplyChangeFailedEvent;
