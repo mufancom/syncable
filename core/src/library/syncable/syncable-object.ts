@@ -210,27 +210,26 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
       return this.getObjectAccessRights(context);
     }
 
+    let {_sanitizedFieldNames: sanitizedFieldNames} = this.syncable;
+
+    if (
+      sanitizedFieldNames &&
+      _.intersection(fieldNames, sanitizedFieldNames).length > 0
+    ) {
+      return [];
+    }
+
     let accessRightToAccessDescriptorDict = this.getAccessRightToAccessDescriptorDict(
       context,
       fieldNames,
     );
 
-    let accessRights = ACCESS_RIGHTS.filter(right =>
+    return ACCESS_RIGHTS.filter(right =>
       testAccessDescriptor(
         accessRightToAccessDescriptorDict[right],
         fieldNames,
       ),
     );
-
-    if (
-      context.environment === 'client' &&
-      this.syncable._sanitizedFieldNames &&
-      !!_.intersection(fieldNames, this.syncable._sanitizedFieldNames).length
-    ) {
-      accessRights.filter(right => right !== 'read');
-    }
-
-    return accessRights;
   }
 
   testAccessRights(

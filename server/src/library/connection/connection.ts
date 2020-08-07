@@ -393,6 +393,7 @@ export class Connection<
             updatedDelta[fieldName] = [0, 0, 0];
           }
 
+          // Add field
           updatedDelta['_sanitizedFieldNames'] = [sanitizedFieldNames];
 
           if (Object.keys(updatedDelta).length) {
