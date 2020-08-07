@@ -270,7 +270,7 @@ export class Connection<
       connectionAdapter.close();
     }
 
-    let relevantViewQueryNames: string[] = [];
+    let relevantViewQueryNames: string[];
 
     let nameToViewQueryInfoMap = this.nameToViewQueryInfoMap;
 
@@ -588,7 +588,7 @@ export class Connection<
         contextRef,
         this.connectionAdapter.viewQueryDict as ViewQueryUpdateObject,
       );
-    } else {
+    } else if (syncables.length || source) {
       await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
     }
   }
