@@ -89,20 +89,23 @@ export type ChangePlantProcessorIsBeingRemovedTest = (
   object: ISyncableObject,
 ) => boolean;
 
+export type ChangePlantProcessorGrantOperation = <
+  TSyncableObject extends ISyncableObject
+>(
+  object: TSyncableObject,
+  fieldNames: Extract<keyof TSyncableObject['syncable'], string>[],
+  rights: AccessRight[],
+) => void;
+
 export type ChangePlantProcessorAbortOperation = () => void;
 
 export type ChangePlantProcessorChangeOperation<TChange = GeneralChange> = (
   change: TChange,
 ) => void;
 
-declare function __changePlantProcessorPrepareOperation<
-  T extends ISyncableObject
->(object: T): T['syncable'];
-
-// TODO (vilic):
-// Directly writing `type ... = <T extends ISyncableObject>(...): ...` would
-// lead to intellisense errors (TypeScript 3.2.4).
-export type ChangePlantProcessorPrepareOperation = typeof __changePlantProcessorPrepareOperation;
+export type ChangePlantProcessorPrepareOperation = <T extends ISyncableObject>(
+  object: T,
+) => T['syncable'];
 
 export type ChangePlantProcessorNotifyOperation<TNotification = unknown> = (
   notification: TNotification,
@@ -120,6 +123,7 @@ export interface ChangePlantProcessorExtra<
   create: ChangePlantProcessorCreateOperation;
   remove: ChangePlantProcessorRemoveOperation;
   isBeingRemoved: ChangePlantProcessorIsBeingRemovedTest;
+  grant: ChangePlantProcessorGrantOperation;
   prepare: ChangePlantProcessorPrepareOperation;
   abort: ChangePlantProcessorAbortOperation;
   change: ChangePlantProcessorChangeOperation<TGenericParams['change']>;
@@ -279,6 +283,11 @@ export class ChangePlant {
       ISyncable
     >();
 
+    let syncableObjectToFieldNameToGrantedRightsMapMap = new Map<
+      ISyncableObject,
+      Map<string, AccessRight[]>
+    >();
+
     interface PreparedBundle {
       latest: ISyncable;
       clone: ISyncable;
@@ -313,6 +322,31 @@ export class ChangePlant {
 
     let isBeingRemoved: ChangePlantProcessorIsBeingRemovedTest = object => {
       return removalObjectSet.has(object);
+    };
+
+    let grant: ChangePlantProcessorGrantOperation = (
+      object,
+      fieldNames,
+      rights,
+    ) => {
+      let fieldNameToGrantedRightsMap = syncableObjectToFieldNameToGrantedRightsMapMap.get(
+        object,
+      );
+
+      if (!fieldNameToGrantedRightsMap) {
+        fieldNameToGrantedRightsMap = new Map();
+        syncableObjectToFieldNameToGrantedRightsMapMap.set(
+          object,
+          fieldNameToGrantedRightsMap,
+        );
+      }
+
+      for (let fieldName of fieldNames) {
+        fieldNameToGrantedRightsMap.set(
+          fieldName,
+          _.union(fieldNameToGrantedRightsMap.get(fieldName), rights),
+        );
+      }
     };
 
     let prepare: ChangePlantProcessorPrepareOperation = object => {
@@ -395,6 +429,7 @@ export class ChangePlant {
       create,
       remove,
       isBeingRemoved,
+      grant,
       prepare,
       notify,
       abort,
@@ -463,11 +498,38 @@ export class ChangePlant {
         }
       }
 
-      if (requiredRightSet.size) {
+      let changedFieldNames = Array.from(changedFieldNameSet);
+
+      let fieldNameToGrantedRightsMap = syncableObjectToFieldNameToGrantedRightsMapMap.get(
+        latestSyncableObject,
+      );
+
+      if (fieldNameToGrantedRightsMap) {
+        for (let requiredRight of requiredRightSet) {
+          let fieldNames = changedFieldNames.filter(fieldName => {
+            let grantedRights = fieldNameToGrantedRightsMap!.get(fieldName);
+
+            if (grantedRights) {
+              // If access right is granted to this field, return false to ignore this field.
+              return !grantedRights.includes(requiredRight);
+            } else {
+              return true;
+            }
+          });
+
+          if (fieldNames.length) {
+            latestSyncableObject.validateAccessRights(
+              [requiredRight],
+              context,
+              fieldNames,
+            );
+          }
+        }
+      } else {
         latestSyncableObject.validateAccessRights(
           Array.from(requiredRightSet),
           context,
-          Array.from(changedFieldNameSet),
+          changedFieldNames,
         );
       }
 
