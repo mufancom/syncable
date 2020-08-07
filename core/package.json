@@ -38,7 +38,7 @@
     "jsondiffpatch": "^0.3.11",
     "lodash": "^4.17.14",
     "replace-object": "^0.2.1",
-    "tslang": "^0.1.17",
+    "tslang": "^0.1.22",
     "uuid": "^3.3.2",
     "villa": "^0.3.1"
   },

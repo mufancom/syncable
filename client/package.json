@@ -37,7 +37,7 @@
   "dependencies": {
     "jsondiffpatch": "^0.3.11",
     "lodash": "^4.17.14",
-    "tslang": "^0.1.17",
+    "tslang": "^0.1.22",
     "villa": "^0.3.1"
   },
   "devDependencies": {
