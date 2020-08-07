@@ -6791,7 +6791,7 @@ ts-jest@^24.0.0:
     semver "^5.5"
     yargs-parser "10.x"
 
-tslang@^0.1.15, tslang@^0.1.17, tslang@^0.1.22:
+tslang@^0.1.15, tslang@^0.1.22:
   version "0.1.22"
   resolved "https://registry.yarnpkg.com/tslang/-/tslang-0.1.22.tgz#df8260690037043e6a8a7ad8e55d9bf0e0767565"
   integrity sha512-7wFN8784UBKxpmpN1Ve+dQMl+2N7CnxLIZMPlUnEk8TqjY7o2vY5llcuHNkfeVPd4LnbMM73myd5t2wtiEhjZg==
