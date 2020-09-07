@@ -396,7 +396,9 @@ export class ChangePlant {
         clonedSyncableOrCreationRefDict[name] = prepare(object);
         syncableObjectDict[name] = object;
       } else if (Array.isArray(ref)) {
-        let objects = ref.map(ref => container.requireSyncableObject(ref));
+        let objects = ref
+          .filter(ref => 'id' in ref)
+          .map(ref => container.requireSyncableObject(ref));
 
         clonedSyncableOrCreationRefDict[name] = objects.map(object =>
           prepare(object),
