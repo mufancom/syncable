@@ -9,8 +9,5 @@
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
   "typescript.tsdk": "node_modules/typescript/lib",
-  "cSpell.words": [
-    "syncable",
-    "syncables"
-  ]
+  "cSpell.words": ["syncable", "syncables"]
 }
