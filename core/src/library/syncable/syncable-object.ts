@@ -61,7 +61,7 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
   );
   constructor(
     refOrSyncable: ISyncable | SyncableRef,
-    private _container?: SyncableContainer,
+    readonly container?: SyncableContainer,
   ) {
     if ('_type' in refOrSyncable) {
       this._syncable = refOrSyncable;
@@ -76,7 +76,9 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     if (this._syncable) {
       return this._syncable as T;
     } else {
-      let syncable = this._container!.getSyncable(this._ref) as T | undefined;
+      let syncable = this.requiredContainer.getSyncable(this._ref) as
+        | T
+        | undefined;
 
       if (!syncable) {
         console.warn(
@@ -117,8 +119,8 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return new Date(this.syncable._updatedAt);
   }
 
-  private get container(): SyncableContainer {
-    let container = this._container;
+  private get requiredContainer(): SyncableContainer {
+    let container = this.container;
 
     if (!container) {
       throw new Error('The operation requires `manager` to present');
@@ -143,12 +145,16 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
   require<T extends ISyncableObject>(ref: SyncableRef<T>): T;
   require(ref: SyncableRef): ISyncableObject {
-    return this.container.requireSyncableObject(ref);
+    return this.requiredContainer.requireSyncableObject(ref);
   }
 
   get<T extends ISyncableObject>(ref: SyncableRef<T>): T | undefined;
   get(ref: SyncableRef): ISyncableObject | undefined {
-    return this.container.getSyncableObject(ref);
+    return this.requiredContainer.getSyncableObject(ref);
+  }
+
+  getSyncableOverrides(): Partial<T> {
+    return {};
   }
 
   getSanitizedFieldNames(context: IContext): string[] {

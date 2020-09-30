@@ -12,6 +12,7 @@ import {
   SyncableContainer,
   SyncableRef,
   getSyncableKey,
+  getSyncableRef,
 } from '../syncable';
 import {NumericTimestamp} from '../types';
 
@@ -453,6 +454,23 @@ export class ChangePlant {
       };
     }
 
+    let updatedContainer = new SyncableContainer(container.adapter);
+
+    for (let object of container.getSyncableObjects()) {
+      if (removalObjectSet.has(object)) {
+        continue;
+      }
+
+      let syncable =
+        preparedSyncableObjectToSyncableMap.get(object) ?? object.syncable;
+
+      updatedContainer.addSyncable(syncable);
+    }
+
+    for (let createdSyncable of creations) {
+      updatedContainer.addSyncable(createdSyncable);
+    }
+
     for (let {
       latest: latestSyncable,
       clone: updatedSyncableClone,
@@ -467,6 +485,14 @@ export class ChangePlant {
       }
 
       updatedSyncableClone._updatedAt = now;
+
+      let syncableOverrides = updatedContainer
+        .requireSyncableObject(latestSyncableObject.ref)
+        .getSyncableOverrides();
+
+      Object.assign(updatedSyncableClone, syncableOverrides);
+
+      let overriddenFieldNames = Object.keys(syncableOverrides);
 
       let delta = diff(latestSyncable, updatedSyncableClone) || {};
 
@@ -500,7 +526,10 @@ export class ChangePlant {
         }
       }
 
-      let changedFieldNames = Array.from(changedFieldNameSet);
+      let nonOverriddenChangedFieldNames = _.difference(
+        Array.from(changedFieldNameSet),
+        overriddenFieldNames,
+      );
 
       let fieldNameToGrantedRightsMap = syncableObjectToFieldNameToGrantedRightsMapMap.get(
         latestSyncableObject,
@@ -508,7 +537,7 @@ export class ChangePlant {
 
       if (fieldNameToGrantedRightsMap) {
         for (let requiredRight of requiredRightSet) {
-          let fieldNames = changedFieldNames.filter(fieldName => {
+          let fieldNames = nonOverriddenChangedFieldNames.filter(fieldName => {
             let grantedRights = fieldNameToGrantedRightsMap!.get(fieldName);
 
             if (grantedRights) {
@@ -531,11 +560,19 @@ export class ChangePlant {
         latestSyncableObject.validateAccessRights(
           Array.from(requiredRightSet),
           context,
-          changedFieldNames,
+          nonOverriddenChangedFieldNames,
         );
       }
 
       updates.push({delta, snapshot: updatedSyncableClone});
+    }
+
+    for (let createdSyncable of creations) {
+      let syncableOverrides = updatedContainer
+        .requireSyncableObject(getSyncableRef(createdSyncable))
+        .getSyncableOverrides();
+
+      Object.assign(createdSyncable, syncableOverrides);
     }
 
     return {
