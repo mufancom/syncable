@@ -172,7 +172,7 @@ export class Server<
   /** @internal */
   async loadSyncablesByRefs(
     group: string,
-    context: IContext,
+    context: IContext | undefined,
     refs: SyncableRef[],
     {
       loadedKeySet,
@@ -198,11 +198,13 @@ export class Server<
 
     let directSyncables = await serverAdapter.loadSyncablesByRefs(group, refs);
 
-    directSyncables = filterReadableSyncables(
-      context,
-      syncableAdapter,
-      directSyncables,
-    );
+    if (context) {
+      directSyncables = filterReadableSyncables(
+        context,
+        syncableAdapter,
+        directSyncables,
+      );
+    }
 
     let dependentSyncables = await this.loadDependentSyncables(
       group,
@@ -230,7 +232,7 @@ export class Server<
   /** @internal */
   async loadDependentSyncables(
     group: string,
-    context: IContext,
+    context: IContext | undefined,
     syncables: ISyncable[],
     {loadedKeySet, changeType, requisiteOnly}: LoadDependentSyncablesOptions,
   ): Promise<ISyncable[]> {
@@ -269,11 +271,13 @@ export class Server<
         refs,
       );
 
-      dependentSyncables = filterReadableSyncables(
-        context,
-        syncableAdapter,
-        dependentSyncables,
-      );
+      if (context) {
+        dependentSyncables = filterReadableSyncables(
+          context,
+          syncableAdapter,
+          dependentSyncables,
+        );
+      }
 
       for (let syncable of dependentSyncables) {
         loadedKeySet.add(getSyncableKey(syncable));
@@ -382,7 +386,7 @@ export class Server<
       await serverAdapter.queueChange(group, packet.id, async clock => {
         let refs = getNonCreationRefsFromRefDict(packet.refs);
 
-        let syncables = await this.loadSyncablesByRefs(group, context, refs, {
+        let syncables = await this.loadSyncablesByRefs(group, undefined, refs, {
           changeType: packet.type,
           loadRequisiteDependencyOnly: true,
         });
@@ -390,7 +394,7 @@ export class Server<
         let relatedRefs = changePlant.resolve(packet, syncables);
 
         let relatedSyncables = relatedRefs.length
-          ? await this.loadSyncablesByRefs(group, context, relatedRefs, {
+          ? await this.loadSyncablesByRefs(group, undefined, relatedRefs, {
               changeType: packet.type,
               loadRequisiteDependencyOnly: true,
             })
