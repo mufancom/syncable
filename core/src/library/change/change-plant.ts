@@ -488,7 +488,7 @@ export class ChangePlant {
 
       let syncableOverrides = updatedContainer
         .requireSyncableObject(latestSyncableObject.ref)
-        .getSyncableOverrides();
+        .getSanitizedSyncableOverrides(context);
 
       Object.assign(updatedSyncableClone, syncableOverrides);
 
@@ -570,7 +570,7 @@ export class ChangePlant {
     for (let createdSyncable of creations) {
       let syncableOverrides = updatedContainer
         .requireSyncableObject(getSyncableRef(createdSyncable))
-        .getSyncableOverrides();
+        .getSanitizedSyncableOverrides(context);
 
       Object.assign(createdSyncable, syncableOverrides);
     }
