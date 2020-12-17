@@ -157,13 +157,6 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     return {};
   }
 
-  getSanitizedSyncableOverrides(context: IContext): Partial<T> {
-    return _.pick(
-      this.getSyncableOverrides(),
-      this.getSanitizedFieldNames(context),
-    );
-  }
-
   getSanitizedFieldNames(context: IContext): string[] {
     let whitelistedFieldNameSet = new Set([
       ...this.getSecuringFieldNames(),
