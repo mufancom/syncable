@@ -44,12 +44,14 @@ export interface LoadSyncablesByRefsOptions {
   loadedKeySet?: Set<string>;
   changeType?: string;
   loadRequisiteDependencyOnly?: boolean;
+  skipReadableFilter?: boolean;
 }
 
 export interface LoadDependentSyncablesOptions {
   loadedKeySet?: Set<string>;
   changeType?: string;
   requisiteOnly?: boolean;
+  skipReadableFilter?: boolean;
 }
 
 export interface IServerGenericParams
@@ -172,12 +174,13 @@ export class Server<
   /** @internal */
   async loadSyncablesByRefs(
     group: string,
-    context: IContext | undefined,
+    context: IContext,
     refs: SyncableRef[],
     {
       loadedKeySet,
       changeType,
       loadRequisiteDependencyOnly = false,
+      skipReadableFilter = false,
     }: LoadSyncablesByRefsOptions = {},
   ): Promise<ISyncable[]> {
     this.log('load-syncables-by-refs', {
@@ -198,7 +201,7 @@ export class Server<
 
     let directSyncables = await serverAdapter.loadSyncablesByRefs(group, refs);
 
-    if (context) {
+    if (!skipReadableFilter) {
       directSyncables = filterReadableSyncables(
         context,
         syncableAdapter,
@@ -232,7 +235,7 @@ export class Server<
   /** @internal */
   async loadDependentSyncables(
     group: string,
-    context: IContext | undefined,
+    context: IContext,
     syncables: ISyncable[],
     {loadedKeySet, changeType, requisiteOnly}: LoadDependentSyncablesOptions,
   ): Promise<ISyncable[]> {
@@ -386,17 +389,19 @@ export class Server<
       await serverAdapter.queueChange(group, packet.id, async clock => {
         let refs = getNonCreationRefsFromRefDict(packet.refs);
 
-        let syncables = await this.loadSyncablesByRefs(group, undefined, refs, {
+        let syncables = await this.loadSyncablesByRefs(group, context, refs, {
           changeType: packet.type,
           loadRequisiteDependencyOnly: true,
+          skipReadableFilter: true,
         });
 
         let relatedRefs = changePlant.resolve(packet, syncables);
 
         let relatedSyncables = relatedRefs.length
-          ? await this.loadSyncablesByRefs(group, undefined, relatedRefs, {
+          ? await this.loadSyncablesByRefs(group, context, relatedRefs, {
               changeType: packet.type,
               loadRequisiteDependencyOnly: true,
+              skipReadableFilter: true,
             })
           : [];
 
