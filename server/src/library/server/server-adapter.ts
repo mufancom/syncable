@@ -20,6 +20,7 @@ export interface BroadcastChangeResult {
   creations: ISyncable[];
   updates: ChangePlantProcessingResultUpdateItem[];
   removals: SyncableRef[];
+  relevantViewQueryNames: string[];
 }
 
 export interface IServerAdapter<

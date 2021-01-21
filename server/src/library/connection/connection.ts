@@ -240,6 +240,7 @@ export class Connection<
     creations: createdSyncables,
     removals: removedSyncableRefs,
     updates: updateItems,
+    relevantViewQueryNames: relevantViewQueryNamesFromChange,
   }: BroadcastChangeResult): Promise<void> {
     let context = this.context;
     let container = this.container;
@@ -309,6 +310,11 @@ export class Connection<
         }),
       );
     }
+
+    relevantViewQueryNames = _.union(
+      relevantViewQueryNames,
+      relevantViewQueryNamesFromChange,
+    );
 
     let relevantViewQueryUpdate: Dict<IViewQuery> | undefined;
 
