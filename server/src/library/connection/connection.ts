@@ -285,15 +285,17 @@ export class Connection<
           query: {refs: refDict},
         },
       ] of nameToViewQueryInfoMap) {
-        for (let ref of Object.values(refDict)) {
-          let key = getSyncableKey(ref);
+        for (let refs of Object.values(refDict)) {
+          for (let ref of _.castArray(refs)) {
+            let key = getSyncableKey(ref);
 
-          let nameSet = keyToViewQueryNameSet.get(key);
+            let nameSet = keyToViewQueryNameSet.get(key);
 
-          if (nameSet) {
-            nameSet.add(name);
-          } else {
-            keyToViewQueryNameSet.set(key, new Set([name]));
+            if (nameSet) {
+              nameSet.add(name);
+            } else {
+              keyToViewQueryNameSet.set(key, new Set([name]));
+            }
           }
         }
       }
