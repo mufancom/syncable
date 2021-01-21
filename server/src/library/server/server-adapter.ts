@@ -40,6 +40,12 @@ export interface IServerAdapter<
     processor: QueuedChangeProcessor,
   ): Promise<void>;
 
+  preloadQueryMetadata(
+    group: string,
+    context: TGenericParams['context'],
+    viewQueryName: string,
+  ): Promise<any>;
+
   loadSyncablesByQuery(
     group: string,
     context: TGenericParams['context'],

@@ -264,6 +264,7 @@ export class Client<TGenericParams extends IClientGenericParams>
           syncables: [],
           removals: [],
           updates: [],
+          queryMetadata: {},
         },
         {
           id,
@@ -342,9 +343,13 @@ export class Client<TGenericParams extends IClientGenericParams>
   @RPCMethod()
   @action
   sync(
-    {syncables, removals, updates}: SyncData,
+    {syncables, removals, updates, queryMetadata}: SyncData,
     source?: SyncUpdateSource,
   ): void {
+    for (let [viewQueryName, metadata] of Object.entries(queryMetadata)) {
+      this.context.setQueryMetadata(viewQueryName, metadata);
+    }
+
     let container = this.container;
 
     let pendingChangeInfos = this.pendingChangeInfos;

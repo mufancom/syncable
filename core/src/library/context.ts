@@ -14,12 +14,18 @@ export type ContextType = 'server' | 'user';
 
 export type ContextEnvironment = 'server' | 'client';
 
-abstract class Context<TSyncableObject extends ISyncableObject> {
+abstract class Context<
+  TSyncableObject extends ISyncableObject,
+  TViewQueryMetadata extends object
+> {
   @observable
   ref!: SyncableRef<TSyncableObject>;
 
   @observable
   object!: TSyncableObject;
+
+  @observable
+  queryMetadata: TViewQueryMetadata = {} as TViewQueryMetadata;
 
   constructor(
     readonly type: ContextType,
@@ -41,10 +47,17 @@ abstract class Context<TSyncableObject extends ISyncableObject> {
     this.ref = object.ref;
     this.object = object;
   }
+
+  setQueryMetadata(viewQueryName: string, queryMetadata: any): void {
+    this.queryMetadata[
+      viewQueryName as keyof TViewQueryMetadata
+    ] = queryMetadata;
+  }
 }
 
 export interface IContext<
-  TSyncableObject extends ISyncableObject = ISyncableObject
-> extends Context<TSyncableObject> {}
+  TSyncableObject extends ISyncableObject = ISyncableObject,
+  TViewQueryMetadata extends object = object
+> extends Context<TSyncableObject, TViewQueryMetadata> {}
 
 export const AbstractContext = Context;

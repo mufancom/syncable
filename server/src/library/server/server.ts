@@ -116,6 +116,28 @@ export class Server<
   }
 
   /** @internal */
+  async preloadQueryMetadata(
+    group: string,
+    context: IContext,
+    viewQueryName: string,
+  ): Promise<void> {
+    let queryMetadata = await this.serverAdapter.preloadQueryMetadata(
+      group,
+      context,
+      viewQueryName,
+    );
+
+    this.log('preloaded-query-metadata', {
+      group,
+      context,
+      viewQueryName,
+      queryMetadata,
+    });
+
+    context.setQueryMetadata(viewQueryName, queryMetadata);
+  }
+
+  /** @internal */
   async loadSyncablesByQuery(
     group: string,
     context: IContext,
@@ -517,6 +539,8 @@ export class Server<
 
     for (let [name, query] of queryEntries) {
       if (query) {
+        await this.preloadQueryMetadata(group, context, name);
+
         let {refs: refDict, options} = query;
 
         let syncableDict = container.buildSyncableDict(refDict);

@@ -469,10 +469,13 @@ export class Connection<
 
     syncables.push(...sanitizedDependentSyncables);
 
+    let queryMetadata = context.queryMetadata;
+
     let data: SyncData = {
       syncables,
       removals,
       updates,
+      queryMetadata,
     };
 
     if (
@@ -546,6 +549,7 @@ export class Connection<
       }
     }
 
+    let prevQueryMetadata = _.cloneDeep(context.queryMetadata);
     let {
       syncables,
       nameToViewQueryMapToAdd,
@@ -577,10 +581,13 @@ export class Connection<
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
+    let queryMetadata = context.queryMetadata;
+
     let data: SyncData = {
       syncables,
       removals: [],
       updates: [],
+      queryMetadata,
     };
 
     if (toInitialize) {
@@ -590,7 +597,11 @@ export class Connection<
         contextRef,
         this.connectionAdapter.viewQueryDict as ViewQueryUpdateObject,
       );
-    } else if (syncables.length || source) {
+    } else if (
+      syncables.length ||
+      source ||
+      !_.isEqual(prevQueryMetadata, queryMetadata)
+    ) {
       await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
     }
   }
@@ -598,10 +609,11 @@ export class Connection<
   private async request(refs: SyncableRef[]): Promise<void> {
     let loadedKeySet = this.loadedKeySet;
     let sanitizedFieldNamesMap = this.sanitizedFieldNamesMap;
+    let context = this.context;
 
     let syncables = await this.server.loadSyncablesByRefs(
       this.group,
-      this.context,
+      context,
       refs,
       {
         loadedKeySet,
@@ -609,7 +621,7 @@ export class Connection<
     );
 
     syncables = filterReadableSyncables(
-      this.context,
+      context,
       this.syncableAdapter,
       syncables,
       true,
@@ -625,10 +637,13 @@ export class Connection<
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
+    let queryMetadata = context.queryMetadata;
+
     await (this as RPCPeer<ClientRPCDefinition>).call('sync', {
       syncables,
       removals: [],
       updates: [],
+      queryMetadata,
     });
   }
 }
