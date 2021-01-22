@@ -73,7 +73,6 @@ export interface ChangePlantProcessingResult {
   removals: SyncableRef[];
   notifications: unknown[];
   changes: GeneralChange[];
-  relevantViewQueryNames: string[];
 }
 
 export interface ChangePlantProcessingResultWithClock
@@ -105,10 +104,6 @@ export type ChangePlantProcessorChangeOperation<TChange = GeneralChange> = (
   change: TChange,
 ) => void;
 
-export type ChangePlantProcessorUpdateViewQueryOperation = (
-  viewQueryNames: string | string[],
-) => void;
-
 export type ChangePlantProcessorPrepareOperation = <T extends ISyncableObject>(
   object: T,
 ) => T['syncable'];
@@ -134,7 +129,6 @@ export interface ChangePlantProcessorExtra<
   abort: ChangePlantProcessorAbortOperation;
   change: ChangePlantProcessorChangeOperation<TGenericParams['change']>;
   notify: ChangePlantProcessorNotifyOperation<TGenericParams['notification']>;
-  updateViewQuery: ChangePlantProcessorUpdateViewQueryOperation;
   createdAt: NumericTimestamp;
 }
 
@@ -309,7 +303,6 @@ export class ChangePlant {
     let updates: ChangePlantProcessingResultUpdateItem[] = [];
     let notifications: unknown[] = [];
     let changes: GeneralChange[] = [];
-    let relevantViewQueryNames: string[] = [];
 
     let create: ChangePlantProcessorCreateOperation = creation => {
       if (clock !== undefined) {
@@ -433,10 +426,6 @@ export class ChangePlant {
       changes.push(subsequentChange);
     };
 
-    let updateViewQuery: ChangePlantProcessorUpdateViewQueryOperation = viewQueryNames => {
-      relevantViewQueryNames.push(..._.castArray(viewQueryNames));
-    };
-
     processor(clonedSyncableOrCreationRefDict, syncableObjectDict, {
       context,
       container,
@@ -448,7 +437,6 @@ export class ChangePlant {
       notify,
       abort,
       change,
-      updateViewQuery,
       type,
       options,
       refs: refDict,
@@ -463,7 +451,6 @@ export class ChangePlant {
         removals: [],
         notifications,
         changes,
-        relevantViewQueryNames: [],
       };
     }
 
@@ -596,7 +583,6 @@ export class ChangePlant {
       removals: removals || [],
       notifications,
       changes,
-      relevantViewQueryNames,
     };
   }
 }

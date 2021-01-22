@@ -116,6 +116,13 @@ export class Server<
   }
 
   /** @internal */
+  async resolveQueryToContextDependencyRefsDict(
+    context: IContext,
+  ): Promise<Dict<SyncableRef[]>> {
+    return this.serverAdapter.resolveQueryToContextDependencyRefsDict(context);
+  }
+
+  /** @internal */
   async preloadQueryMetadata(
     group: string,
     context: IContext,
@@ -441,7 +448,6 @@ export class Server<
           creations: createdSyncables,
           removals: removedSyncableRefs,
           notifications,
-          relevantViewQueryNames,
         } = result;
 
         let updatedSyncables = updateItems.map(item => item.snapshot);
@@ -460,7 +466,6 @@ export class Server<
           creations: createdSyncables,
           updates: updateItems,
           removals: removedSyncableRefs,
-          relevantViewQueryNames,
         };
 
         await serverAdapter.broadcast(broadcastResult);

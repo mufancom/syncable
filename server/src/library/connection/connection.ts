@@ -82,6 +82,8 @@ export class Connection<
 
   private nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
 
+  private nameToContextDependencyRefsMap = new Map<string, SyncableRef[]>();
+
   private loadedKeySet = new Set<string>();
   private sanitizedFieldNamesMap = new Map<string, string[]>();
 
@@ -240,7 +242,6 @@ export class Connection<
     creations: createdSyncables,
     removals: removedSyncableRefs,
     updates: updateItems,
-    relevantViewQueryNames: relevantViewQueryNamesFromChange,
   }: BroadcastChangeResult): Promise<void> {
     let context = this.context;
     let container = this.container;
@@ -276,7 +277,27 @@ export class Connection<
     let nameToViewQueryInfoMap = this.nameToViewQueryInfoMap;
 
     if (contextObjectChanged) {
-      relevantViewQueryNames = Array.from(nameToViewQueryInfoMap.keys());
+      let contextDependencyRefsEntries = Object.entries(
+        await this.server.resolveQueryToContextDependencyRefsDict(context),
+      );
+
+      relevantViewQueryNames = _.union(
+        Array.from(nameToViewQueryInfoMap.keys()),
+        _.compact(
+          contextDependencyRefsEntries.map(([viewQueryName, refs]) =>
+            _.isEqual(
+              this.nameToContextDependencyRefsMap.get(viewQueryName),
+              refs,
+            )
+              ? undefined
+              : viewQueryName,
+          ),
+        ),
+      );
+
+      this.nameToContextDependencyRefsMap = new Map(
+        contextDependencyRefsEntries,
+      );
     } else {
       let keyToViewQueryNameSet = new Map<string, Set<string>>();
 
@@ -286,17 +307,18 @@ export class Connection<
           query: {refs: refDict},
         },
       ] of nameToViewQueryInfoMap) {
-        for (let refs of Object.values(refDict)) {
-          for (let ref of _.castArray(refs)) {
-            let key = getSyncableKey(ref);
+        for (let ref of _.union(
+          Object.values(refDict).flat(),
+          this.nameToContextDependencyRefsMap.get(name) || [],
+        )) {
+          let key = getSyncableKey(ref);
 
-            let nameSet = keyToViewQueryNameSet.get(key);
+          let nameSet = keyToViewQueryNameSet.get(key);
 
-            if (nameSet) {
-              nameSet.add(name);
-            } else {
-              keyToViewQueryNameSet.set(key, new Set([name]));
-            }
+          if (nameSet) {
+            nameSet.add(name);
+          } else {
+            keyToViewQueryNameSet.set(key, new Set([name]));
           }
         }
       }
@@ -310,11 +332,6 @@ export class Connection<
         }),
       );
     }
-
-    relevantViewQueryNames = _.union(
-      relevantViewQueryNames,
-      relevantViewQueryNamesFromChange,
-    );
 
     let relevantViewQueryUpdate: Dict<IViewQuery> | undefined;
 
@@ -553,6 +570,14 @@ export class Connection<
       if (context.disabled) {
         throw new RPCError('CONTEXT_DISABLED');
       }
+
+      let contextDependencyRefsDict = await this.server.resolveQueryToContextDependencyRefsDict(
+        context,
+      );
+
+      this.nameToContextDependencyRefsMap = new Map(
+        Object.entries(contextDependencyRefsDict),
+      );
     }
 
     let prevQueryMetadata = _.cloneDeep(context.queryMetadata);
