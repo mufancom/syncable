@@ -492,7 +492,7 @@ export class Connection<
 
     syncables.push(...sanitizedDependentSyncables);
 
-    let queryMetadata = context.queryMetadata;
+    let queryMetadata = context.queryMetadataDict;
 
     let data: SyncData = {
       syncables,
@@ -580,7 +580,8 @@ export class Connection<
       );
     }
 
-    let prevQueryMetadata = _.cloneDeep(context.queryMetadata);
+    let previousQueryMetadataDict = _.cloneDeep(context.queryMetadataDict);
+
     let {
       syncables,
       nameToViewQueryMapToAdd,
@@ -612,13 +613,13 @@ export class Connection<
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
-    let queryMetadata = context.queryMetadata;
+    let queryMetadataDict = context.queryMetadataDict;
 
     let data: SyncData = {
       syncables,
       removals: [],
       updates: [],
-      queryMetadata,
+      queryMetadata: queryMetadataDict,
     };
 
     if (toInitialize) {
@@ -631,7 +632,7 @@ export class Connection<
     } else if (
       syncables.length ||
       source ||
-      !_.isEqual(prevQueryMetadata, queryMetadata)
+      !_.isEqual(previousQueryMetadataDict, queryMetadataDict)
     ) {
       await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
     }
@@ -668,13 +669,11 @@ export class Connection<
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
-    let queryMetadata = context.queryMetadata;
-
     await (this as RPCPeer<ClientRPCDefinition>).call('sync', {
       syncables,
       removals: [],
       updates: [],
-      queryMetadata,
+      queryMetadata: context.queryMetadataDict,
     });
   }
 }

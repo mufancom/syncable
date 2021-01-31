@@ -45,11 +45,13 @@ export interface IServerAdapter<
     context: TGenericParams['context'],
   ): Promise<Dict<SyncableRef[]>>;
 
-  preloadQueryMetadata(
+  preloadQueryMetadata<
+    TViewQueryName extends keyof TGenericParams['context']['queryMetadataDict']
+  >(
     group: string,
     context: TGenericParams['context'],
-    viewQueryName: string,
-  ): Promise<any>;
+    viewQueryName: TViewQueryName,
+  ): Promise<TGenericParams['context']['queryMetadataDict'][TViewQueryName]>;
 
   loadSyncablesByQuery(
     group: string,

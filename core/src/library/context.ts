@@ -1,4 +1,5 @@
 import {observable} from 'mobx';
+import {Dict} from 'tslang';
 
 import {ISyncableObject, SyncableRef} from './syncable';
 
@@ -16,7 +17,7 @@ export type ContextEnvironment = 'server' | 'client';
 
 abstract class Context<
   TSyncableObject extends ISyncableObject,
-  TViewQueryMetadata extends object
+  TViewQueryMetadataDict extends object
 > {
   @observable
   ref!: SyncableRef<TSyncableObject>;
@@ -25,7 +26,7 @@ abstract class Context<
   object!: TSyncableObject;
 
   @observable
-  queryMetadata: TViewQueryMetadata = {} as TViewQueryMetadata;
+  queryMetadataDict: Partial<TViewQueryMetadataDict> = {};
 
   constructor(
     readonly type: ContextType,
@@ -48,16 +49,14 @@ abstract class Context<
     this.object = object;
   }
 
-  setQueryMetadata(viewQueryName: string, queryMetadata: any): void {
-    this.queryMetadata[
-      viewQueryName as keyof TViewQueryMetadata
-    ] = queryMetadata;
+  setQueryMetadata(name: string, metadata: unknown): void {
+    (this.queryMetadataDict as Dict<unknown>)[name] = metadata;
   }
 }
 
 export interface IContext<
   TSyncableObject extends ISyncableObject = ISyncableObject,
-  TViewQueryMetadata extends object = object
-> extends Context<TSyncableObject, TViewQueryMetadata> {}
+  TViewQueryMetadataDict extends object = Dict<unknown>
+> extends Context<TSyncableObject, TViewQueryMetadataDict> {}
 
 export const AbstractContext = Context;
