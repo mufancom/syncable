@@ -9,11 +9,5 @@
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
   "typescript.tsdk": "node_modules/typescript/lib",
-  "cSpell.words": [
-    "jsondiffpatch",
-    "mobx",
-    "syncable",
-    "syncables",
-    "tslang"
-  ]
+  "cSpell.words": ["jsondiffpatch", "mobx", "syncable", "syncables", "tslang"]
 }
