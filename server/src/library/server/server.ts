@@ -245,6 +245,7 @@ export class Server<
       {
         loadedKeySet,
         changeType,
+        skipReadableFilter,
         requisiteOnly: loadRequisiteDependencyOnly,
       },
     );
@@ -266,7 +267,12 @@ export class Server<
     group: string,
     context: IContext,
     syncables: ISyncable[],
-    {loadedKeySet, changeType, requisiteOnly}: LoadDependentSyncablesOptions,
+    {
+      loadedKeySet,
+      changeType,
+      requisiteOnly,
+      skipReadableFilter,
+    }: LoadDependentSyncablesOptions,
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
@@ -303,7 +309,7 @@ export class Server<
         refs,
       );
 
-      if (context) {
+      if (!skipReadableFilter) {
         dependentSyncables = filterReadableSyncables(
           context,
           syncableAdapter,
