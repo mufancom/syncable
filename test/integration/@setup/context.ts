@@ -7,7 +7,7 @@ import {
 
 import {User} from './syncables';
 
-export class Context extends AbstractContext<User> {
+export class Context extends AbstractContext<User, {}> {
   constructor(
     type: ContextType,
     environment: ContextEnvironment,
