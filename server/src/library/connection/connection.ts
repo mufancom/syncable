@@ -82,6 +82,8 @@ export class Connection<
 
   private nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
 
+  private nameToContextDependencyRefsMap = new Map<string, SyncableRef[]>();
+
   private loadedKeySet = new Set<string>();
   private sanitizedFieldNamesMap = new Map<string, string[]>();
 
@@ -275,7 +277,27 @@ export class Connection<
     let nameToViewQueryInfoMap = this.nameToViewQueryInfoMap;
 
     if (contextObjectChanged) {
-      relevantViewQueryNames = Array.from(nameToViewQueryInfoMap.keys());
+      let contextDependencyRefsEntries = Object.entries(
+        await this.server.resolveQueryToContextDependencyRefsDict(context),
+      );
+
+      relevantViewQueryNames = _.union(
+        Array.from(nameToViewQueryInfoMap.keys()),
+        _.compact(
+          contextDependencyRefsEntries.map(([viewQueryName, refs]) =>
+            _.isEqual(
+              this.nameToContextDependencyRefsMap.get(viewQueryName),
+              refs,
+            )
+              ? undefined
+              : viewQueryName,
+          ),
+        ),
+      );
+
+      this.nameToContextDependencyRefsMap = new Map(
+        contextDependencyRefsEntries,
+      );
     } else {
       let keyToViewQueryNameSet = new Map<string, Set<string>>();
 
@@ -285,7 +307,10 @@ export class Connection<
           query: {refs: refDict},
         },
       ] of nameToViewQueryInfoMap) {
-        for (let ref of Object.values(refDict)) {
+        for (let ref of _.union(
+          Object.values(refDict).flat(),
+          this.nameToContextDependencyRefsMap.get(name) || [],
+        )) {
           let key = getSyncableKey(ref);
 
           let nameSet = keyToViewQueryNameSet.get(key);
@@ -467,10 +492,13 @@ export class Connection<
 
     syncables.push(...sanitizedDependentSyncables);
 
+    let queryMetadata = context.queryMetadataDict;
+
     let data: SyncData = {
       syncables,
       removals,
       updates,
+      queryMetadata,
     };
 
     if (
@@ -542,7 +570,17 @@ export class Connection<
       if (context.disabled) {
         throw new RPCError('CONTEXT_DISABLED');
       }
+
+      let contextDependencyRefsDict = await this.server.resolveQueryToContextDependencyRefsDict(
+        context,
+      );
+
+      this.nameToContextDependencyRefsMap = new Map(
+        Object.entries(contextDependencyRefsDict),
+      );
     }
+
+    let previousQueryMetadataDict = _.cloneDeep(context.queryMetadataDict);
 
     let {
       syncables,
@@ -575,10 +613,13 @@ export class Connection<
       loadedKeySet.add(getSyncableKey(syncable));
     }
 
+    let queryMetadataDict = context.queryMetadataDict;
+
     let data: SyncData = {
       syncables,
       removals: [],
       updates: [],
+      queryMetadata: queryMetadataDict,
     };
 
     if (toInitialize) {
@@ -588,7 +629,11 @@ export class Connection<
         contextRef,
         this.connectionAdapter.viewQueryDict as ViewQueryUpdateObject,
       );
-    } else if (syncables.length || source) {
+    } else if (
+      syncables.length ||
+      source ||
+      !_.isEqual(previousQueryMetadataDict, queryMetadataDict)
+    ) {
       await (this as RPCPeer<ClientRPCDefinition>).call('sync', data, source);
     }
   }
@@ -596,10 +641,11 @@ export class Connection<
   private async request(refs: SyncableRef[]): Promise<void> {
     let loadedKeySet = this.loadedKeySet;
     let sanitizedFieldNamesMap = this.sanitizedFieldNamesMap;
+    let context = this.context;
 
     let syncables = await this.server.loadSyncablesByRefs(
       this.group,
-      this.context,
+      context,
       refs,
       {
         loadedKeySet,
@@ -607,7 +653,7 @@ export class Connection<
     );
 
     syncables = filterReadableSyncables(
-      this.context,
+      context,
       this.syncableAdapter,
       syncables,
       true,
@@ -627,6 +673,7 @@ export class Connection<
       syncables,
       removals: [],
       updates: [],
+      queryMetadata: context.queryMetadataDict,
     });
   }
 }

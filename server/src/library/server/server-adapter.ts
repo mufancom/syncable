@@ -6,6 +6,7 @@ import {
   ViewQueryDictToResolvedViewQueryDict,
 } from '@syncable/core';
 import {Observable} from 'rxjs';
+import {Dict} from 'tslang';
 
 import {Connection} from '../connection';
 
@@ -39,6 +40,18 @@ export interface IServerAdapter<
     changePacketId: ChangePacketId,
     processor: QueuedChangeProcessor,
   ): Promise<void>;
+
+  resolveQueryToContextDependencyRefsDict(
+    context: TGenericParams['context'],
+  ): Promise<Dict<SyncableRef[]>>;
+
+  preloadQueryMetadata<
+    TViewQueryName extends keyof TGenericParams['context']['queryMetadataDict']
+  >(
+    group: string,
+    context: TGenericParams['context'],
+    viewQueryName: TViewQueryName,
+  ): Promise<TGenericParams['context']['queryMetadataDict'][TViewQueryName]>;
 
   loadSyncablesByQuery(
     group: string,

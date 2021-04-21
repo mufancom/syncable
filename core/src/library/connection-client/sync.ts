@@ -8,10 +8,11 @@ export interface SyncDataUpdateEntry {
   delta: Delta;
 }
 
-export interface SyncData {
+export interface SyncData<TQueryMetadata = object> {
   syncables: ISyncable[];
   removals: SyncableRef[];
   updates: SyncDataUpdateEntry[];
+  queryMetadata: TQueryMetadata;
 }
 
 export interface SyncUpdateSource {

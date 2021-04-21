@@ -45,6 +45,14 @@ export class ServerAdapter implements IServerAdapter<ServerGenericParams> {
     );
   }
 
+  async preloadQueryMetadata(): Promise<any> {
+    return {};
+  }
+
+  async resolveQueryToContextDependencyRefsDict(): Promise<any> {
+    return {};
+  }
+
   async subscribe(group: string): Promise<void> {
     await randomNap();
 

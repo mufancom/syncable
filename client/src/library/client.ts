@@ -203,15 +203,19 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   async query(
     update: ViewQueryUpdateObject<TGenericParams['viewQueryDict']>,
+    forceUpdate?: boolean,
   ): Promise<void>;
-  async query(update: ViewQueryUpdateObject): Promise<void> {
+  async query(
+    update: ViewQueryUpdateObject,
+    forceUpdate?: boolean,
+  ): Promise<void> {
     runInAction(() => {
       this.pendingQueryingNumber++;
     });
 
     try {
       await this.ready;
-      await this._query(update);
+      await this._query(update, forceUpdate);
     } finally {
       runInAction(() => {
         this.pendingQueryingNumber--;
@@ -260,6 +264,7 @@ export class Client<TGenericParams extends IClientGenericParams>
           syncables: [],
           removals: [],
           updates: [],
+          queryMetadata: {},
         },
         {
           id,
@@ -338,9 +343,13 @@ export class Client<TGenericParams extends IClientGenericParams>
   @RPCMethod()
   @action
   sync(
-    {syncables, removals, updates}: SyncData,
+    {syncables, removals, updates, queryMetadata}: SyncData,
     source?: SyncUpdateSource,
   ): void {
+    for (let [viewQueryName, metadata] of Object.entries(queryMetadata)) {
+      this.context.setQueryMetadata(viewQueryName, metadata);
+    }
+
     let container = this.container;
 
     let pendingChangeInfos = this.pendingChangeInfos;
@@ -444,7 +453,10 @@ export class Client<TGenericParams extends IClientGenericParams>
     this.container.addSyncable(snapshot, clock);
   }
 
-  private async _query(update: ViewQueryUpdateObject): Promise<void> {
+  private async _query(
+    update: ViewQueryUpdateObject,
+    forceUpdate = false,
+  ): Promise<void> {
     update = _.cloneDeep(update);
 
     let viewQueryInfoMap = this.nameToViewQueryInfoMap;
@@ -454,7 +466,7 @@ export class Client<TGenericParams extends IClientGenericParams>
     ).filter(([name, query]) => {
       let info = viewQueryInfoMap.get(name);
 
-      if (info && _.isEqual(toJS(info.query), query)) {
+      if (info && _.isEqual(toJS(info.query), query) && !forceUpdate) {
         delete (update as any)[name];
         return false;
       } else {

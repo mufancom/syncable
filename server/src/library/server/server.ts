@@ -116,6 +116,35 @@ export class Server<
   }
 
   /** @internal */
+  async resolveQueryToContextDependencyRefsDict(
+    context: IContext,
+  ): Promise<Dict<SyncableRef[]>> {
+    return this.serverAdapter.resolveQueryToContextDependencyRefsDict(context);
+  }
+
+  /** @internal */
+  async preloadQueryMetadata(
+    group: string,
+    context: IContext,
+    viewQueryName: string,
+  ): Promise<void> {
+    let queryMetadata = await this.serverAdapter.preloadQueryMetadata(
+      group,
+      context,
+      viewQueryName,
+    );
+
+    this.log('preloaded-query-metadata', {
+      group,
+      context,
+      viewQueryName,
+      queryMetadata,
+    });
+
+    context.setQueryMetadata(viewQueryName, queryMetadata);
+  }
+
+  /** @internal */
   async loadSyncablesByQuery(
     group: string,
     context: IContext,
@@ -216,6 +245,7 @@ export class Server<
       {
         loadedKeySet,
         changeType,
+        skipReadableFilter,
         requisiteOnly: loadRequisiteDependencyOnly,
       },
     );
@@ -237,7 +267,12 @@ export class Server<
     group: string,
     context: IContext,
     syncables: ISyncable[],
-    {loadedKeySet, changeType, requisiteOnly}: LoadDependentSyncablesOptions,
+    {
+      loadedKeySet,
+      changeType,
+      requisiteOnly,
+      skipReadableFilter,
+    }: LoadDependentSyncablesOptions,
   ): Promise<ISyncable[]> {
     let serverAdapter = this.serverAdapter;
     let syncableAdapter = this.syncableAdapter;
@@ -274,7 +309,7 @@ export class Server<
         refs,
       );
 
-      if (context) {
+      if (!skipReadableFilter) {
         dependentSyncables = filterReadableSyncables(
           context,
           syncableAdapter,
@@ -517,6 +552,8 @@ export class Server<
 
     for (let [name, query] of queryEntries) {
       if (query) {
+        await this.preloadQueryMetadata(group, context, name);
+
         let {refs: refDict, options} = query;
 
         let syncableDict = container.buildSyncableDict(refDict);
