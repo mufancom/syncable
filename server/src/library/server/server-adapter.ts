@@ -36,7 +36,7 @@ export interface IServerAdapter<
   broadcast(data: BroadcastChangeResult): Promise<void>;
 
   queueChange(
-    group: string,
+    groups: string[],
     changePacketId: ChangePacketId,
     processor: QueuedChangeProcessor,
   ): Promise<void>;
@@ -68,14 +68,14 @@ export interface IServerAdapter<
   ): Promise<TGenericParams['syncableObject']['syncable'][]>;
 
   saveSyncables(
-    group: string,
+    groups: string[],
     createdSyncables: TGenericParams['syncableObject']['syncable'][],
     updatedSyncables: TGenericParams['syncableObject']['syncable'][],
     removedSyncableRefs: SyncableRef<TGenericParams['syncableObject']>[],
   ): Promise<void>;
 
   handleNotifications(
-    group: string,
+    groups: string[],
     notifications: TGenericParams['notification'][],
     id: ChangePacketId,
   ): Promise<void>;

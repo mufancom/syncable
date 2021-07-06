@@ -71,6 +71,8 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
     }
   }
 
+  abstract get groups(): string[];
+
   @computed
   get syncable(): T {
     if (this._syncable) {

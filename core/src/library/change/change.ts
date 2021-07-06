@@ -31,5 +31,6 @@ export interface GeneralChange extends IChange {
 
 export interface ChangePacket extends GeneralChange {
   id: ChangePacketId;
+  relatedGroups: string[] | undefined;
   createdAt: NumericTimestamp;
 }

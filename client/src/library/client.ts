@@ -226,6 +226,7 @@ export class Client<TGenericParams extends IClientGenericParams>
   @action
   applyChange(
     change: TGenericParams['change'] | ChangePacket,
+    relatedGroups?: string[],
     serverOnly = APPLYING_CHANGE_DEFAULT_SERVER_ONLY,
   ): ClientApplyChangeResult {
     change = _.cloneDeep(change);
@@ -241,6 +242,7 @@ export class Client<TGenericParams extends IClientGenericParams>
       packet = {
         id,
         createdAt: Date.now() as NumericTimestamp,
+        relatedGroups,
         ...(change as GeneralChange),
       };
     }
@@ -279,9 +281,10 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   async applyChangeAndConfirm(
     change: TGenericParams['change'],
+    relatedGroups?: string[],
     serverOnly?: boolean,
   ): Promise<void> {
-    let {id, promise} = this.applyChange(change, serverOnly);
+    let {id, promise} = this.applyChange(change, relatedGroups, serverOnly);
 
     await promise;
 

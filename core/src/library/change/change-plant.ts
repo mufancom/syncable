@@ -13,6 +13,7 @@ import {
   SyncableRef,
   getSyncableKey,
   getSyncableRef,
+  RemovedSyncableRef,
 } from '../syncable';
 import {NumericTimestamp} from '../types';
 
@@ -70,7 +71,7 @@ export interface ChangePlantProcessingResult {
   id: ChangePacketId;
   creations: ISyncable[];
   updates: ChangePlantProcessingResultUpdateItem[];
-  removals: SyncableRef[];
+  removals: RemovedSyncableRef[];
   notifications: unknown[];
   changes: GeneralChange[];
 }
@@ -298,7 +299,7 @@ export class ChangePlant {
     let preparedBundles: PreparedBundle[] = [];
 
     let creations: ISyncable[] = [];
-    let removals: SyncableRef[] = [];
+    let removals: RemovedSyncableRef[] = [];
     let removalObjectSet = new Set<ISyncableObject>();
     let updates: ChangePlantProcessingResultUpdateItem[] = [];
     let notifications: unknown[] = [];
@@ -317,7 +318,8 @@ export class ChangePlant {
 
     let remove: ChangePlantProcessorRemoveOperation = object => {
       object.validateAccessRights(['full'], context);
-      removals.push(object.ref);
+
+      removals.push({...object.ref, groups: object.groups});
       removalObjectSet.add(object);
     };
 

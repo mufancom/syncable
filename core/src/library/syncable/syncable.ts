@@ -16,6 +16,12 @@ export interface SyncableRef<T extends ISyncableObject = ISyncableObject> {
   type: T['syncable']['_type'];
 }
 
+export interface RemovedSyncableRef<
+  T extends ISyncableObject = ISyncableObject
+> extends SyncableRef<T> {
+  groups: string[];
+}
+
 export type SyncableRefType<
   T extends ISyncableObject = ISyncableObject
 > = T extends ISyncableObject

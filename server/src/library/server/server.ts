@@ -389,27 +389,31 @@ export class Server<
   }
 
   async applyChange(
-    group: string,
+    primaryGroup: string,
     change: TGenericParams['change'],
     context = this.context,
+    relatedGroups?: string[],
   ): Promise<ServerApplyChangeResult> {
     let packet: ChangePacket = {
       id: generateUniqueId<ChangePacketId>(),
       createdAt: Date.now() as NumericTimestamp,
+      relatedGroups,
       ...(change as GeneralChange),
     };
 
-    return this.applyChangePacket(group, packet, context);
+    return this.applyChangePacket(primaryGroup, packet, context);
   }
 
   /** @internal */
   async applyChangePacket(
-    group: string,
+    primaryGroup: string,
     packet: ChangePacket,
     context: TGenericParams['context'],
   ): Promise<ServerApplyChangeResult> {
+    let groups = _.union([primaryGroup], packet.relatedGroups);
+
     this.log('apply-change-packet', {
-      group,
+      groups,
       packet,
       context,
     });
@@ -421,19 +425,24 @@ export class Server<
     let result: ChangePlantProcessingResultWithClock | undefined;
 
     try {
-      await serverAdapter.queueChange(group, packet.id, async clock => {
+      await serverAdapter.queueChange(groups, packet.id, async clock => {
         let refs = getNonCreationRefsFromRefDict(packet.refs);
 
-        let syncables = await this.loadSyncablesByRefs(group, context, refs, {
-          changeType: packet.type,
-          loadRequisiteDependencyOnly: true,
-          skipReadableFilter: true,
-        });
+        let syncables = await this.loadSyncablesByRefs(
+          primaryGroup,
+          context,
+          refs,
+          {
+            changeType: packet.type,
+            loadRequisiteDependencyOnly: true,
+            skipReadableFilter: true,
+          },
+        );
 
         let relatedRefs = changePlant.resolve(packet, syncables);
 
         let relatedSyncables = relatedRefs.length
-          ? await this.loadSyncablesByRefs(group, context, relatedRefs, {
+          ? await this.loadSyncablesByRefs(primaryGroup, context, relatedRefs, {
               changeType: packet.type,
               loadRequisiteDependencyOnly: true,
               skipReadableFilter: true,
@@ -448,6 +457,14 @@ export class Server<
 
         result = changePlant.process(packet, context, container, clock);
 
+        let requiredGroups = container
+          .getSyncableObjects()
+          .flatMap(syncableObject => syncableObject.groups);
+
+        if (_.difference(requiredGroups, groups).length) {
+          throw new RPCError('RELATED_GROUPS_NOT_MATCH');
+        }
+
         let {
           id,
           updates: updateItems,
@@ -459,28 +476,90 @@ export class Server<
         let updatedSyncables = updateItems.map(item => item.snapshot);
 
         await serverAdapter.saveSyncables(
-          group,
+          groups,
           createdSyncables,
           updatedSyncables,
           removedSyncableRefs,
         );
 
-        let broadcastResult: BroadcastChangeResult = {
-          group,
-          id,
-          clock,
-          creations: createdSyncables,
-          updates: updateItems,
-          removals: removedSyncableRefs,
-        };
+        let groupToBroadcastChangeResultMap = new Map(
+          groups.map((group): [string, BroadcastChangeResult] => {
+            return [
+              group,
+              {
+                group,
+                id,
+                clock,
+                creations: [],
+                updates: [],
+                removals: [],
+              },
+            ];
+          }),
+        );
 
-        await serverAdapter.broadcast(broadcastResult);
+        for (let syncable of createdSyncables) {
+          let syncableObject = syncableAdapter.instantiateBySyncable(syncable);
 
-        await serverAdapter.handleNotifications(group, notifications, id);
+          for (let group of syncableObject.groups) {
+            groupToBroadcastChangeResultMap
+              .get(group)!
+              .creations.push(syncable);
+          }
+        }
+
+        for (let item of updateItems) {
+          let nextSyncableObject = syncableAdapter.instantiateBySyncable(
+            item.snapshot,
+          );
+          let previousSyncableObject = container.requireSyncableObject(
+            nextSyncableObject.ref,
+          );
+
+          let nextGroups = nextSyncableObject.groups;
+          let previousGroups = previousSyncableObject.groups;
+
+          let newGroups = _.difference(nextGroups, previousGroups);
+          let obsoleteGroups = _.difference(previousGroups, nextGroups);
+          let existingGroups = _.intersection(nextGroups, previousGroups);
+
+          for (let newGroup of newGroups) {
+            groupToBroadcastChangeResultMap
+              .get(newGroup)!
+              .creations.push(item.snapshot);
+          }
+
+          for (let group of obsoleteGroups) {
+            groupToBroadcastChangeResultMap
+              .get(group)!
+              .removals.push(nextSyncableObject.ref);
+          }
+
+          for (let group of existingGroups) {
+            groupToBroadcastChangeResultMap.get(group)!.updates.push(item);
+          }
+        }
+
+        for (let {groups, ...ref} of removedSyncableRefs) {
+          for (let group of groups) {
+            groupToBroadcastChangeResultMap.get(group)!.removals.push(ref);
+          }
+        }
+
+        await Promise.all(
+          Array.from(
+            groupToBroadcastChangeResultMap.values(),
+            async broadcastChangeResult => {
+              await serverAdapter.broadcast(broadcastChangeResult);
+            },
+          ),
+        );
+
+        await serverAdapter.handleNotifications(groups, notifications, id);
       });
     } catch (error) {
       this.log('apply-change-packet-failed', {
-        group,
+        groups,
         packet,
         context,
         error,
@@ -494,7 +573,7 @@ export class Server<
     }
 
     this.log('applied-change', {
-      group,
+      group: groups,
       packet,
       context,
       result,
@@ -505,7 +584,12 @@ export class Server<
     return {
       subsequent: subsequentChanges.length
         ? subsequentChanges.map(change =>
-            this.applyChange(group, change, context),
+            this.applyChange(
+              primaryGroup,
+              change,
+              context,
+              packet.relatedGroups,
+            ),
           )
         : undefined,
       ...rest,
