@@ -550,6 +550,8 @@ export class Connection<
 
     let contextRef = context.ref;
 
+    let syncables: ISyncable[] = [];
+
     if (toInitialize) {
       let [contextObjectSyncable] = await server.loadSyncablesByRefs(
         group,
@@ -560,6 +562,8 @@ export class Connection<
       if (!contextObjectSyncable) {
         throw new RPCError('INVALID_CONTEXT');
       }
+
+      syncables.push(contextObjectSyncable);
 
       container.addSyncable(contextObjectSyncable);
 
@@ -583,10 +587,17 @@ export class Connection<
     let previousQueryMetadataDict = _.cloneDeep(context.queryMetadataDict);
 
     let {
-      syncables,
+      syncables: queriedSyncables,
       nameToViewQueryMapToAdd,
       viewQueryNamesToRemove,
     } = await server._query(group, update, loadedKeySet, container, context);
+
+    syncables.push(...queriedSyncables);
+
+    syncables = _.uniqBy(
+      syncables,
+      syncable => `${syncable._type}:${syncable._id}`,
+    );
 
     syncables = filterReadableSyncables(
       context,
