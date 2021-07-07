@@ -461,8 +461,13 @@ export class Server<
           .getSyncableObjects()
           .flatMap(syncableObject => syncableObject.groups);
 
-        if (_.difference(requiredGroups, groups).length) {
-          throw new RPCError('RELATED_GROUPS_NOT_MATCH');
+        let missingGroups = _.difference(requiredGroups, groups);
+
+        if (missingGroups.length) {
+          throw new RPCError(
+            'MISSING_RELATED_GROUPS',
+            `Missing related groups: ${missingGroups.join(', ')}`,
+          );
         }
 
         let {
