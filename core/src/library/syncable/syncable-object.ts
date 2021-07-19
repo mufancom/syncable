@@ -73,6 +73,14 @@ abstract class SyncableObject<T extends ISyncable = ISyncable> {
 
   abstract get groups(): string[];
 
+  /**
+   * 全局 syncable 可以被 group 之外的 connection 请求，在广播 change 时，会以
+   * syncable key 作为 group 进行广播。
+   */
+  get global(): boolean {
+    return false;
+  }
+
   @computed
   get syncable(): T {
     if (this._syncable) {

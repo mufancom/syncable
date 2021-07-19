@@ -543,11 +543,35 @@ export class Server<
           for (let group of existingGroups) {
             groupToBroadcastChangeResultMap.get(group)!.updates.push(item);
           }
+
+          if (nextSyncableObject.global) {
+            groupToBroadcastChangeResultMap.set(nextSyncableObject.key, {
+              group: nextSyncableObject.key,
+              id,
+              clock,
+              creations: [],
+              updates: [item],
+              removals: [],
+            });
+          }
         }
 
         for (let {groups, ...ref} of removedSyncableRefs) {
           for (let group of groups) {
             groupToBroadcastChangeResultMap.get(group)!.removals.push(ref);
+          }
+
+          let previousSyncableObject = container.requireSyncableObject(ref);
+
+          if (previousSyncableObject.global) {
+            groupToBroadcastChangeResultMap.set(previousSyncableObject.key, {
+              group: previousSyncableObject.key,
+              id,
+              clock,
+              creations: [],
+              updates: [],
+              removals: [ref],
+            });
           }
         }
 
@@ -698,6 +722,28 @@ export class Server<
     this.broadcastChangeResult(result);
   };
 
+  async addConnectionToGroups(
+    connection: Connection,
+    groups: string[],
+  ): Promise<void> {
+    let groupToConnectionSetMap = this.groupToConnectionSetMap;
+
+    await Promise.all(
+      groups.map(async group => {
+        let connectionSet = groupToConnectionSetMap.get(group);
+
+        if (connectionSet) {
+          connectionSet.add(connection);
+        } else {
+          connectionSet = new Set([connection]);
+          groupToConnectionSetMap.set(group, connectionSet);
+
+          await this.serverAdapter.subscribe(group);
+        }
+      }),
+    );
+  }
+
   private async addConnection(connection: Connection): Promise<void> {
     let group = connection.group;
 
@@ -725,22 +771,27 @@ export class Server<
   }
 
   private async removeConnection(connection: Connection): Promise<void> {
-    let group = connection.group;
+    let groups = [connection.group, ...connection.subscribedGroupSet];
 
     let groupToConnectionSetMap = this.groupToConnectionSetMap;
-    let connectionSet = groupToConnectionSetMap.get(group);
 
-    if (!connectionSet) {
-      return;
-    }
+    await Promise.all(
+      groups.map(async group => {
+        let connectionSet = groupToConnectionSetMap.get(group);
 
-    connectionSet.delete(connection);
+        if (!connectionSet) {
+          return;
+        }
 
-    if (!connectionSet.size) {
-      groupToConnectionSetMap.delete(group);
+        connectionSet.delete(connection);
 
-      await this.serverAdapter.unsubscribe(group);
-    }
+        if (!connectionSet.size) {
+          groupToConnectionSetMap.delete(group);
+
+          await this.serverAdapter.unsubscribe(group);
+        }
+      }),
+    );
 
     connection.dispose();
   }

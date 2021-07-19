@@ -78,6 +78,8 @@ export class Connection<
 
   readonly close$: Observable<void>;
 
+  readonly subscribedGroupSet = new Set<string>();
+
   private container: SyncableContainer;
 
   private nameToViewQueryInfoMap = new Map<string, ViewQueryInfo>();
@@ -679,6 +681,17 @@ export class Connection<
     for (let syncable of syncables) {
       loadedKeySet.add(getSyncableKey(syncable));
     }
+
+    let specificSyncableGroups = syncables
+      .map(syncable => this.syncableAdapter.instantiateBySyncable(syncable))
+      .filter(syncableObject => !syncableObject.groups.includes(this.group))
+      .map(syncableObject => syncableObject.key);
+
+    for (let group of specificSyncableGroups) {
+      this.subscribedGroupSet.add(group);
+    }
+
+    await this.server.addConnectionToGroups(this, specificSyncableGroups);
 
     await (this as RPCPeer<ClientRPCDefinition>).call('sync', {
       syncables,
