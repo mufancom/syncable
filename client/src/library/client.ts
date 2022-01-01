@@ -88,6 +88,15 @@ export class Client<TGenericParams extends IClientGenericParams>
 
   private initializeSubject$ = new Subject<void>();
 
+  private pendingRequestBatch:
+    | {
+        refs: SyncableRef[];
+        timer: number;
+        promise: Promise<void>;
+        resolve(): void;
+      }
+    | undefined;
+
   readonly ready = this.initializeSubject$.toPromise();
 
   constructor(
@@ -147,7 +156,21 @@ export class Client<TGenericParams extends IClientGenericParams>
   ): Promise<Extract<TGenericParams['syncableObject'], {ref: TRef}>[]> {
     let container = this.container;
 
-    let missingSyncableRefs = refs.filter(
+    let pendingRequestBatch = this.pendingRequestBatch;
+
+    let batchedRefs: TRef[];
+
+    if (pendingRequestBatch) {
+      clearTimeout(pendingRequestBatch.timer);
+
+      this.pendingRequestBatch = undefined;
+
+      batchedRefs = [...(pendingRequestBatch.refs as TRef[]), ...refs];
+    } else {
+      batchedRefs = refs;
+    }
+
+    let missingSyncableRefs = batchedRefs.filter(
       ref => !container.existsSyncable(ref),
     );
 
@@ -157,6 +180,8 @@ export class Client<TGenericParams extends IClientGenericParams>
         missingSyncableRefs,
       );
     }
+
+    pendingRequestBatch?.resolve();
 
     return refs
       .map(ref => container.getSyncableObject(ref))
@@ -173,8 +198,32 @@ export class Client<TGenericParams extends IClientGenericParams>
   ): Promise<
     Extract<TGenericParams['syncableObject'], {ref: TRef}> | undefined
   > {
-    let [object] = await this.requestObjects([ref]);
-    return object;
+    let pendingRequestBatch = this.pendingRequestBatch;
+
+    if (pendingRequestBatch) {
+      pendingRequestBatch.refs.push(ref);
+    } else {
+      let timer!: number;
+      let resolve!: () => void;
+
+      let promise = new Promise<void>(_resolve => {
+        timer = setTimeout(() => this.requestObjects([]));
+        resolve = _resolve;
+      });
+
+      pendingRequestBatch = {
+        refs: [ref],
+        timer,
+        promise,
+        resolve,
+      };
+
+      this.pendingRequestBatch = pendingRequestBatch;
+    }
+
+    await pendingRequestBatch.promise;
+
+    return this.container.getSyncableObject(ref);
   }
 
   getViewQueryFilter<
